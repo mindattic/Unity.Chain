@@ -31,3 +31,4 @@ _Nothing recorded yet._
 | UNI-T8 | 2026-10-21 | feature | open | Enemies + Physics2D hit detection against the mace, replacing the legacy single AABB check | — |
 | UNI-T9 | 2026-10-21 | feature | open | Audio: SFX for mace swing/impact/grapple and background music hookup | — |
 | UNI-T10 | 2026-10-21 | feature | open | HUD/UI, level bounds and camera framing for the angel+chain play space | — |
+| UNI-T11 | 2026-10-21 | chore | closed | Add CLAUDE.md provider-compatibility forwarder, matching every other repo's thin-pointer convention | — |
