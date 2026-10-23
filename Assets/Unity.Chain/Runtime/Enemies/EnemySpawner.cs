@@ -137,10 +137,43 @@ namespace MindAttic.Chain
             {
                 renderer.sprite = frames[rng.Next(frames.Length)];
             }
+            else
+            {
+                // No enemy art is imported yet: a plain red disc keeps enemies visible.
+                renderer.sprite = FallbackSprite();
+                renderer.color = new Color(0.85f, 0.2f, 0.2f);
+            }
 
             var enemy = go.AddComponent<Enemy>();
             go.SetActive(true);
             return enemy;
+        }
+
+        private static Sprite _fallback;
+
+        private static Sprite FallbackSprite()
+        {
+            if (_fallback != null)
+            {
+                return _fallback;
+            }
+
+            const int size = 32;
+            var texture = new Texture2D(size, size) { hideFlags = HideFlags.HideAndDontSave };
+            var c = (size - 1) * 0.5f;
+            for (var y = 0; y < size; y++)
+            {
+                for (var x = 0; x < size; x++)
+                {
+                    var inside = (x - c) * (x - c) + (y - c) * (y - c) <= c * c;
+                    texture.SetPixel(x, y, inside ? Color.white : Color.clear);
+                }
+            }
+
+            texture.Apply();
+            _fallback = Sprite.Create(texture, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), size / 0.6f);
+            _fallback.hideFlags = HideFlags.HideAndDontSave;
+            return _fallback;
         }
 
         private void Subscribe()

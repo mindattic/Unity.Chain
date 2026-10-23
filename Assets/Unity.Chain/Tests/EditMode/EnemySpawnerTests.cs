@@ -72,7 +72,19 @@ namespace MindAttic.Chain.Tests
         }
 
         [Test]
-        public void SessionRestart_RespawnsEnemies()
+        public void Spawn_WithoutFrames_StillDrawsEnemies()
+        {
+            var spawner = NewSpawner();
+            spawner.Spawn();
+
+            foreach (var enemy in _go.GetComponentsInChildren<Enemy>())
+            {
+                Assert.IsNotNull(enemy.GetComponent<SpriteRenderer>().sprite);
+            }
+        }
+
+        [Test]
+        public void SessionRestart_ReplacesEnemiesWithFreshOnes()
         {
             var spawner = NewSpawner();
             var session = new GameObject("Session").AddComponent<GameSession>();
@@ -80,14 +92,37 @@ namespace MindAttic.Chain.Tests
             {
                 spawner.Session = session;
                 spawner.Spawn();
-                foreach (var enemy in _go.GetComponentsInChildren<Enemy>())
-                {
-                    enemy.TakeDamage(1000f);
-                }
+                var before = _go.GetComponentsInChildren<Enemy>();
 
                 session.Restart();
 
-                Assert.AreEqual(14, spawner.Alive);
+                var after = _go.GetComponentsInChildren<Enemy>();
+                Assert.AreEqual(14, after.Length);
+                foreach (var enemy in after)
+                {
+                    CollectionAssert.DoesNotContain(before, enemy);
+                    Assert.IsTrue(enemy.IsAlive);
+                }
+            }
+            finally
+            {
+                Object.DestroyImmediate(session.gameObject);
+            }
+        }
+
+        [Test]
+        public void SessionRestart_WithoutWiredSession_DoesNotRespawn()
+        {
+            var spawner = NewSpawner();
+            var session = new GameObject("Session").AddComponent<GameSession>();
+            try
+            {
+                spawner.Spawn();
+                var before = _go.GetComponentsInChildren<Enemy>();
+
+                session.Restart();
+
+                CollectionAssert.AreEqual(before, _go.GetComponentsInChildren<Enemy>());
             }
             finally
             {
