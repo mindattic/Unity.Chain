@@ -135,3 +135,25 @@ in Unity world units / pixels-per-unit rather than copied literally.
 5. Mace rendering + grapple/throw mechanic (arm on input, release throws using mace velocity).
 6. Enemies + Physics2D hit detection against the mace (swept circle, replacing the AABB).
 7. Audio, HUD/UI, level bounds and camera (done: `Runtime/Audio/`, `Runtime/Level/`, `Runtime/UI/`).
+
+## Port verification (UNI-T12, 2026-10-23)
+
+- **Original GameMaker project** (`GameMaker\gmlchain\ChainGame.gmx`): a stub. It has one room,
+  `room0` (640x480, 30 fps, grey `#C0C0C0` background, no views), one `obj_link` instance that
+  each step heads for the mouse at speed 1 under GameMaker gravity 10 (direction 270), and an
+  `obj_gameloop` whose `gameloop` script only fills an unused `dot[1..9]` array (`globals`
+  declares `dotx/doty/dotdx/dotdy` and never uses them). There are no other rooms, menus or modes
+  and no chain, so the playable reference for the port is the VB.NET Chain Game (one endless
+  arena: 14 enemies, one heart pickup, HP/score HUD, game over then reset). Its `gmlchain` folder
+  holds the art the port should use (`angel\`, `chain\`, `enemy\Shadow\`, `item\`, `area\`).
+- **Mechanics**: the code matches the tuning and rules recorded above (25 links, mace index 6 in
+  1-12, overhead boost, grapple/throw, enemy seek/hurt/grab, 30 HP with a 0.25 s hurt delay,
+  damage x 1000 score); the edit-mode tests cover them.
+- **Windows build**: Unity 6000.4.3f1 batch builds. The project as committed has no scene, so
+  `BuildPlayer` fails. A scene put together in code from the runtime components builds for
+  StandaloneWindows64 and runs headless for 15 s without any script exceptions.
+- **Gaps, each filed as a fix ticket**: no scene or build-settings entry (UNI-T16); `.meta` files
+  not committed (UNI-T17); URP installed but its global settings and pipeline asset missing
+  (UNI-T18); no art imported (UNI-T19); no audio clips (UNI-T20); no enemy spawner (UNI-T21);
+  heart pickup not ported (UNI-T22); enemy flocking separation not ported (UNI-T23); game over
+  fade and auto-reset differ (UNI-T24).
