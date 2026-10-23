@@ -4,6 +4,16 @@ Read the shared protocol at ..\mindattic-agent-standard\AGENTS.md and this proje
 documentation. Common prompt commands are implemented by the shared runner; do not add a second
 copy under a provider-specific command folder.
 
+## The original (read-only source material, never edit it)
+
+`R:\Projects\_PRE_2022\_PRE_2021\_PRE_2020\_PRE_2017\Chain Game\`: the VB.NET/DirectX original. Every
+value, unit and behaviour comes from here, never from a guess:
+- Source: `Engine.vb` (game loop, checkFlocking, checkMaceImpact, GameOver, Reset), `Enemy.vb` (loadEnemy, flockSpd),
+  `Item.vb` (the Health10 heart, floatSPD, floatAcc), `Angel.vb`, `Chain.vb`, `Camera.vb`, `Gui.vb`, `Sound.vb` and the rest.
+- Art: `bin\gfx\` (angel_dev.PNG, enemy.PNG, terrain.PNG, brick.jpg), `bin\Chain\space.*`.
+- Sounds: `bin\sfx\` (death, defend, footstep, sword_hit, sword_swing and more).
+The `Backup` folders and the `Chain Game - Copy` sibling are older snapshots; the main folder is the reference.
+
 ## Rebuild standard (owner 2026-10-23)
 
 This repo upgrades an old prototype to Unity. The gameplay is kept exactly; the code is not. Everything is
