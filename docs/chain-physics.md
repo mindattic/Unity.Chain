@@ -157,7 +157,7 @@ in Unity world units / pixels-per-unit rather than copied literally.
 - **Gaps, each filed as a fix ticket**: no scene or build-settings entry (UNI-T16); `.meta` files
   not committed (UNI-T17); URP installed but its global settings and pipeline asset missing
   (UNI-T18); no art imported (UNI-T19); no audio clips (UNI-T20); no enemy spawner (UNI-T21);
-  heart pickup not ported (UNI-T22); game over
+  game over
   fade and auto-reset differ, documented as a deliberate deviation below (UNI-T24).
 
 ## Game over (deliberate deviation, UNI-T24)

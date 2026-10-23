@@ -38,6 +38,7 @@ namespace MindAttic.Chain.EditorTools
             var session = CreateGameSession(angel, hitDetector);
             CreateGameHud(session, grapple);
             CreateEnemySpawner(session, levelBounds);
+            CreateHeart(levelBounds);
             CreateMusicPlayer();
 
             Directory.CreateDirectory(Path.GetDirectoryName(ScenePath) !);
@@ -146,6 +147,16 @@ namespace MindAttic.Chain.EditorTools
             var hud = go.AddComponent<GameHud>();
             hud.Session = session;
             hud.Grapple = grapple;
+        }
+
+        private static void CreateHeart(LevelBounds levelBounds)
+        {
+            var go = new GameObject("Heart");
+            var bounds = levelBounds.Bounds;
+            go.transform.position = new Vector3(bounds.center.x, bounds.yMax, 0f);
+            go.AddComponent<SpriteRenderer>(); // no heart art in the repo yet
+            var heart = go.AddComponent<HeartPickup>();
+            heart.LevelBounds = levelBounds;
         }
 
         private static void CreateMusicPlayer()

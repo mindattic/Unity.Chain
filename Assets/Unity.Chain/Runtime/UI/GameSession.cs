@@ -101,6 +101,32 @@ namespace MindAttic.Chain
             return TouchingEnemy(angel.transform.position) && State.TryHurt(now);
         }
 
+        /// <summary>
+        /// Heals for every heart the angel touches (Item.vb's checkItemCollect: +10 HP capped at
+        /// max HP) and sends each collected heart back to the top. Called from FixedUpdate;
+        /// public so tests can drive it. Returns the HP gained.
+        /// </summary>
+        public int CheckPickups()
+        {
+            if (!State.IsPlaying || angel == null)
+            {
+                return 0;
+            }
+
+            var gained = 0;
+            var position = (Vector2)angel.transform.position;
+            foreach (var heart in FindObjectsByType<HeartPickup>(FindObjectsSortMode.None))
+            {
+                if (heart.isActiveAndEnabled && heart.IsTouching(position))
+                {
+                    gained += State.Heal(heart.HealAmount);
+                    heart.Respawn();
+                }
+            }
+
+            return gained;
+        }
+
         /// <summary>Scores a mace hit. Hooked to <see cref="MaceHitDetector.Hit"/>.</summary>
         public void RegisterHit(Enemy enemy, float damage) => State.AddHitScore(damage);
 
@@ -242,7 +268,11 @@ namespace MindAttic.Chain
             }
         }
 
-        private void FixedUpdate() => CheckContact(Time.time);
+        private void FixedUpdate()
+        {
+            CheckContact(Time.time);
+            CheckPickups();
+        }
 
         private void Update()
         {
