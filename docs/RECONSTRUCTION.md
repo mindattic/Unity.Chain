@@ -222,7 +222,7 @@ Checked against `AGENTS.md` (the owner's rebuild standard) and the reference rep
 |---|---|---|
 | Assembly definitions | Three asmdefs exist (Runtime, Editor, EditMode tests) plus PlayMode; the whole game, rules included, is one Runtime assembly with engine references. No Core. | UNI-T30 |
 | Engine-free Core | Absent. `ChainSimulation`, `AngelFlight`, `EnemyBrain`, `GameState` are mostly pure but sit in Runtime and use `UnityEngine` types | UNI-T30 |
-| Tests outside Unity | Only Unity Test Framework tests; no `dotnet test` project | UNI-T31 |
+| Tests outside Unity | Done: `Tests/Core.Tests`, run by `run-core-tests.ps1` | UNI-T31 |
 | Commands and events | Controllers call each other and mutate state directly; no command/event layer, no player id | UNI-T32 |
 | Data-driven content | Tuning is `[SerializeField]` constants on components; no data files, no validation | UNI-T33 |
 | Input System | Package installed and `activeInputHandler` is Input System only, but input is read by polling `Keyboard.current` and `Mouse.current`; no action asset, no gamepad | UNI-T34 |

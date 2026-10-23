@@ -65,7 +65,7 @@ $unity = "C:\Program Files\Unity\Hub\Editor\6000.4.3f1\Editor\Unity.exe"
 ```
 
 `build.bat`, `test.bat` and `deploy.bat` like the reference repos' are planned (UNI-T39). The engine-free rules are
-tested by `Tests/Core.Tests` (`dotnet test Tests/Core.Tests`).
+tested by `Tests/Core.Tests` (`dotnet test Tests/Core.Tests`, or `./run-core-tests.ps1`).
 
 ## Controls
 
