@@ -1,3 +1,4 @@
+using MindAttic.Chain.Core;
 using UnityEngine;
 
 namespace MindAttic.Chain
@@ -95,7 +96,7 @@ namespace MindAttic.Chain
         {
             get
             {
-                var half = CameraFraming.HalfExtents(Camera.orthographicSize, Camera.aspect);
+                var half = CameraFraming.HalfExtents(Camera.orthographicSize, Camera.aspect).ToUnity();
                 return new Rect((Vector2)transform.position - half, half * 2f);
             }
         }
@@ -121,7 +122,7 @@ namespace MindAttic.Chain
                     return;
                 }
 
-                cam.orthographicSize = CameraFraming.FitOrthographicSize(levelRect.size, cam.aspect, padding);
+                cam.orthographicSize = CameraFraming.FitOrthographicSize(levelRect.size.ToCore(), cam.aspect, padding);
                 next = levelRect.center;
             }
             else
@@ -129,20 +130,23 @@ namespace MindAttic.Chain
                 cam.orthographicSize = followSize;
                 var half = CameraFraming.HalfExtents(followSize, cam.aspect);
                 var follow = ResolveTarget();
+                var currentCore = current.ToCore();
                 var goal = follow != null
-                    ? CameraFraming.DeadZone(current, follow.position, deadZone)
-                    : current;
+                    ? CameraFraming.DeadZone(currentCore, follow.position.ToCore(), deadZone.ToCore())
+                    : currentCore;
 
                 if (hasLevel)
                 {
-                    goal = CameraFraming.ClampCenter(goal, half, levelRect);
+                    goal = CameraFraming.ClampCenter(goal, half, levelRect.ToCore());
                 }
 
-                next = snap ? goal : CameraFraming.Smooth(current, goal, sharpness, deltaTime);
+                var smoothed = snap ? goal : CameraFraming.Smooth(currentCore, goal, sharpness, deltaTime);
                 if (hasLevel)
                 {
-                    next = CameraFraming.ClampCenter(next, half, levelRect);
+                    smoothed = CameraFraming.ClampCenter(smoothed, half, levelRect.ToCore());
                 }
+
+                next = smoothed.ToUnity();
             }
 
             transform.position = new Vector3(next.x, next.y, transform.position.z);

@@ -1,6 +1,4 @@
-using UnityEngine;
-
-namespace MindAttic.Chain
+namespace MindAttic.Chain.Core
 {
     public enum Facing
     {
@@ -13,7 +11,7 @@ namespace MindAttic.Chain
     /// position moves by raw mouse delta times a sensitivity ratio, the sprite faces the way the
     /// mouse last moved horizontally, a small hover bob rides on top of the flight position,
     /// the wing-flap frames loop at a fixed rate, and the body is clamped to a play-space rect.
-    /// Kept free of MonoBehaviour so it is unit-testable; <see cref="AngelController"/> feeds it
+    /// Kept free of MonoBehaviour so it is unit-testable; the angel controller feeds it
     /// input and applies the result to a Transform and SpriteRenderer.
     ///
     /// Differences from the original, on purpose:
@@ -31,7 +29,7 @@ namespace MindAttic.Chain
             /// <summary>World units moved per unit of mouse delta (Angel.vb's Ratio3D).</summary>
             public readonly float Sensitivity;
             /// <summary>Play-space rect the flight position is clamped to.</summary>
-            public readonly Rect Bounds;
+            public readonly Rect2 Bounds;
             /// <summary>Peak hover bob displacement, world units (Angel.vb's hoverMax).</summary>
             public readonly float HoverAmplitude;
             /// <summary>Seconds for one full up-and-down hover cycle.</summary>
@@ -42,16 +40,16 @@ namespace MindAttic.Chain
             public readonly int FrameCount;
             /// <summary>Hand socket offset from the rendered body when facing right; mirrored
             /// on X when facing left (Angel.vb's linkOffset shift). Link 0 of the chain anchors here.</summary>
-            public readonly Vector2 HandOffset;
+            public readonly Vec2 HandOffset;
 
             public Settings(
                 float sensitivity,
-                Rect bounds,
+                Rect2 bounds,
                 float hoverAmplitude,
                 float hoverPeriod,
                 float frameDuration,
                 int frameCount,
-                Vector2 handOffset)
+                Vec2 handOffset)
             {
                 Sensitivity = sensitivity;
                 Bounds = bounds;
@@ -64,20 +62,20 @@ namespace MindAttic.Chain
 
             public static Settings Default => new Settings(
                 sensitivity: 0.01f,
-                bounds: new Rect(-8f, -4.5f, 16f, 9f),
+                bounds: new Rect2(-8f, -4.5f, 16f, 9f),
                 hoverAmplitude: 0.08f,
                 hoverPeriod: 1.6f,
                 frameDuration: 0.1f,
                 frameCount: 4,
-                handOffset: new Vector2(0.25f, -0.1f));
+                handOffset: new Vec2(0.25f, -0.1f));
 
-            public Settings WithBounds(Rect bounds) => new Settings(
+            public Settings WithBounds(Rect2 bounds) => new Settings(
                 Sensitivity, bounds, HoverAmplitude, HoverPeriod, FrameDuration, FrameCount, HandOffset);
         }
 
         public Settings Config;
 
-        public Vector2 Position { get; private set; }
+        public Vec2 Position { get; private set; }
         public Facing Facing { get; private set; } = Facing.Right;
         public int Frame { get; private set; }
         public float HoverOffset { get; private set; }
@@ -85,40 +83,40 @@ namespace MindAttic.Chain
         private float _hoverTime;
         private float _frameTime;
 
-        public AngelFlight(Vector2 start, Settings settings)
+        public AngelFlight(Vec2 start, Settings settings)
         {
             Config = settings;
             Position = Clamp(start);
         }
 
         /// <summary>Where the body is drawn: flight position plus the hover bob.</summary>
-        public Vector2 RenderPosition => Position + new Vector2(0f, HoverOffset);
+        public Vec2 RenderPosition => Position + new Vec2(0f, HoverOffset);
 
         /// <summary>Where chain link 0 attaches: the hand offset, mirrored by facing.</summary>
-        public Vector2 HandSocket
+        public Vec2 HandSocket
         {
             get
             {
                 var offset = Config.HandOffset;
                 if (Facing == Facing.Left)
                 {
-                    offset.x = -offset.x;
+                    offset = offset.WithX(-offset.X);
                 }
 
                 return RenderPosition + offset;
             }
         }
 
-        public void Teleport(Vector2 position) => Position = Clamp(position);
+        public void Teleport(Vec2 position) => Position = Clamp(position);
 
-        public void Step(Vector2 mouseDelta, float deltaTime)
+        public void Step(Vec2 mouseDelta, float deltaTime)
         {
             // Facing follows the last non-zero horizontal mouse motion; a still mouse keeps it.
-            if (mouseDelta.x > 0f)
+            if (mouseDelta.X > 0f)
             {
                 Facing = Facing.Right;
             }
-            else if (mouseDelta.x < 0f)
+            else if (mouseDelta.X < 0f)
             {
                 Facing = Facing.Left;
             }
@@ -128,7 +126,7 @@ namespace MindAttic.Chain
             if (Config.HoverPeriod > 0f)
             {
                 _hoverTime = (_hoverTime + deltaTime) % Config.HoverPeriod;
-                HoverOffset = Config.HoverAmplitude * Mathf.Sin(_hoverTime / Config.HoverPeriod * 2f * Mathf.PI);
+                HoverOffset = Config.HoverAmplitude * Calc.Sin(_hoverTime / Config.HoverPeriod * 2f * Calc.PI);
             }
             else
             {
@@ -150,12 +148,12 @@ namespace MindAttic.Chain
             }
         }
 
-        private Vector2 Clamp(Vector2 p)
+        private Vec2 Clamp(Vec2 p)
         {
             var b = Config.Bounds;
-            return new Vector2(
-                Mathf.Clamp(p.x, b.xMin, b.xMax),
-                Mathf.Clamp(p.y, b.yMin, b.yMax));
+            return new Vec2(
+                Calc.Clamp(p.X, b.XMin, b.XMax),
+                Calc.Clamp(p.Y, b.YMin, b.YMax));
         }
     }
 }

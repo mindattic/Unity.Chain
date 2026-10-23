@@ -32,7 +32,7 @@ In development, rebuilding the original to full parity. On main and tested:
 - level bounds and a camera that fits or follows (`Level/`), sound and music players (`Audio/`, no clips yet)
 - the scene and the Windows player generated in code (`Editor/SceneBuilder`, `Editor/PlayerBuilder`)
 
-Still to come, in build order: the engine-free Core assembly and `dotnet test`, commands and events, data files,
+Still to come, in build order: commands and events, data files,
 the Input System action asset, URP assets, Unity.Shared settings, a UI Toolkit HUD, the original's art and sound,
 and the remaining keys and screens. The full list, one ticket per step, is
 [docs/RECONSTRUCTION.md §6](docs/RECONSTRUCTION.md); open tickets are in the MindAttic ticket database
@@ -65,7 +65,7 @@ $unity = "C:\Program Files\Unity\Hub\Editor\6000.4.3f1\Editor\Unity.exe"
 ```
 
 `build.bat`, `test.bat` and `deploy.bat` like the reference repos' are planned (UNI-T39), as is a `dotnet test`
-project for the engine-free rules (UNI-T31).
+project for the engine-free rules (UNI-T31) now exists as `Tests/Core.Tests` (`dotnet test Tests/Core.Tests`).
 
 ## Controls
 

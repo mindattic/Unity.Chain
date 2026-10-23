@@ -1,4 +1,5 @@
 using System;
+using MindAttic.Chain.Core;
 using UnityEngine;
 
 namespace MindAttic.Chain

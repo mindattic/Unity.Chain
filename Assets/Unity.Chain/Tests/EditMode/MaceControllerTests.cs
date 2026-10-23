@@ -109,7 +109,7 @@ namespace MindAttic.Chain.Tests
             Assert.Less(_mace.MacePosition.y, _socket.position.y, "the mace should hang below the hand");
             Assert.AreEqual(_mace.MacePosition, _chain.GetLinkPosition(_chain.LinkCount - 1),
                 "the hidden tail rides on the mace");
-            Assert.AreEqual(_chain.Simulation.GetVelocity(3), _mace.MaceVelocity);
+            Assert.AreEqual(_chain.Simulation.GetVelocity(3).ToUnity(), _mace.MaceVelocity);
         }
 
         [Test]

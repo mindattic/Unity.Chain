@@ -1,0 +1,122 @@
+using MindAttic.Chain.Core;
+using NUnit.Framework;
+
+namespace MindAttic.Chain.Tests
+{
+    public class EnemyBrainTests
+    {
+        [Test]
+        public void Seek_VelocityIsProportionalToDistance()
+        {
+            var brain = new EnemyBrain();
+            var velocity = brain.Step(Vec2.Zero, new Vec2(2f, -1f), 0.02f);
+
+            Assert.AreEqual(EnemyState.Seek, brain.State);
+            Assert.AreEqual(new Vec2(2f, -1f) * brain.Config.SeekRate, velocity);
+        }
+
+        [Test]
+        public void Hit_KnocksBackByMass_DamagesBySpeed_AndHurts()
+        {
+            var brain = new EnemyBrain(hp: 10f, mass: 2f);
+            var damage = brain.Hit(new Vec2(6f, 8f), damagePerSpeed: 0.5f);
+
+            Assert.AreEqual(5f, damage, 1e-5f);
+            Assert.AreEqual(5f, brain.Hp, 1e-5f);
+            Assert.AreEqual(new Vec2(3f, 4f), brain.Velocity);
+            Assert.AreEqual(EnemyState.Hurt, brain.State);
+        }
+
+        [Test]
+        public void Hurt_CannotBeHitAgain_UntilItRecovers()
+        {
+            var brain = new EnemyBrain(hp: 10f);
+            brain.Hit(new Vec2(1f, 0f), 0.1f);
+
+            Assert.IsFalse(brain.CanBeHit);
+            Assert.AreEqual(0f, brain.Hit(Vec2.One, 0.1f));
+
+            for (var i = 0; i < 100 && brain.State == EnemyState.Hurt; i++)
+            {
+                brain.Step(Vec2.Zero, Vec2.Zero, 0.02f);
+            }
+
+            Assert.AreEqual(EnemyState.Seek, brain.State);
+            Assert.IsTrue(brain.CanBeHit);
+        }
+
+        [Test]
+        public void Hurt_SlowsDownEachStep()
+        {
+            var brain = new EnemyBrain(hp: 10f);
+            brain.Hit(new Vec2(4f, -4f), 0f);
+            var before = brain.Velocity.Magnitude;
+            brain.Step(Vec2.Zero, Vec2.Zero, 0.02f);
+
+            Assert.Less(brain.Velocity.Magnitude, before);
+            Assert.AreEqual(EnemyState.Hurt, brain.State);
+        }
+
+        [Test]
+        public void LethalHit_Kills()
+        {
+            var brain = new EnemyBrain(hp: 1f);
+            brain.Hit(new Vec2(100f, 0f), 1f);
+
+            Assert.AreEqual(EnemyState.Dead, brain.State);
+            Assert.IsFalse(brain.IsAlive);
+            Assert.AreEqual(0f, brain.Hp);
+            Assert.AreEqual(Vec2.Zero, brain.Step(Vec2.Zero, Vec2.One, 0.02f));
+        }
+
+        [Test]
+        public void Grabbed_ThenThrown_IsHurtAndThrown()
+        {
+            var brain = new EnemyBrain(mass: 2f);
+            Assert.IsTrue(brain.Grab());
+            Assert.AreEqual(EnemyState.Grabbed, brain.State);
+            Assert.IsFalse(brain.CanBeHit);
+
+            brain.Throw(new Vec2(5f, 0f));
+
+            Assert.AreEqual(EnemyState.Hurt, brain.State);
+            Assert.IsTrue(brain.IsThrown);
+            Assert.AreEqual(new Vec2(5f, 0f), brain.Velocity); // the mace carried it: no mass division
+        }
+
+        [Test]
+        public void Knock_DividesByMass_WithoutDamage()
+        {
+            var brain = new EnemyBrain(hp: 1f, mass: 4f);
+            brain.Knock(new Vec2(8f, 0f));
+
+            Assert.AreEqual(new Vec2(2f, 0f), brain.Velocity);
+            Assert.AreEqual(EnemyState.Hurt, brain.State);
+            Assert.AreEqual(1f, brain.Hp);
+        }
+
+        [Test]
+        public void FlockSpeed_IsTheOriginalsPerFrameFigureAtSixtyFps()
+        {
+            // Engine.vb: flockSpd 0.0005 per frame, each overlapping pair visited twice per frame, 60 fps.
+            Assert.AreEqual(0.06f, EnemyBrain.DefaultFlockSpeed, 1e-6f);
+
+            // One 1/60 s step moves an enemy 0.001 per axis per neighbour, the original's 2 x 0.0005 per frame.
+            var push = EnemyBrain.FlockPush(new Vec2(1f, 1f), Vec2.Zero, EnemyBrain.DefaultFlockSpeed, 1f / 60f);
+            Assert.AreEqual(0.001f, push.X, 1e-7f);
+            Assert.AreEqual(0.001f, push.Y, 1e-7f);
+        }
+
+        [Test]
+        public void FlockPush_PushesApartPerAxis_AndSplitsAPerfectStack()
+        {
+            var push = EnemyBrain.FlockPush(new Vec2(1f, 0f), new Vec2(0f, 2f), 2f, 0.5f);
+            Assert.AreEqual(new Vec2(1f, -1f), push);
+
+            var a = EnemyBrain.FlockPush(Vec2.Zero, Vec2.Zero, 1f, 1f, 1);
+            var b = EnemyBrain.FlockPush(Vec2.Zero, Vec2.Zero, 1f, 1f, -1);
+            Assert.AreEqual(Vec2.Zero, a + b);
+            Assert.AreNotEqual(Vec2.Zero, a);
+        }
+    }
+}

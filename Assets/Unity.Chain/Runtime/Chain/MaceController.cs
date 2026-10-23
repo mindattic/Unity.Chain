@@ -107,7 +107,7 @@ namespace MindAttic.Chain
         public Vector2 MacePosition => Chain.GetLinkPosition(MaceIndex);
 
         /// <summary>The mace link's velocity (the grapple throw's launch velocity).</summary>
-        public Vector2 MaceVelocity => Chain.Simulation.GetVelocity(MaceIndex);
+        public Vector2 MaceVelocity => Chain.Simulation.GetVelocity(MaceIndex).ToUnity();
 
         /// <summary>One link shorter (Chain.vb's chain-minus key). Returns false at the minimum.</summary>
         public bool Shorten()

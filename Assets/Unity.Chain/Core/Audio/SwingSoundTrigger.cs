@@ -1,6 +1,6 @@
-using UnityEngine;
 
-namespace MindAttic.Chain
+
+namespace MindAttic.Chain.Core
 {
     /// <summary>
     /// Decides when the mace's swing "whoosh" plays, free of Unity audio so it can be tested.
@@ -34,9 +34,9 @@ namespace MindAttic.Chain
         /// <summary>Feeds this step's mace speed (world units per second). Returns true when a swing sound should play.</summary>
         public bool Step(float speed, float deltaTime)
         {
-            _sinceLast += Mathf.Max(0f, deltaTime);
+            _sinceLast += Calc.Max(0f, deltaTime);
 
-            if (!_armed && speed < Mathf.Min(RearmSpeed, SwingSpeed))
+            if (!_armed && speed < Calc.Min(RearmSpeed, SwingSpeed))
             {
                 _armed = true;
             }
@@ -71,11 +71,11 @@ namespace MindAttic.Chain
         {
             if (fullSpeed <= startSpeed)
             {
-                return speed >= startSpeed ? 1f : Mathf.Clamp01(minVolume);
+                return speed >= startSpeed ? 1f : Calc.Clamp01(minVolume);
             }
 
-            var t = Mathf.Clamp01((speed - startSpeed) / (fullSpeed - startSpeed));
-            return Mathf.Lerp(Mathf.Clamp01(minVolume), 1f, t);
+            var t = Calc.Clamp01((speed - startSpeed) / (fullSpeed - startSpeed));
+            return Calc.Lerp(Calc.Clamp01(minVolume), 1f, t);
         }
     }
 

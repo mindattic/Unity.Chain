@@ -1,3 +1,4 @@
+using MindAttic.Chain.Core;
 using UnityEngine;
 
 namespace MindAttic.Chain
@@ -114,7 +115,7 @@ namespace MindAttic.Chain
             segmentLength,
             springConstant,
             resistance,
-            gravity,
+            gravity.ToCore(),
             stopVelocity,
             stopAcceleration,
             overheadBoost,
@@ -150,9 +151,9 @@ namespace MindAttic.Chain
             }
         }
 
-        public Vector2 GetLinkPosition(int index) => Simulation.GetPosition(index);
+        public Vector2 GetLinkPosition(int index) => Simulation.GetPosition(index).ToUnity();
 
-        public Vector2 GetLinkVelocity(int index) => Simulation.GetVelocity(index);
+        public Vector2 GetLinkVelocity(int index) => Simulation.GetVelocity(index).ToUnity();
 
         /// <summary>Where link <paramref name="index"/> was last drawn (interpolated), in world space.</summary>
         public Vector3 GetRenderedLinkPosition(int index)
@@ -178,7 +179,7 @@ namespace MindAttic.Chain
             _line = GetComponent<LineRenderer>();
             _line.useWorldSpace = true;
 
-            _simulation = new ChainSimulation(linkCount, AnchorPosition, CurrentSettings);
+            _simulation = new ChainSimulation(linkCount, AnchorPosition.ToCore(), CurrentSettings);
             _simulation.ActiveLinkCount = ActiveLinkCount;
             _previous = new Vector2[linkCount];
             _renderPositions = new Vector3[linkCount];
@@ -198,7 +199,7 @@ namespace MindAttic.Chain
             _simulation.Config = CurrentSettings;
             _simulation.Bounds = ResolveBounds();
             _simulation.WallBounce = wallBounce;
-            _simulation.SetAnchor(AnchorPosition);
+            _simulation.SetAnchor(AnchorPosition.ToCore());
             _simulation.Step(deltaTime);
         }
 
@@ -214,7 +215,7 @@ namespace MindAttic.Chain
 
             for (var i = 0; i < linkCount; i++)
             {
-                var p = Vector2.LerpUnclamped(_previous[i], _simulation.GetPosition(i), blend);
+                var p = Vector2.LerpUnclamped(_previous[i], _simulation.GetPosition(i).ToUnity(), blend);
                 _renderPositions[i] = new Vector3(p.x, p.y, z);
             }
 
@@ -276,7 +277,7 @@ namespace MindAttic.Chain
             }
         }
 
-        private Rect? ResolveBounds()
+        private Rect2? ResolveBounds()
         {
             if (!keepInLevel)
             {
@@ -290,14 +291,14 @@ namespace MindAttic.Chain
                 _levelSearched = true;
             }
 
-            return levelBounds != null ? levelBounds.Bounds : (Rect?)null;
+            return levelBounds != null ? levelBounds.Bounds.ToCore() : (Rect2?)null;
         }
 
         private void CaptureCurrent(Vector2[] into)
         {
             for (var i = 0; i < into.Length; i++)
             {
-                into[i] = _simulation.GetPosition(i);
+                into[i] = _simulation.GetPosition(i).ToUnity();
             }
         }
     }

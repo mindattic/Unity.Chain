@@ -1,7 +1,7 @@
 using System;
-using UnityEngine;
 
-namespace MindAttic.Chain
+
+namespace MindAttic.Chain.Core
 {
     /// <summary>
     /// Pure game-session rules the HUD shows, ported from Engine.vb / Angel.vb: the angel's HP
@@ -9,7 +9,7 @@ namespace MindAttic.Chain
     /// (<c>checkAngelHit</c>, <c>hurtDelay</c> 0.25 s); every mace hit scores damage x 1000
     /// (<c>checkMaceImpact</c>: <c>Score += damage * 1000</c>); the game can be paused; and it is
     /// over when HP runs out. Kept free of MonoBehaviour so it is unit-testable;
-    /// <see cref="GameSession"/> feeds it contacts, hits and input.
+    /// the session feeds it contacts, hits and input.
     ///
     /// One deliberate difference: Angel.vb drew <c>HP + 1</c> bars and only ended the game below
     /// zero, so 30 HP took 31 hits. Here the HUD shows exactly <see cref="Hp"/> bars and the game
@@ -59,7 +59,7 @@ namespace MindAttic.Chain
         public Settings Config;
 
         public int Hp { get; private set; }
-        public int MaxHp => Mathf.Max(1, Config.MaxHp);
+        public int MaxHp => Calc.Max(1, Config.MaxHp);
         public int Score { get; private set; }
         public bool IsPaused { get; private set; }
         public bool IsGameOver { get; private set; }
@@ -106,7 +106,7 @@ namespace MindAttic.Chain
             }
 
             _lastHurtTime = now;
-            Hp = Mathf.Max(0, Hp - Mathf.Max(0, Config.ContactDamage));
+            Hp = Calc.Max(0, Hp - Calc.Max(0, Config.ContactDamage));
             HpChanged?.Invoke(Hp);
 
             if (Hp <= 0)
@@ -151,7 +151,7 @@ namespace MindAttic.Chain
             }
 
             var before = Hp;
-            Hp = Mathf.Min(MaxHp, Hp + amount);
+            Hp = Calc.Min(MaxHp, Hp + amount);
             if (Hp != before)
             {
                 HpChanged?.Invoke(Hp);
@@ -168,7 +168,7 @@ namespace MindAttic.Chain
                 return 0;
             }
 
-            var points = Mathf.RoundToInt(Mathf.Abs(damage) * Config.PointsPerDamage);
+            var points = Calc.RoundToInt(Calc.Abs(damage) * Config.PointsPerDamage);
             Score += points;
             return points;
         }

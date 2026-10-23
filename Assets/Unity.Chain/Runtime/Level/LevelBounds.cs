@@ -1,3 +1,4 @@
+using MindAttic.Chain.Core;
 using UnityEngine;
 
 namespace MindAttic.Chain
@@ -41,11 +42,11 @@ namespace MindAttic.Chain
         }
 
         /// <summary>The play space shrunk by <paramref name="margin"/> on every side.</summary>
-        public Rect Inset(Vector2 margin) => PlayArea.Inset(Bounds, margin);
+        public Rect Inset(Vector2 margin) => PlayArea.Inset(Bounds.ToCore(), margin.ToCore()).ToUnity();
 
         public bool Contains(Vector2 point) => Bounds.Contains(point);
 
-        public Vector2 Clamp(Vector2 point) => PlayArea.Clamp(Bounds, point);
+        public Vector2 Clamp(Vector2 point) => PlayArea.Clamp(Bounds.ToCore(), point.ToCore()).ToUnity();
 
         /// <summary>
         /// The scene's level bounds, or null. Used as the fallback by components whose own

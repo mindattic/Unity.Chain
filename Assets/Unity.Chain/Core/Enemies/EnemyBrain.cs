@@ -1,6 +1,6 @@
-using UnityEngine;
 
-namespace MindAttic.Chain
+
+namespace MindAttic.Chain.Core
 {
     public enum EnemyState
     {
@@ -67,7 +67,7 @@ namespace MindAttic.Chain
         public float Hp { get; private set; }
         public float Mass { get; }
         public EnemyState State { get; private set; } = EnemyState.Seek;
-        public Vector2 Velocity { get; private set; }
+        public Vec2 Velocity { get; private set; }
 
         /// <summary>True from a throw until the enemy recovers: it knocks other enemies it touches.</summary>
         public bool IsThrown { get; private set; }
@@ -79,9 +79,9 @@ namespace MindAttic.Chain
 
         public EnemyBrain(float hp = 1f, float mass = 1f, Settings? settings = null)
         {
-            MaxHp = Mathf.Max(0.0001f, hp);
+            MaxHp = Calc.Max(0.0001f, hp);
             Hp = MaxHp;
-            Mass = Mathf.Max(0.01f, mass);
+            Mass = Calc.Max(0.01f, mass);
             Config = settings ?? Settings.Default;
         }
 
@@ -90,7 +90,7 @@ namespace MindAttic.Chain
         /// <paramref name="seekPoint"/>; Hurt slows each axis toward zero and recovers below
         /// <see cref="Settings.RecoverSpeed"/>. Grabbed and Dead do not move on their own.
         /// </summary>
-        public Vector2 Step(Vector2 position, Vector2 seekPoint, float deltaTime)
+        public Vec2 Step(Vec2 position, Vec2 seekPoint, float deltaTime)
         {
             switch (State)
             {
@@ -100,11 +100,11 @@ namespace MindAttic.Chain
 
                 case EnemyState.Hurt:
                     var slow = Config.HurtDeceleration * deltaTime;
-                    var v = new Vector2(
-                        Mathf.MoveTowards(Velocity.x, 0f, slow),
-                        Mathf.MoveTowards(Velocity.y, 0f, slow));
+                    var v = new Vec2(
+                        Calc.MoveTowards(Velocity.X, 0f, slow),
+                        Calc.MoveTowards(Velocity.Y, 0f, slow));
                     Velocity = v;
-                    if (Mathf.Abs(v.x) <= Config.RecoverSpeed && Mathf.Abs(v.y) <= Config.RecoverSpeed)
+                    if (Calc.Abs(v.X) <= Config.RecoverSpeed && Calc.Abs(v.Y) <= Config.RecoverSpeed)
                     {
                         State = EnemyState.Seek;
                         IsThrown = false;
@@ -113,7 +113,7 @@ namespace MindAttic.Chain
                     break;
 
                 default:
-                    Velocity = Vector2.zero;
+                    Velocity = Vec2.Zero;
                     break;
             }
 
@@ -125,21 +125,21 @@ namespace MindAttic.Chain
         /// damaged by impact speed x <paramref name="damagePerSpeed"/>. Returns the damage dealt
         /// (0 if it could not be hit).
         /// </summary>
-        public float Hit(Vector2 impactVelocity, float damagePerSpeed)
+        public float Hit(Vec2 impactVelocity, float damagePerSpeed)
         {
             if (!CanBeHit)
             {
                 return 0f;
             }
 
-            var damage = impactVelocity.magnitude * Mathf.Max(0f, damagePerSpeed);
+            var damage = impactVelocity.Magnitude * Calc.Max(0f, damagePerSpeed);
             Knock(impactVelocity);
             Damage(damage);
             return damage;
         }
 
         /// <summary>Knocked by something (a thrown enemy) without damage: velocity = impact / mass, Hurt.</summary>
-        public void Knock(Vector2 impactVelocity)
+        public void Knock(Vec2 impactVelocity)
         {
             if (!IsAlive || State == EnemyState.Grabbed)
             {
@@ -158,14 +158,14 @@ namespace MindAttic.Chain
                 return false;
             }
 
-            Hp = Mathf.Max(0f, Hp - amount);
+            Hp = Calc.Max(0f, Hp - amount);
             if (Hp > 0f)
             {
                 return false;
             }
 
             State = EnemyState.Dead;
-            Velocity = Vector2.zero;
+            Velocity = Vec2.Zero;
             IsThrown = false;
             return true;
         }
@@ -177,20 +177,20 @@ namespace MindAttic.Chain
         /// <paramref name="tieBreak"/> (+1 or -1, opposite for the two enemies) so a perfect stack
         /// still comes apart.
         /// </summary>
-        public static Vector2 FlockPush(Vector2 self, Vector2 other, float speed, float deltaTime, int tieBreak = 1)
+        public static Vec2 FlockPush(Vec2 self, Vec2 other, float speed, float deltaTime, int tieBreak = 1)
         {
-            var step = Mathf.Max(0f, speed) * deltaTime;
-            return new Vector2(AwaySign(self.x - other.x, tieBreak) * step, AwaySign(self.y - other.y, tieBreak) * step);
+            var step = Calc.Max(0f, speed) * deltaTime;
+            return new Vec2(AwaySign(self.X - other.X, tieBreak) * step, AwaySign(self.Y - other.Y, tieBreak) * step);
         }
 
         private static float AwaySign(float difference, int tieBreak)
         {
-            if (Mathf.Abs(difference) < 1e-6f)
+            if (Calc.Abs(difference) < 1e-6f)
             {
                 return tieBreak < 0 ? -1f : 1f;
             }
 
-            return Mathf.Sign(difference);
+            return Calc.Sign(difference);
         }
 
         /// <summary>Caught by the grapple. Returns false if it cannot be caught.</summary>
@@ -202,12 +202,12 @@ namespace MindAttic.Chain
             }
 
             State = EnemyState.Grabbed;
-            Velocity = Vector2.zero;
+            Velocity = Vec2.Zero;
             return true;
         }
 
         /// <summary>Thrown by the grapple at <paramref name="velocity"/> (not divided by mass: the mace carried it).</summary>
-        public void Throw(Vector2 velocity)
+        public void Throw(Vec2 velocity)
         {
             if (State != EnemyState.Grabbed)
             {

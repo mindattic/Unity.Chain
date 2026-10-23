@@ -1,3 +1,4 @@
+using MindAttic.Chain.Core;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -64,7 +65,7 @@ namespace MindAttic.Chain
         /// <summary>The rect the flight position is clamped to this frame.</summary>
         public Rect Bounds => ComputeBounds();
 
-        public Vector2 HandSocket => _flight != null ? _flight.HandSocket : (Vector2)transform.position;
+        public Vector2 HandSocket => _flight != null ? _flight.HandSocket.ToUnity() : (Vector2)transform.position;
 
         private void Awake()
         {
@@ -78,7 +79,7 @@ namespace MindAttic.Chain
                 levelBounds = LevelBounds.Find();
             }
 
-            _flight = new AngelFlight(transform.position, BuildSettings());
+            _flight = new AngelFlight(transform.position.ToCore(), BuildSettings());
             Apply();
         }
 
@@ -107,7 +108,7 @@ namespace MindAttic.Chain
 
             var mouse = Mouse.current;
             var delta = mouse != null ? mouse.delta.ReadValue() : Vector2.zero;
-            _flight.Step(delta, Time.deltaTime);
+            _flight.Step(delta.ToCore(), Time.deltaTime);
             Apply();
         }
 
@@ -116,12 +117,12 @@ namespace MindAttic.Chain
             var frameCount = Mathf.Max(rightFrames.Length, leftFrames.Length);
             return new AngelFlight.Settings(
                 sensitivity,
-                ComputeBounds(),
+                ComputeBounds().ToCore(),
                 hoverAmplitude,
                 hoverPeriod,
                 frameDuration,
                 Mathf.Max(1, frameCount),
-                handOffset);
+                handOffset.ToCore());
         }
 
         private Rect ComputeBounds()
@@ -147,12 +148,12 @@ namespace MindAttic.Chain
 
         private void Apply()
         {
-            var p = _flight.RenderPosition;
+            var p = _flight.RenderPosition.ToUnity();
             transform.position = new Vector3(p.x, p.y, transform.position.z);
 
             if (handSocketTransform != null)
             {
-                var hand = _flight.HandSocket;
+                var hand = _flight.HandSocket.ToUnity();
                 handSocketTransform.position = new Vector3(hand.x, hand.y, handSocketTransform.position.z);
             }
 
@@ -174,7 +175,7 @@ namespace MindAttic.Chain
 
         private void OnDrawGizmosSelected()
         {
-            var b = Application.isPlaying && _flight != null ? _flight.Config.Bounds : ComputeBounds();
+            var b = Application.isPlaying && _flight != null ? _flight.Config.Bounds.ToUnity() : ComputeBounds();
             Gizmos.color = Color.cyan;
             Gizmos.DrawWireCube(b.center, b.size);
             Gizmos.color = Color.yellow;

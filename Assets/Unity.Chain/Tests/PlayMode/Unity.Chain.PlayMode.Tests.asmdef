@@ -3,6 +3,7 @@
     "rootNamespace": "MindAttic.Chain.Tests",
     "references": [
         "Unity.Chain.Runtime",
+        "Unity.Chain.Core",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],

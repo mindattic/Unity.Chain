@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using MindAttic.Chain.Core;
 using UnityEngine;
 
 namespace MindAttic.Chain
@@ -58,7 +59,7 @@ namespace MindAttic.Chain
         public float Hp => Brain.Hp;
         public bool IsAlive => Brain.IsAlive;
         public bool CanBeHit => isActiveAndEnabled && Brain.CanBeHit;
-        public Vector2 Velocity => Brain.Velocity;
+        public Vector2 Velocity => Brain.Velocity.ToUnity();
         public Vector2 Position => Body.position;
 
         public Transform Target
@@ -98,7 +99,7 @@ namespace MindAttic.Chain
 
         public void HoldAt(Vector2 position) => MoveTo(position);
 
-        public void Throw(Vector2 velocity) => Brain.Throw(velocity);
+        public void Throw(Vector2 velocity) => Brain.Throw(velocity.ToCore());
 
         // --- Combat ---------------------------------------------------------------------
 
@@ -114,7 +115,7 @@ namespace MindAttic.Chain
                 return 0f;
             }
 
-            var damage = Brain.Hit(maceVelocity, damagePerSpeed);
+            var damage = Brain.Hit(maceVelocity.ToCore(), damagePerSpeed);
             Hurt?.Invoke(this, damage);
             if (!Brain.IsAlive)
             {
@@ -145,7 +146,7 @@ namespace MindAttic.Chain
             }
 
             var seekPoint = (target != null ? (Vector2)target.position : Position) + seekOffset;
-            var velocity = Brain.Step(Position, seekPoint, deltaTime);
+            var velocity = Brain.Step(Position.ToCore(), seekPoint.ToCore(), deltaTime).ToUnity();
             MoveTo(Position + velocity * deltaTime + FlockingPush(deltaTime));
 
             if (Brain.IsThrown)
@@ -186,7 +187,7 @@ namespace MindAttic.Chain
                     }
 
                     var tieBreak = GetInstanceID() < other.GetInstanceID() ? 1 : -1;
-                    push += EnemyBrain.FlockPush(Position, other.Position, flockSpeed, deltaTime, tieBreak);
+                    push += EnemyBrain.FlockPush(Position.ToCore(), other.Position.ToCore(), flockSpeed, deltaTime, tieBreak).ToUnity();
                 }
             }
 
