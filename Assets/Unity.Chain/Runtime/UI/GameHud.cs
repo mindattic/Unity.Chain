@@ -6,7 +6,7 @@ namespace MindAttic.Chain
     /// Screen-space HUD drawn with IMGUI (no canvas, prefab or font asset needed), laid out like
     /// Engine.vb's <c>renderDisplay</c>: the HP bar and score top-left, the grappled enemy's HP
     /// under them while the grapple holds one, a centered "- PAUSE -" banner while paused, and a
-    /// game-over banner with a restart prompt. Text scales with the screen height. Reads
+    /// game-over banner over the ambient fade (dimmed here unless <see cref="SceneLight"/> shows it). Text scales with the screen height. Reads
     /// everything from <see cref="GameSession"/> and <see cref="GrappleController"/>; the strings
     /// come from <see cref="HudText"/>.
     /// </summary>
@@ -17,6 +17,8 @@ namespace MindAttic.Chain
         [SerializeField] private GameSession session;
         [Tooltip("Shows the grappled enemy's HP while it holds one. Falls back to the scene's GrappleController.")]
         [SerializeField] private GrappleController grapple;
+        [Tooltip("While this lights the scene, its light shows the game-over fade and the HUD does not dim. Falls back to the scene's SceneLight.")]
+        [SerializeField] private SceneLight sceneLight;
 
         [Header("Look")]
         [Tooltip("HUD text height as a fraction of the screen height.")]
@@ -46,6 +48,20 @@ namespace MindAttic.Chain
             set => grapple = value;
         }
 
+        public SceneLight SceneLight
+        {
+            get => sceneLight;
+            set => sceneLight = value;
+        }
+
+        /// <summary>
+        /// How dark the HUD's game-over overlay is: the game-over fade, unless the scene's 2D light
+        /// already shows it (then 0, so the fade is not applied twice).
+        /// </summary>
+        public float GameOverDim => session == null || (sceneLight != null && sceneLight.LightsTheScene)
+            ? 0f
+            : 1f - session.State.AmbientLevel;
+
         /// <summary>The HP of the enemy the grapple holds, or null when it holds none.</summary>
         public float? GrappledHp => grapple != null && grapple.Target is Enemy enemy && enemy.IsAlive
             ? enemy.Hp
@@ -61,6 +77,11 @@ namespace MindAttic.Chain
             if (grapple == null)
             {
                 grapple = FindAnyObjectByType<GrappleController>();
+            }
+
+            if (sceneLight == null)
+            {
+                sceneLight = FindAnyObjectByType<SceneLight>();
             }
         }
 
@@ -96,7 +117,7 @@ namespace MindAttic.Chain
 
             if (state.IsGameOver)
             {
-                Banner(HudText.GameOver, null, 1f - state.AmbientLevel);
+                Banner(HudText.GameOver, null, GameOverDim);
             }
             else if (state.IsPaused)
             {

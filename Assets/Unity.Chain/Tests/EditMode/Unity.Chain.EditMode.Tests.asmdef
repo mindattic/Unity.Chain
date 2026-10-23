@@ -4,6 +4,8 @@
     "references": [
         "Unity.Chain.Runtime",
         "Unity.Chain.Core",
+        "Unity.RenderPipelines.Universal.Runtime",
+        "Unity.RenderPipelines.Universal.2D.Runtime",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],

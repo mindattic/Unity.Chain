@@ -1,0 +1,113 @@
+using System.Collections.Generic;
+using MindAttic.Chain.Core;
+using NUnit.Framework;
+using UnityEngine;
+using UnityEngine.Rendering.Universal;
+
+namespace MindAttic.Chain.Tests
+{
+    public class SceneLightTests
+    {
+        private readonly List<GameObject> _objects = new List<GameObject>();
+        private GameSession _session;
+        private SceneLight _light;
+        private Light2D _light2D;
+
+        [SetUp]
+        public void SetUp()
+        {
+            _session = Track(new GameObject("Session")).AddComponent<GameSession>();
+            var go = Track(new GameObject("SceneLight"));
+            _light2D = go.AddComponent<Light2D>();
+            _light2D.lightType = Light2D.LightType.Global;
+            _light = go.AddComponent<SceneLight>();
+            _light.Session = _session;
+            _light.GlobalLight = _light2D;
+        }
+
+        [TearDown]
+        public void TearDown()
+        {
+            foreach (var go in _objects)
+            {
+                if (go != null)
+                {
+                    Object.DestroyImmediate(go);
+                }
+            }
+
+            _objects.Clear();
+        }
+
+        private GameObject Track(GameObject go)
+        {
+            _objects.Add(go);
+            return go;
+        }
+
+        [Test]
+        public void Day_LightsWhite()
+        {
+            _light.Step(1f / 60f);
+            Assert.AreEqual(Color.white, _light2D.color);
+        }
+
+        [Test]
+        public void Night_LightsBlue()
+        {
+            _light.State.SetPeriod(DayPeriod.Night);
+            for (var i = 0; i < 300; i++)
+            {
+                _light.Step(1f / 60f);
+            }
+
+            Assert.AreEqual(new Color(0f, 0f, 1f, 1f), _light2D.color);
+        }
+
+        [Test]
+        public void GameOverFade_DimsTheLight()
+        {
+            for (var i = 0; i < _session.State.MaxHp; i++)
+            {
+                _session.State.TryHurt(i);
+            }
+
+            for (var i = 0; i < 10; i++)
+            {
+                _session.StepGameOver();
+            }
+
+            _light.Step(1f / 60f);
+            Assert.AreEqual(_session.State.AmbientLevel, _light2D.color.r, 1e-4f);
+            Assert.Less(_light2D.color.r, 1f);
+        }
+
+        [Test]
+        public void ToggleLighting_LightsUnlit_AndPauseHoldsTheCycle()
+        {
+            _light.State.SetPeriod(DayPeriod.Dusk);
+            _light.Step(1f);
+            Assert.AreNotEqual(Color.white, _light2D.color, "dusk tints the light");
+
+            Assert.IsFalse(_light.ToggleLighting());
+            Assert.AreEqual(Color.white, _light2D.color, "lighting off is unlit");
+            Assert.IsTrue(_light.ToggleLighting());
+
+            var clock = _light.State.Clock;
+            _session.SetPaused(true);
+            _light.Step(1f);
+            Assert.AreEqual(clock, _light.State.Clock, "pause skipped renderLight");
+        }
+
+        [Test]
+        public void InPlaceRestart_TurnsLightingBackOn()
+        {
+            _light.ToggleLighting();
+            Assert.IsFalse(_light.State.Enabled);
+
+            _session.Restart();
+
+            Assert.IsTrue(_light.State.Enabled, "Root.vb Reset: bLighting = True");
+        }
+    }
+}

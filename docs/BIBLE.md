@@ -118,11 +118,11 @@ Unity.
 
 | Assembly | Folder | Contents | Status |
 |---|---|---|---|
-| `Unity.Chain.Runtime` | `Assets/Unity.Chain/Runtime/` | The engine adapters: `Chain/` (ChainController, MaceController), `Player/` (AngelController), `Enemies/` (Enemy, EnemySpawner, MaceHitDetector), `Grapple/` (Grapple and its target interface are still engine-typed rules), `Items/`, `Level/` (LevelBounds, CameraRig), `UI/` (GameSession, GameHud, HudText), `Audio/` (ChainAudio), `Adapters/CoreConvert` (the one place Vector2/Rect become Core's Vec2/Rect2) | References Core one way; holds no rule that Core could own |
+| `Unity.Chain.Runtime` | `Assets/Unity.Chain/Runtime/` | The engine adapters: `Chain/` (ChainController, MaceController), `Player/` (AngelController), `Enemies/` (Enemy, EnemySpawner, MaceHitDetector), `Grapple/` (Grapple and its target interface are still engine-typed rules), `Items/`, `Level/` (LevelBounds, CameraRig), `Lighting/` (SceneLight), `UI/` (GameSession, GameHud, HudText), `Audio/` (ChainAudio), `Adapters/CoreConvert` (the one place Vector2/Rect become Core's Vec2/Rect2) | References Core one way; holds no rule that Core could own |
 | `Unity.Chain.Editor` | `Assets/Unity.Chain/Editor/` | `SceneBuilder` (generates `Main.unity` and the build settings), `PlayerBuilder` (Windows player) | in place |
 | `Unity.Chain.EditMode.Tests` | `Assets/Unity.Chain/Tests/EditMode/` | NUnit tests of the rules and components | in place; the component tests stay here, the pure rule tests now live in `Tests/Core.Tests` (`dotnet test`) |
 | `Unity.Chain.PlayMode.Tests` | `Assets/Unity.Chain/Tests/PlayMode/` | `MainSceneSmokeTests` | in place |
-| `Unity.Chain.Core` | `Assets/Unity.Chain/Core/` | `noEngineReferences`: `Maths/` (Vec2, Rect2, Calc), `Chain/` (ChainSimulation), `Player/` (AngelFlight), `Enemies/` (EnemyBrain), `Game/` (GameState), `Level/` (CameraFraming, PlayArea), `Audio/` (SwingSoundTrigger, ClipPicker) | Its rules are tested by `Tests/Core.Tests` with `dotnet test`; the Grapple rule moves in later |
+| `Unity.Chain.Core` | `Assets/Unity.Chain/Core/` | `noEngineReferences`: `Maths/` (Vec2, Rect2, Calc), `Chain/` (ChainSimulation), `Player/` (AngelFlight), `Enemies/` (EnemyBrain), `Game/` (GameState), `Level/` (CameraFraming, PlayArea), `Lighting/` (LightingState), `Audio/` (SwingSoundTrigger, ClipPicker) | Its rules are tested by `Tests/Core.Tests` with `dotnet test`; the Grapple rule moves in later |
 
 The command/event layer is planned in UNI-T32, the Input System action asset in UNI-T34, URP assets in UNI-T18,
 Unity.Shared settings in UNI-T36, the UI Toolkit HUD in UNI-T37 and the multiplayer seam in UNI-T26.
@@ -146,6 +146,7 @@ message if any value is out of range:
 | enemies | count, HP, mass range, seek rate, hurt deceleration, flocking push, frame rate | `Enemy.vb`, `Engine.vb` |
 | heart | fall, sway, heal, cap | `Item.vb` |
 | game | score multiplier, game-over fade step, clock, live-tuning key steps, game speed | `Engine.vb`, `Root.vb` |
+| lighting | day length (1440 s, D6), tint rate (60 a second) | `Lights.vb` |
 | assets | sprite sets, link skins, backgrounds, sound sets, music | `Textures.vb`, `Sound.vb` |
 
 Player options (resolution, window mode, volumes, mutes) replace the registry with a Unity.Shared profile
@@ -163,7 +164,7 @@ Status: **fixed** (on main), **planned** (the ticket that fixes it).
 | D3 | No HUD text is drawn: `Root.Write` has its `DrawText` commented out, so HP, score, grappled HP, readouts, clock and FPS never appear (earlier backups drew them) | `Root.vb` `Write` | draws the HUD (`GameHud`) | fixed (IMGUI); layout UNI-T50, UI Toolkit UNI-T37 |
 | D4 | The magnet mace can never be reached: `theMaceMode.Magnet` is declared and `magnet.PNG` loaded, but nothing ever selects it | `Chain.vb` | a selectable magnet mace skin | planned, UNI-T43 |
 | D5 | A thrown enemy never slows: no drag and no end state, so it leaves the arena for good | `Engine.vb` `checkThrowImpact`, `Enemy.vb` | a thrown enemy goes Hurt and decelerates like a knocked one, then seeks again (`EnemyBrain.Throw`) | fixed (UNI-T45 checks the rate) |
-| D6 | The day cycle never advances: `dayLength` is 1e10 s, so Day, Dusk, Night and Morning never change in play | `Lights.vb` | the cycle runs at a playable length | planned, UNI-T46 |
+| D6 | The day cycle never advances: `dayLength` is 1e10 s, so Day, Dusk, Night and Morning never change in play | `Lights.vb` | the cycle runs on a 1440 s day (`LightingState.Settings.DayLength`; 1e10 s kept as `Settings.Original`): the original's own clock, `renderTime`, moves the hour on once a minute, so its 24-hour day is 24 minutes, and `Lights.vb`'s period comments are hours of that clock. Day 8 min, a red Dusk 4, a blue Night 8, Morning 4, split as `Lights.vb` splits them; the tint walks 1 unit a frame (60 a second), and the periods are timed on lit play, not wall time, so a pause never skips one | fixed (UNI-T46) |
 | D7 | The chain is pulled from one side: the port turned the JS original's two `If`s into `If / ElseIf`, so only the previous link's spring ever fires | `Chain.vb` `renderChain` | each link is pulled by both neighbours, as in *Elastic Trail* (`ChainSimulation`) | fixed (UNI-T45 settles the feel) |
 | D8 | The mace drifts: `link(Mace).X/Y += maceOffset` is added every frame, cumulatively, instead of once as a sprite offset; a stray `link(1).Y -= 0.0004` "fix" does the same | `Chain.vb` `renderChain` | the offset is render-only; no fudge term | fixed |
 | D9 | Speed depends on the machine: every number is per frame with no time step and no frame cap | `Form1` loop, all modules | a fixed step; per-frame figures converted at 60 fps | fixed (UNI-T45 matches the felt speed) |
@@ -173,6 +174,7 @@ Status: **fixed** (on main), **planned** (the ticket that fixes it).
 | D13 | Game speed does nothing: Minus/Equals change `gameSpeed` and the HUD shows it, but it is never applied | `Engine.vb`, `Form1.OnKeyDown` | game speed scales the step | planned, UNI-T52 |
 | D14 | The joystick binds nothing: axes and buttons are read and ignored | `Input.vb` | a gamepad drives the same actions as the mouse | planned, UNI-T34 |
 | D15 | The background toggle key is unreachable: a second `Case Keys.B` sits below the first | `Form1.OnKeyDown` | B and N both reach their backgrounds | planned, UNI-T40 |
+| D16 | The lighting toggle freezes instead of switching off: with `bLighting` false `renderLight` just stops updating the device, so the last ambient and tint stay on screen (and the game-over fade stops showing); and `Reset` has a stray `b = True` among its flags that snaps blue to 255 mid-cycle | `Lights.vb` `renderLight`, `Root.vb` `Reset` | L off shows the scene untinted, still dimmed by the game-over fade, with the cycle held where it is; a new round turns lighting back on and leaves the time of day running, as `Reset` otherwise does | fixed (UNI-T46) |
 
 Not restored, on purpose: stubs with no body (`ExtraLife`, `Health5`, `Health20`, `Money` items; `Center` and
 `Wander` motions; the `Wander`, `Retreat`, `Limbo`, `Death` AI states; `angelAI.Hurt`; `bRicochet`; the terrain
@@ -202,6 +204,7 @@ Working behaviour of the original the rebuild does differently, and why. Status:
 | V13 | Input by exclusive DirectInput mouse delta and key polling | Input System (polling today) | the modern Unity input stack | kept; action asset UNI-T34 |
 | V14 | F1-F3 switch D3D wireframe, textures and culling | the nearest URP equivalents | the D3D render states do not exist in URP | planned, UNI-T56 |
 | V15 | Game over then `Reset` in place | the same fade, then a scene reload or an in-place reset | both end in the original's state | kept |
+| V16 | The ambient and tint light D3D materials | a URP 2D global light carries ambient x tint (`SceneLight`); until the 2D pipeline is committed the light renders nothing, so the HUD draws the game-over fade as an overlay, and stops once the light shows it | there is no D3D material lighting in URP | temporary, UNI-T18 |
 
 ### Keeping these tables current
 

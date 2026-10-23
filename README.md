@@ -29,6 +29,9 @@ In development, rebuilding the original to full parity. On main and tested:
   fast swings never tunnel (`Enemies/`), the enemy spawner and the heart pickup (`Items/`)
 - HP, score, pause, and the original's game-over fade and automatic reset (`GameState`, `GameSession`), with an
   interim IMGUI HUD (`GameHud`)
+- the original's lighting: the ambient fade times the r/g/b tint the Day, Dusk, Night, Morning cycle walks (now on a
+  24-minute day; the original's never moved), on a URP 2D global light, L toggling it (`LightingState`, `SceneLight`;
+  it shows once UNI-T18 commits the 2D pipeline, until then the HUD shows the game-over fade)
 - level bounds and a camera that fits or follows (`Level/`), sound and music players (`Audio/`, no clips yet)
 - the scene and the Windows player generated in code (`Editor/SceneBuilder`, `Editor/PlayerBuilder`)
 
@@ -75,8 +78,9 @@ tested by `Tests/Core.Tests` (`dotnet test Tests/Core.Tests`, or `./run-core-tes
 | Left button (hold, release) | arm the grapple, throw what it holds |
 | `[` / `]` | shorten / lengthen the chain |
 | P or Escape | pause |
+| L | lighting on / off |
 
-The original's other keys (live spring, drag and gravity tuning, game speed, gem skins, backgrounds, lighting,
+The original's other keys (live spring, drag and gravity tuning, game speed, gem skins, backgrounds,
 shake, reset, debug views, the script console) are listed with their tickets in
 [docs/RECONSTRUCTION.md §3.5](docs/RECONSTRUCTION.md).
 

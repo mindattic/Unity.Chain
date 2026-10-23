@@ -2,6 +2,7 @@ using System.IO;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.Rendering.Universal;
 
 namespace MindAttic.Chain.EditorTools
 {
@@ -36,7 +37,8 @@ namespace MindAttic.Chain.EditorTools
             CreateCamera(levelBounds);
             var (grapple, hitDetector) = CreateChain(handSocket, levelBounds);
             var session = CreateGameSession(angel, hitDetector);
-            CreateGameHud(session, grapple);
+            var sceneLight = CreateSceneLight(session);
+            CreateGameHud(session, grapple, sceneLight);
             CreateEnemySpawner(session, levelBounds);
             CreateHeart();
             CreateMusicPlayer();
@@ -141,12 +143,24 @@ namespace MindAttic.Chain.EditorTools
             spawner.Session = session;
         }
 
-        private static void CreateGameHud(GameSession session, GrappleController grapple)
+        private static SceneLight CreateSceneLight(GameSession session)
+        {
+            var go = new GameObject("SceneLight");
+            var light = go.AddComponent<Light2D>();
+            light.lightType = Light2D.LightType.Global;
+            var sceneLight = go.AddComponent<SceneLight>();
+            sceneLight.Session = session;
+            sceneLight.GlobalLight = light;
+            return sceneLight;
+        }
+
+        private static void CreateGameHud(GameSession session, GrappleController grapple, SceneLight sceneLight)
         {
             var go = new GameObject("GameHud");
             var hud = go.AddComponent<GameHud>();
             hud.Session = session;
             hud.Grapple = grapple;
+            hud.SceneLight = sceneLight;
         }
 
         private const string HeartSpritePath = "Assets/Unity.Chain/Art/Items/heart.png";

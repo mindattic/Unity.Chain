@@ -3,7 +3,8 @@
     "rootNamespace": "MindAttic.Chain.EditorTools",
     "references": [
         "Unity.Chain.Runtime",
-        "Unity.Chain.Core"
+        "Unity.Chain.Core",
+        "Unity.RenderPipelines.Universal.2D.Runtime"
     ],
     "includePlatforms": [
         "Editor"

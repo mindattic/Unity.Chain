@@ -137,7 +137,7 @@ Every binding of the original, with its state:
 | U | gem link skins | missing, UNI-T41 |
 | R | `Reset` | missing, UNI-T48 |
 | 0 | `shakeScreen(0.02)` | missing, UNI-T49 |
-| L | lighting toggle | missing, UNI-T46 |
+| L | lighting toggle | ported (`SceneLight`); off is unlit rather than frozen (BIBLE D16) |
 | B / N | beach / utopia background (a second `Case Keys.B` for the background toggle is unreachable) | missing, UNI-T40 |
 | E | zone (hit box) overlay, default on | missing, UNI-T56 |
 | F1, F2, F3 | wireframe, textures, culling (D3D render states) | missing, UNI-T56 |
@@ -170,8 +170,8 @@ Every binding of the original, with its state:
 
 | Behaviour | Original | Status / ticket |
 |---|---|---|
-| Ambient + material tint | `AmbientColor` (white) and an r/g/b material colour set each frame | missing, UNI-T46 |
-| Day cycle | Day, Dusk, Night, Morning with `dayLength` 1e10 s, so it never advances in play | missing, UNI-T46 |
+| Ambient + material tint | `AmbientColor` (white) and an r/g/b material colour set each frame | ported: `LightingState` tint times `GameState.Ambient`, on a URP 2D global light (`SceneLight`) |
+| Day cycle | Day, Dusk, Night, Morning with `dayLength` 1e10 s, so it never advances in play | ported (`LightingState`) at a 1440 s day (BIBLE D6) |
 | Camera | perspective 45 degrees, z -1, 4:3, rebuilt each frame from `cam` and `target` | rebuild uses an orthographic fit | deliberate deviation; debug camera UNI-T57 |
 | Background | 2.4 x 0.83 quad at x -0.56, `beach.png` default | missing, UNI-T40 |
 | Brick room | `Cube.vb` cube 67x55x38 around the camera, textured `brick.jpg`; hidden behind the background | missing, UNI-T40 |
