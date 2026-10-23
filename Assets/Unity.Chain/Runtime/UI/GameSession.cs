@@ -118,9 +118,9 @@ namespace MindAttic.Chain
         }
 
         /// <summary>
-        /// Heals for every heart the angel touches (Item.vb's checkItemCollect: +10 HP capped at
-        /// max HP) and sends each collected heart back to the top. Called from FixedUpdate;
-        /// public so tests can drive it. Returns the HP gained.
+        /// Item.vb's checkItemCollect: a heart the angel touches is consumed (it stays gone until a
+        /// reset) and heals +10 HP, capped at max HP. Called from FixedUpdate; public so tests can
+        /// drive it. Returns the HP gained.
         /// </summary>
         public int CheckPickups()
         {
@@ -133,10 +133,9 @@ namespace MindAttic.Chain
             var position = (Vector2)angel.transform.position;
             foreach (var heart in FindObjectsByType<HeartPickup>(FindObjectsSortMode.None))
             {
-                if (heart.isActiveAndEnabled && heart.IsTouching(position))
+                if (heart.isActiveAndEnabled && heart.TryCollect(position))
                 {
                     gained += State.Heal(heart.HealAmount);
-                    heart.Respawn();
                 }
             }
 
@@ -158,6 +157,7 @@ namespace MindAttic.Chain
         public void Restart()
         {
             ReleaseTimeScale();
+            HeartPickup.AfterReset = true; // Root.vb's Reset starts the heart with its own figures
             var scene = SceneManager.GetActiveScene();
             if (Application.isPlaying && scene.buildIndex >= 0)
             {
@@ -167,6 +167,11 @@ namespace MindAttic.Chain
             }
 
             State.Reset();
+            foreach (var heart in FindObjectsByType<HeartPickup>(FindObjectsSortMode.None))
+            {
+                heart.ResetHeart();
+            }
+
             Restarted?.Invoke();
         }
 

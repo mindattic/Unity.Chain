@@ -4,48 +4,157 @@ using UnityEngine;
 
 namespace MindAttic.Chain.Tests
 {
+    /// <summary>Item.vb's heart, figure for figure (per-frame values; the fixed step is 60 fps, D9).</summary>
     public class HeartFloatTests
     {
-        private static readonly Rect Area = new Rect(-8f, -4.5f, 16f, 9f);
-
         [Test]
-        public void Step_FallsByFloatSpeedOfHeightPerReferenceFrame()
+        public void Starts_AtTheOriginalsPlace()
         {
             var heart = new HeartFloat();
-            var position = new Vector2(0f, 0f);
-            heart.Step(ref position, Area, 1f / 60f);
 
-            Assert.AreEqual(-0.002f * 9f, position.y, 1e-5f);
+            Assert.AreEqual(0f, heart.X);
+            Assert.AreEqual(0.4f, heart.Y);
+            Assert.AreEqual(0.002f, heart.FloatSpeed);
+            Assert.AreEqual(HeartSway.Left, heart.Sway);
+            Assert.IsFalse(heart.PickedUp);
+            Assert.AreEqual(10, heart.HealAmount);
         }
 
         [Test]
-        public void Step_SwaysLeftAndRight()
+        public void Frame_FallsByFallRateNotFloatSpeed()
         {
             var heart = new HeartFloat();
-            var position = Vector2.zero;
-            var sawRight = false;
-            var sawLeft = false;
+            heart.Frame();
 
-            for (var i = 0; i < 3000; i++)
+            Assert.AreEqual(0.4f - 0.001f, heart.Y, 1e-7f);
+        }
+
+        [Test]
+        public void SixtyFrames_FallPointZeroSixUnits()
+        {
+            var heart = new HeartFloat();
+
+            Assert.AreEqual(60, heart.Advance(1f + 1e-4f));
+            Assert.AreEqual(0.4f - 0.06f, heart.Y, 1e-4f);
+        }
+
+        [Test]
+        public void Advance_RunsOnlyWholeFramesAndKeepsTheRemainder()
+        {
+            var heart = new HeartFloat();
+
+            Assert.AreEqual(0, heart.Advance(HeartFloat.FrameSeconds * 0.6f));
+            Assert.AreEqual(1, heart.Advance(HeartFloat.FrameSeconds * 0.6f));
+        }
+
+        [Test]
+        public void Frame_WrapsFromBelowMinusHalfToPlusHalf()
+        {
+            var heart = new HeartFloat();
+            var wrapped = false;
+            for (var i = 0; i < 1000 && !wrapped; i++)
             {
-                position.y = 0f; // keep it from wrapping
-                heart.Step(ref position, Area, 1f / 60f);
-                sawRight |= heart.SwayVelocity > 0f;
-                sawLeft |= heart.SwayVelocity < 0f;
+                heart.Frame();
+                wrapped = heart.Y > 0.45f;
             }
 
-            Assert.IsTrue(sawRight);
-            Assert.IsTrue(sawLeft);
+            Assert.IsTrue(wrapped);
+            Assert.AreEqual(0.5f, heart.Y);
         }
 
         [Test]
-        public void Step_WrapsToTopWhenItLeavesTheBottom()
+        public void FirstFrame_RunsTheSixSequentialIfsAsTheOriginalDoes()
+        {
+            // floatSPD 0.002 is already >= floatMaxSPD 0.001, so frame one goes left 0.002, flips right,
+            // goes right 0.00199 and flips back left in the same frame.
+            var heart = new HeartFloat();
+            heart.Frame();
+
+            Assert.AreEqual(-0.00001f, heart.X, 1e-7f);
+            Assert.AreEqual(0.00198f, heart.FloatSpeed, 1e-7f);
+            Assert.AreEqual(HeartSway.Left, heart.Sway);
+            Assert.IsFalse(heart.TurnAround);
+        }
+
+        [Test]
+        public void Sway_GoesBothWaysOnceTheSpeedIsBelowTheMax()
         {
             var heart = new HeartFloat();
-            var position = new Vector2(1f, Area.yMin + 0.001f);
+            heart.Reset(); // floatSPD 0.001, the Reset figure
+            var sawLeft = false;
+            var sawRight = false;
+            for (var i = 0; i < 2000; i++)
+            {
+                var before = heart.X;
+                heart.Frame();
+                sawLeft |= heart.X < before;
+                sawRight |= heart.X > before;
+            }
 
-            Assert.IsTrue(heart.Step(ref position, Area, 1f / 60f));
-            Assert.AreEqual(Area.yMax, position.y, 1e-5f);
+            Assert.IsTrue(sawLeft);
+            Assert.IsTrue(sawRight);
+        }
+
+        [Test]
+        public void Reset_UsesTheResetFloatSpeedAndTheStartPlace()
+        {
+            var heart = new HeartFloat();
+            heart.Advance(2f);
+            heart.Reset();
+
+            Assert.AreEqual(0f, heart.X);
+            Assert.AreEqual(0.4f, heart.Y);
+            Assert.AreEqual(0.001f, heart.FloatSpeed);
+            Assert.AreEqual(HeartSway.Left, heart.Sway);
+            Assert.IsFalse(heart.PickedUp);
+        }
+
+        [Test]
+        public void Rect_IsTheOriginalsOffsetsFromXY()
+        {
+            var heart = new HeartFloat();
+
+            Assert.AreEqual(0f, heart.Rect.Left, 1e-7f);
+            Assert.AreEqual(0.045f, heart.Rect.Right, 1e-6f);
+            Assert.AreEqual(0.4f + 0.025f + 0.005f, heart.Rect.Top, 1e-6f);
+            Assert.AreEqual(0.4f - 0.02f, heart.Rect.Bottom, 1e-6f);
+        }
+
+        [Test]
+        public void TryCollect_Touching_ConsumesItOnce()
+        {
+            var heart = new HeartFloat();
+
+            Assert.IsFalse(heart.TryCollect(0f, 0f)); // the angel's start is below the heart
+            Assert.IsTrue(heart.TryCollect(0f, 0.27f));
+            Assert.IsTrue(heart.PickedUp);
+            Assert.IsFalse(heart.TryCollect(0f, 0.27f));
+        }
+
+        [Test]
+        public void RectIntersect_TestsOnlyTheFirstRectanglesEdges()
+        {
+            // rectIntersect asks whether A's top or bottom lies inside B's span: an angel rectangle
+            // taller than the heart that straddles it entirely (both edges outside) does not count.
+            var heart = new HeartFloat();
+
+            Assert.IsFalse(heart.TryCollect(0f, 0.33f));
+            Assert.IsTrue(heart.TryCollect(0f, 0.27f));
+        }
+
+        [Test]
+        public void PickedUpHeart_NeitherMovesNorWrapsUntilReset()
+        {
+            var heart = new HeartFloat();
+            heart.TryCollect(0f, 0.27f);
+            var y = heart.Y;
+            heart.Advance(5f);
+
+            Assert.AreEqual(y, heart.Y);
+
+            heart.Reset();
+            heart.Advance(0.1f);
+            Assert.Less(heart.Y, 0.4f);
         }
     }
 
@@ -58,14 +167,17 @@ namespace MindAttic.Chain.Tests
         [SetUp]
         public void SetUp()
         {
+            HeartPickup.AfterReset = false;
             _angel = Track(new GameObject("Angel")).AddComponent<AngelController>();
             _session = Track(new GameObject("Session")).AddComponent<GameSession>();
             _session.Angel = _angel;
+            _angel.transform.position = new Vector3(0f, 0.27f, 0f); // its rectangle touches the heart's start
         }
 
         [TearDown]
         public void TearDown()
         {
+            HeartPickup.AfterReset = false;
             foreach (var go in _objects)
             {
                 if (go != null)
@@ -83,10 +195,10 @@ namespace MindAttic.Chain.Tests
             return go;
         }
 
-        private HeartPickup SpawnHeart(Vector2 position)
+        private HeartPickup SpawnHeart()
         {
             var go = Track(new GameObject("Heart"));
-            go.transform.position = position;
+            go.AddComponent<SpriteRenderer>();
             return go.AddComponent<HeartPickup>();
         }
 
@@ -101,7 +213,7 @@ namespace MindAttic.Chain.Tests
             }
 
             Assert.AreEqual(15, _session.State.Hp);
-            SpawnHeart(new Vector2(0.1f, 0f));
+            SpawnHeart();
 
             Assert.AreEqual(10, _session.CheckPickups());
             Assert.AreEqual(25, _session.State.Hp);
@@ -111,29 +223,58 @@ namespace MindAttic.Chain.Tests
         public void Touch_CapsAtMaxHp()
         {
             _session.State.TryHurt(1f);
-            SpawnHeart(new Vector2(0.1f, 0f));
+            SpawnHeart();
 
             Assert.AreEqual(1, _session.CheckPickups());
             Assert.AreEqual(30, _session.State.Hp);
         }
 
         [Test]
-        public void FarHeart_DoesNotHeal()
+        public void FarAngel_DoesNotHeal()
         {
             _session.State.TryHurt(1f);
-            SpawnHeart(new Vector2(5f, 5f));
+            _angel.transform.position = new Vector3(5f, 5f, 0f);
+            SpawnHeart();
 
             Assert.AreEqual(0, _session.CheckPickups());
             Assert.AreEqual(29, _session.State.Hp);
         }
 
         [Test]
-        public void CollectedHeart_GoesBackToTheTop()
+        public void CollectedHeart_IsGoneAndHealsOnlyOnce()
         {
-            var heart = SpawnHeart(new Vector2(0.1f, 0f));
-            _session.CheckPickups();
+            _session.State.TryHurt(1f);
+            var heart = SpawnHeart();
 
-            Assert.AreEqual(heart.Area.yMax, heart.transform.position.y, 1e-5f);
+            Assert.AreEqual(1, _session.CheckPickups());
+            Assert.IsTrue(heart.IsCollected);
+            Assert.IsFalse(heart.Renderer.enabled);
+            Assert.AreEqual(0, _session.CheckPickups());
+        }
+
+        [Test]
+        public void Heart_ShowsTheRulesPosition()
+        {
+            var heart = SpawnHeart();
+            heart.Step(1f + 1e-4f);
+
+            Assert.AreEqual(heart.Rules.X, heart.transform.position.x, 1e-6f);
+            Assert.AreEqual(0.4f - 0.06f, heart.transform.position.y, 1e-4f);
+        }
+
+        [Test]
+        public void SessionRestart_BringsTheHeartBackAtTheResetFigures()
+        {
+            var heart = SpawnHeart();
+            _session.CheckPickups();
+            Assert.IsTrue(heart.IsCollected);
+
+            _session.Restart();
+
+            Assert.IsFalse(heart.IsCollected);
+            Assert.IsTrue(heart.Renderer.enabled);
+            Assert.AreEqual(0.4f, heart.transform.position.y, 1e-6f);
+            Assert.AreEqual(0.001f, heart.Rules.FloatSpeed);
         }
     }
 }

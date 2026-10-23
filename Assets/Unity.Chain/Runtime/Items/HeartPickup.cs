@@ -3,71 +3,85 @@ using UnityEngine;
 namespace MindAttic.Chain
 {
     /// <summary>
-    /// Item.vb's one Health10 heart: it floats down with a sway (<see cref="HeartFloat"/>), wraps to
-    /// the top when it leaves the bottom, and gives <see cref="HealAmount"/> HP (capped at max HP) when
-    /// the angel touches it; <see cref="GameSession"/> does the touch check and the healing. After a
-    /// pickup the heart goes back to the top of the play area so it keeps drifting down.
+    /// Item.vb's one Health10 heart in the scene: it shows <see cref="HeartFloat"/>'s state (its
+    /// position in the original's own units, drawn with the original's heart sprite whose left edge
+    /// sits on X), disappears when the angel picks it up and stays gone until <see cref="ResetHeart"/>
+    /// (Root.vb's Reset). <see cref="GameSession"/> does the touch check and the healing.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class HeartPickup : MonoBehaviour
     {
-        [Header("Level")]
-        [Tooltip("Play space the heart drifts in. Falls back to the scene's LevelBounds, then the fallback rect.")]
-        [SerializeField] private LevelBounds levelBounds;
-        [SerializeField] private Rect fallbackBounds = new Rect(-8f, -4.5f, 16f, 9f);
+        /// <summary>True once a round has been reset: scene reloads then start the heart as Root.vb's Reset does.</summary>
+        public static bool AfterReset { get; set; }
 
-        [Header("Heal")]
-        [Min(0)]
-        [SerializeField] private int healAmount = 10;
-        [Tooltip("Radius around the heart that counts as the angel touching it, world units.")]
-        [Min(0f)]
-        [SerializeField] private float touchRadius = 0.4f;
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ClearStatics() => AfterReset = false;
 
-        [Header("Float (Item.vb)")]
-        [SerializeField] private float floatSpeed = 0.002f;
-        [SerializeField] private float floatAcceleration = 0.00001f;
+        [SerializeField] private SpriteRenderer spriteRenderer;
 
-        private HeartFloat _float;
+        private HeartFloat _rules;
 
-        public int HealAmount => healAmount;
-        public float TouchRadius => touchRadius;
+        public HeartFloat Rules => _rules ?? (_rules = new HeartFloat());
 
-        public LevelBounds LevelBounds
+        public int HealAmount => Rules.HealAmount;
+
+        public bool IsCollected => Rules.PickedUp;
+
+        public SpriteRenderer Renderer
         {
-            get => levelBounds;
-            set => levelBounds = value;
+            get => spriteRenderer != null ? spriteRenderer : (spriteRenderer = GetComponent<SpriteRenderer>());
+            set => spriteRenderer = value;
         }
 
-        public Rect Area => levelBounds != null ? levelBounds.Bounds : fallbackBounds;
-
-        /// <summary>True when <paramref name="angelPosition"/> is within the touch radius.</summary>
-        public bool IsTouching(Vector2 angelPosition) =>
-            ((Vector2)transform.position - angelPosition).sqrMagnitude <= touchRadius * touchRadius;
-
-        /// <summary>Puts the heart back at the top of the play area (after a pickup), keeping its x.</summary>
-        public void Respawn()
+        /// <summary>Picks the heart up if the angel at <paramref name="angelPosition"/> touches it (Item.vb's checkItemCollect).</summary>
+        public bool TryCollect(Vector2 angelPosition)
         {
-            var p = transform.position;
-            transform.position = new Vector3(p.x, Area.yMax, p.z);
+            if (!Rules.TryCollect(angelPosition.x, angelPosition.y))
+            {
+                return false;
+            }
+
+            Apply();
+            return true;
         }
 
-        /// <summary>One drift step; public so tests can drive it. Returns true if it wrapped.</summary>
-        public bool Step(float deltaTime)
+        /// <summary>Root.vb's Reset for the heart: back to the start and drawn again.</summary>
+        public void ResetHeart()
         {
-            _float = _float ?? new HeartFloat();
-            _float.Config = new HeartFloat.Settings { FloatSpeed = floatSpeed, FloatAcceleration = floatAcceleration };
-            var position = (Vector2)transform.position;
-            var wrapped = _float.Step(ref position, Area, deltaTime);
-            transform.position = new Vector3(position.x, position.y, transform.position.z);
-            return wrapped;
+            Rules.Reset();
+            Apply();
+        }
+
+        /// <summary>Runs <paramref name="deltaTime"/> seconds of original frames; public so tests can drive it.</summary>
+        public int Step(float deltaTime)
+        {
+            var frames = Rules.Advance(deltaTime);
+            if (frames > 0)
+            {
+                Apply();
+            }
+
+            return frames;
+        }
+
+        private void Apply()
+        {
+            transform.position = new Vector3(Rules.X, Rules.Y, transform.position.z);
+            var sprite = Renderer;
+            if (sprite != null)
+            {
+                sprite.enabled = !Rules.PickedUp;
+            }
         }
 
         private void Awake()
         {
-            if (levelBounds == null)
+            if (AfterReset)
             {
-                levelBounds = LevelBounds.Find();
+                Rules.Reset();
             }
+
+            Apply();
         }
 
         private void Update() => Step(Time.deltaTime);

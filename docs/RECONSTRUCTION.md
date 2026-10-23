@@ -111,10 +111,15 @@ but unreachable or does nothing; not ported, recorded here), **n/a** (DirectX pl
 
 ### 3.4 Item (`Item.vb`)
 
-One heart (`maxItem` 0): Health10, starts at y 0.4, falls 0.001 per frame, wraps to 0.5 below -0.5, sways
-left/right with `floatSPD` 0.002 / `floatAcc` 0.00001 / max 0.001 (the `Reset` values differ: 0.001), +10 HP on
-touch capped at 30, then it is gone until Reset. `ExtraLife`, `Health5`, `Health20`, `Money` and the `Center` and
-`Wander` motions are declared and empty. **Missing**, UNI-T22 (the extra types are dead).
+One heart (`maxItem` 0): Health10, starts at x 0, y 0.4 (sprite `gfx\item\heart.png`, 16 x 16, magenta colour key, drawn
+0.05 wide with its left edge on X and centred on Y). Each frame: falls `fallRate` 0.001 (not `floatSPD`), wraps to 0.5 below
+-0.5, and sways by six sequential `If` blocks on `floatSPD` (0.002 from `loadItem`, 0.001 from `Reset`), `floatAcc` 0.00001
+and `floatMaxSPD` 0.001, each block seeing what the ones above changed (so with the 0.002 start the first ~100 frames flip
+direction every frame and net about -0.00001 a frame). Its rectangle is X..X+0.045 by Y-0.02..Y+0.03; the angel's is
+X..X+0.06 by Y+0.03..Y+0.15; `rectIntersect` tests only the angel's edges against the heart's, so an angel box straddling
+the heart does not touch it. Touch gives +10 HP capped at 30 and the heart is consumed: it neither moves nor draws until
+`Reset`. At the fixed 60 fps step (D9) the fall is 0.06 u/s. `ExtraLife`, `Health5`, `Health20`, `Money` and the `Center`
+and `Wander` motions are declared and empty. **Ported exactly**, UNI-T22 then UNI-T44 (`HeartFloat`, `HeartPickup`).
 
 ### 3.5 Input (`Input.vb`, `Form1.OnKeyDown`)
 

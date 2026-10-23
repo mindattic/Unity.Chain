@@ -193,7 +193,7 @@ Working behaviour of the original the rebuild does differently, and why. Status:
 | V4 | Chain wall bounce commented out | links bounce off `LevelBounds` at 0.5 (`keepInLevel` turns it off) | *Elastic Trail* bounced; keeps the mace on screen | to settle, UNI-T45 |
 | V5 | Angel contact rectangle X..X+0.06 by Y+0.03..Y+0.15 | a Physics2D circle | fits the sprite at any scale and with Physics2D queries | kept |
 | V6 | Flocking pushes 0.0005 per axis per frame, and each overlapping pair is visited twice a frame (0.001 per neighbour) | 0.06 world units per second per neighbour (0.0005 x 2 x 60 fps, D9) | the original's figure at the fixed step; the commented-out `flockRange` test means any overlap pushes, as before | kept, UNI-T35 |
-| V7 | The heart is gone after a pickup until `Reset` | it returns to the top and keeps drifting | first version guessed the behaviour | to settle, UNI-T44 |
+| V7 | The heart is gone after a pickup until `Reset` | the same: consumed on touch, drawn again by `Reset` (the first guess had it respawn at the top) | matches `Item.vb` exactly, UNI-T44; the heart lives in the original's units (start 0, 0.4, wrap -0.5 to 0.5), so it drifts within half a unit of the arena centre, as it does in the original | kept, UNI-T44 |
 | V8 | Pause is the Pause key; Escape quits | P or Escape pause | interim keys before the input pass | to settle, UNI-T54 |
 | V9 | `- PAUSE -` and HUD as plain D3D text | IMGUI `GameHud` | interim | temporary, UNI-T37, UNI-T50 |
 | V10 | Swing whoosh, hit, death; no catch or throw sounds | adds catch and throw sounds; the swing fires on mace speed relative to the hand | flying with a trailing mace is not a swing; catch and throw needed feedback | to settle with the clips, UNI-T20 |
