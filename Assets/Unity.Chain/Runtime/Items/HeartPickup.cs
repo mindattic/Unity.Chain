@@ -9,6 +9,7 @@ namespace MindAttic.Chain
     /// (Root.vb's Reset). <see cref="GameSession"/> does the touch check and the healing.
     /// </summary>
     [DisallowMultipleComponent]
+    [DefaultExecutionOrder(100)] // moves before GameSession (120) checks the touch, as the original moves then collects
     public sealed class HeartPickup : MonoBehaviour
     {
         /// <summary>True once a round has been reset: scene reloads then start the heart as Root.vb's Reset does.</summary>
@@ -84,6 +85,6 @@ namespace MindAttic.Chain
             Apply();
         }
 
-        private void Update() => Step(Time.deltaTime);
+        private void FixedUpdate() => Step(Time.fixedDeltaTime);
     }
 }

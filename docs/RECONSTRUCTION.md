@@ -119,7 +119,7 @@ direction every frame and net about -0.00001 a frame). Its rectangle is X..X+0.0
 X..X+0.06 by Y+0.03..Y+0.15; `rectIntersect` tests only the angel's edges against the heart's, so an angel box straddling
 the heart does not touch it. Touch gives +10 HP capped at 30 and the heart is consumed: it neither moves nor draws until
 `Reset`. At the fixed 60 fps step (D9) the fall is 0.06 u/s. `ExtraLife`, `Health5`, `Health20`, `Money` and the `Center`
-and `Wander` motions are declared and empty. **Ported exactly**, UNI-T22 then UNI-T44 (`HeartFloat`, `HeartPickup`).
+and `Wander` motions are declared and empty. **Ported**, UNI-T22 then UNI-T44 (`HeartFloat`, `HeartPickup`), figures 1:1 in world units (see BIBLE V7 for the open space-mapping question).
 
 ### 3.5 Input (`Input.vb`, `Form1.OnKeyDown`)
 

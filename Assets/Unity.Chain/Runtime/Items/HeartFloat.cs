@@ -239,6 +239,7 @@ namespace MindAttic.Chain
             Sway = HeartSway.Left;
             PickedUp = false;
             FloatSpeed = _settings.ResetFloatSpeed;
+            Rect = BuildRect();
         }
 
         /// <summary>Angel.vb: Left X, Right X + 0.06, Top Y + angelSize / 2, Bottom Y + 0.03.</summary>

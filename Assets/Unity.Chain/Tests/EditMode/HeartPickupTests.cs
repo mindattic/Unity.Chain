@@ -143,6 +143,19 @@ namespace MindAttic.Chain.Tests
         }
 
         [Test]
+        public void Reset_RebuildsTheRectSoTheOldSpotCannotCollectAgain()
+        {
+            var heart = new HeartFloat();
+            heart.Advance(5f);
+            var spotY = heart.Y - 0.13f;
+            Assert.IsTrue(heart.TryCollect(heart.X, spotY));
+
+            heart.Reset();
+
+            Assert.IsFalse(heart.TryCollect(heart.X, spotY));
+        }
+
+        [Test]
         public void PickedUpHeart_NeitherMovesNorWrapsUntilReset()
         {
             var heart = new HeartFloat();
