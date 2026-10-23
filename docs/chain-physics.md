@@ -56,7 +56,20 @@ JS original: both-neighbor pull.
   units) are tuned on `ChainController`.
 - **Grapple**: holding the action button arms the grapple; on release, if an enemy was caught, it's
   thrown using the mace's current velocity as launch velocity.
-- **Hit detection** is a simple AABB (`rectMace`) against enemies, not per-link.
+- **Hit detection** is a simple AABB (`rectMace`) against enemies, not per-link, rebuilt once a
+  frame at the mace link, so a fast swing can pass clean through an enemy between frames.
+  Engine.vb's `checkMaceImpact`: an enemy that is alive, not Hurt and not grabbed, when touched,
+  is grabbed if the grapple is armed, otherwise gets `velocity = mace velocity / mass`, loses HP
+  and goes Hurt (slows by `resistSPD` per axis, then seeks again); a grabbed enemy takes the same
+  damage. A thrown enemy knocks any enemy it touches (`checkThrowImpact`) without damage.
+- **In Unity** (`Assets/Unity.Chain/Runtime/Enemies/`): `MaceHitDetector` replaces the AABB with
+  Physics2D: each step it sweeps a mace-sized circle (`Physics2D.CircleCast`) from the mace link's
+  previous position to its current one, plus an `OverlapCircle` at the end, so fast swings cannot
+  tunnel. `Enemy` (kinematic `Rigidbody2D` + any `Collider2D`, its own `IGrappleTarget`) runs
+  `EnemyBrain`, the Seek/Hurt/Grabbed/Dead rules above. One deliberate change: damage is mace
+  speed x `damagePerSpeed`, not Engine.vb's `|dX + dY/2|`, which cancels to zero on some
+  diagonal swings. Not ported here: enemy-vs-enemy flocking separation and enemy-vs-angel damage
+  (`checkAngelHit`, part of the HUD/health work).
 - Two things in `renderChain` look like leftover hacks rather than intended behavior and are
   **not** being ported as-is: `link(Mace).X/Y += maceOffset` is applied unconditionally every
   frame (a cumulative drift bug, not a one-time sprite-alignment offset), and a stray
@@ -92,5 +105,5 @@ in Unity world units / pixels-per-unit rather than copied literally.
    chain with a `LineRenderer`/sprites, and anchors link 0 to the player's hand socket.
 4. Angel/player controller — mouse-steered flight, hover bob, facing flip, sprite animation.
 5. Mace rendering + grapple/throw mechanic (arm on input, release throws using mace velocity).
-6. Enemies + AABB/2D-physics hit detection against the mace.
+6. Enemies + Physics2D hit detection against the mace (swept circle, replacing the AABB).
 7. Audio, HUD/UI, level bounds and camera.

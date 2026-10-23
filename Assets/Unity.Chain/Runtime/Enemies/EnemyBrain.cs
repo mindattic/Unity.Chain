@@ -1,0 +1,184 @@
+using UnityEngine;
+
+namespace MindAttic.Chain
+{
+    public enum EnemyState
+    {
+        /// <summary>Homing on the angel (Enemy.vb's Seek AI).</summary>
+        Seek,
+
+        /// <summary>Knocked back by the mace or a thrown enemy; coasts and slows, then seeks again.</summary>
+        Hurt,
+
+        /// <summary>In the grapple's grip; the grapple moves it.</summary>
+        Grabbed,
+
+        /// <summary>HP ran out.</summary>
+        Dead,
+    }
+
+    /// <summary>
+    /// One enemy's rules from Enemy.vb/Engine.vb, free of Unity physics so it can be tested:
+    /// it seeks the angel with a velocity proportional to the distance; a mace hit sets its
+    /// velocity to the mace's velocity divided by its mass, takes HP, and leaves it Hurt (it
+    /// cannot be hit or grabbed again until it has slowed to a stop); a thrown enemy is Hurt
+    /// too and knocks any enemy it touches the same way, without damage. Velocities are world
+    /// units per second.
+    /// </summary>
+    public sealed class EnemyBrain
+    {
+        public struct Settings
+        {
+            /// <summary>Seek velocity per unit of distance to the target, per second (Enemy.vb seekSpd 0.006/frame).</summary>
+            public float SeekRate;
+
+            /// <summary>How fast a Hurt enemy slows on each axis, units per second squared (Enemy.vb resistSPD).</summary>
+            public float HurtDeceleration;
+
+            /// <summary>A Hurt enemy slower than this on both axes recovers and seeks again.</summary>
+            public float RecoverSpeed;
+
+            public static Settings Default => new Settings
+            {
+                SeekRate = 0.36f,
+                HurtDeceleration = 6f,
+                RecoverSpeed = 0.05f,
+            };
+        }
+
+        public Settings Config;
+
+        public float MaxHp { get; }
+        public float Hp { get; private set; }
+        public float Mass { get; }
+        public EnemyState State { get; private set; } = EnemyState.Seek;
+        public Vector2 Velocity { get; private set; }
+
+        /// <summary>True from a throw until the enemy recovers: it knocks other enemies it touches.</summary>
+        public bool IsThrown { get; private set; }
+
+        public bool IsAlive => State != EnemyState.Dead;
+
+        /// <summary>Enemy.vb only lets the mace hit (or grab) an enemy that is alive, not Hurt and not held.</summary>
+        public bool CanBeHit => State == EnemyState.Seek;
+
+        public EnemyBrain(float hp = 1f, float mass = 1f, Settings? settings = null)
+        {
+            MaxHp = Mathf.Max(0.0001f, hp);
+            Hp = MaxHp;
+            Mass = Mathf.Max(0.01f, mass);
+            Config = settings ?? Settings.Default;
+        }
+
+        /// <summary>
+        /// Advances the AI one step and returns the velocity to move with. Seek heads for
+        /// <paramref name="seekPoint"/>; Hurt slows each axis toward zero and recovers below
+        /// <see cref="Settings.RecoverSpeed"/>. Grabbed and Dead do not move on their own.
+        /// </summary>
+        public Vector2 Step(Vector2 position, Vector2 seekPoint, float deltaTime)
+        {
+            switch (State)
+            {
+                case EnemyState.Seek:
+                    Velocity = (seekPoint - position) * Config.SeekRate;
+                    break;
+
+                case EnemyState.Hurt:
+                    var slow = Config.HurtDeceleration * deltaTime;
+                    var v = new Vector2(
+                        Mathf.MoveTowards(Velocity.x, 0f, slow),
+                        Mathf.MoveTowards(Velocity.y, 0f, slow));
+                    Velocity = v;
+                    if (Mathf.Abs(v.x) <= Config.RecoverSpeed && Mathf.Abs(v.y) <= Config.RecoverSpeed)
+                    {
+                        State = EnemyState.Seek;
+                        IsThrown = false;
+                    }
+
+                    break;
+
+                default:
+                    Velocity = Vector2.zero;
+                    break;
+            }
+
+            return Velocity;
+        }
+
+        /// <summary>
+        /// A mace hit at <paramref name="impactVelocity"/>: knocked back at impact / mass and
+        /// damaged by impact speed x <paramref name="damagePerSpeed"/>. Returns the damage dealt
+        /// (0 if it could not be hit).
+        /// </summary>
+        public float Hit(Vector2 impactVelocity, float damagePerSpeed)
+        {
+            if (!CanBeHit)
+            {
+                return 0f;
+            }
+
+            var damage = impactVelocity.magnitude * Mathf.Max(0f, damagePerSpeed);
+            Knock(impactVelocity);
+            Damage(damage);
+            return damage;
+        }
+
+        /// <summary>Knocked by something (a thrown enemy) without damage: velocity = impact / mass, Hurt.</summary>
+        public void Knock(Vector2 impactVelocity)
+        {
+            if (!IsAlive || State == EnemyState.Grabbed)
+            {
+                return;
+            }
+
+            Velocity = impactVelocity / Mass;
+            State = EnemyState.Hurt;
+        }
+
+        /// <summary>Takes HP; at zero the enemy is Dead. Returns true if this killed it.</summary>
+        public bool Damage(float amount)
+        {
+            if (!IsAlive || amount <= 0f)
+            {
+                return false;
+            }
+
+            Hp = Mathf.Max(0f, Hp - amount);
+            if (Hp > 0f)
+            {
+                return false;
+            }
+
+            State = EnemyState.Dead;
+            Velocity = Vector2.zero;
+            IsThrown = false;
+            return true;
+        }
+
+        /// <summary>Caught by the grapple. Returns false if it cannot be caught.</summary>
+        public bool Grab()
+        {
+            if (!CanBeHit)
+            {
+                return false;
+            }
+
+            State = EnemyState.Grabbed;
+            Velocity = Vector2.zero;
+            return true;
+        }
+
+        /// <summary>Thrown by the grapple at <paramref name="velocity"/> (not divided by mass: the mace carried it).</summary>
+        public void Throw(Vector2 velocity)
+        {
+            if (State != EnemyState.Grabbed)
+            {
+                return;
+            }
+
+            Velocity = velocity;
+            State = EnemyState.Hurt;
+            IsThrown = true;
+        }
+    }
+}
