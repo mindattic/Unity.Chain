@@ -74,7 +74,7 @@ namespace MindAttic.Chain.Tests
 
             for (var i = 0; i < 10; i++)
             {
-                _session.StepGameOver();
+                _session.Step(1f / 50f); // the world fades a step at a time
             }
 
             _light.Step(1f / 60f);
@@ -94,7 +94,7 @@ namespace MindAttic.Chain.Tests
             Assert.IsTrue(_light.ToggleLighting());
 
             var clock = _light.State.Clock;
-            _session.SetPaused(true);
+            _session.Submit(new Pause(new PlayerId(0), true));
             _light.Step(1f);
             Assert.AreEqual(clock, _light.State.Clock, "pause skipped renderLight");
         }

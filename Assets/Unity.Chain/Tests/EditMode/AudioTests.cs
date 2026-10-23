@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using MindAttic.Chain;
+using MindAttic.Chain.Core;
 using NUnit.Framework;
 using UnityEngine;
 
@@ -7,80 +8,43 @@ namespace MindAttic.Chain.Tests
 {
     public class ChainAudioTests
     {
-        private readonly List<Object> _objects = new List<Object>();
         private readonly List<(ChainSound sound, AudioClip clip, float volume)> _played = new List<(ChainSound, AudioClip, float)>();
-        private ChainController _chain;
+        private TestRig _rig;
         private ChainAudio _audio;
 
         [SetUp]
         public void SetUp()
         {
-            var root = Track(new GameObject("Chain"));
-            _chain = root.AddComponent<ChainController>();
-            _chain.Rebuild();
-            _audio = root.AddComponent<ChainAudio>();
-            _audio.Chain = _chain;
-            _audio.MaceIndex = 6;
+            // The audio is bound with the chain when the player is seated.
+            _rig = new TestRig(beforeJoin: rig =>
+            {
+                _audio = rig.Chain.gameObject.AddComponent<ChainAudio>();
+                _audio.Chain = rig.Chain;
+            });
             _audio.Played += (s, c, v) => _played.Add((s, c, v));
         }
 
         [TearDown]
         public void TearDown()
         {
-            foreach (var o in _objects)
-            {
-                if (o != null)
-                {
-                    Object.DestroyImmediate(o);
-                }
-            }
-
-            _objects.Clear();
+            _rig.Dispose();
             _played.Clear();
         }
 
-        private T Track<T>(T o) where T : Object
-        {
-            _objects.Add(o);
-            return o;
-        }
-
-        private AudioClip Clip(string name) => Track(AudioClip.Create(name, 4410, 1, 44100, false));
-
-        private Enemy SpawnEnemy(Vector2 position, float hp = 100f)
-        {
-            var go = Track(new GameObject("Enemy"));
-            go.transform.position = position;
-            go.AddComponent<Rigidbody2D>().bodyType = RigidbodyType2D.Kinematic;
-            go.AddComponent<CircleCollider2D>().radius = 0.15f;
-            var enemy = go.AddComponent<Enemy>();
-            enemy.StartingHp = hp;
-            enemy.FixedMass = 1f;
-            Physics2D.SyncTransforms();
-            return enemy;
-        }
-
-        private void DragChain(int steps, float stride)
-        {
-            for (var i = 0; i < steps; i++)
-            {
-                _chain.transform.position = new Vector3(i * stride, 0f, 0f);
-                _chain.Simulate(1f / 50f);
-            }
-        }
+        private AudioClip Clip(string name) => _rig.Track(AudioClip.Create(name, 4410, 1, 44100, false));
 
         [Test]
         public void HangingChain_PlaysNoSwing()
         {
-            for (var i = 0; i < 500; i++) // let the chain fall from the anchor and settle
+            for (var i = 0; i < 500; i++) // let the chain fall from the hand and settle
             {
-                _chain.Simulate(1f / 50f);
+                _rig.Step();
             }
 
             for (var i = 0; i < 50; i++)
             {
-                _chain.Simulate(1f / 50f);
-                Assert.IsFalse(_audio.Step(1f / 50f));
+                _rig.Step();
+                Assert.IsFalse(_audio.Step(TestRig.Dt));
             }
 
             Assert.IsEmpty(_played);
@@ -91,17 +55,16 @@ namespace MindAttic.Chain.Tests
         {
             var whoosh = Clip("whoosh");
             _audio.SetClips(ChainSound.Swing, new[] { whoosh });
-            _chain.gameObject.AddComponent<MaceController>().ApplyToChain(); // the mace (index 6) is the end link
 
             // Whirl the hand in a circle (radius 1, 1.5 turns a second) like a flail.
             var swung = false;
             var topSpeed = 0f;
             for (var i = 0; i < 200 && !swung; i++)
             {
-                var angle = i * (1f / 50f) * 1.5f * 2f * Mathf.PI;
-                _chain.transform.position = new Vector3(Mathf.Cos(angle), Mathf.Sin(angle), 0f);
-                _chain.Simulate(1f / 50f);
-                swung = _audio.Step(1f / 50f);
+                var angle = i * TestRig.Dt * 1.5f * 2f * Mathf.PI;
+                _rig.MoveAngelTo(new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)));
+                _rig.Step();
+                swung = _audio.Step(TestRig.Dt);
                 topSpeed = Mathf.Max(topSpeed, _audio.LastSwingSpeed);
             }
 
@@ -115,14 +78,13 @@ namespace MindAttic.Chain.Tests
         [Test]
         public void SteadyFlight_TrailingTheMace_IsNotASwing()
         {
-            _chain.gameObject.AddComponent<MaceController>().ApplyToChain();
             var x = 0f;
             for (var i = 0; i < 250; i++) // five seconds flying right at 8 units/s
             {
                 x += 8f / 50f;
-                _chain.transform.position = new Vector3(x, 0f, 0f);
-                _chain.Simulate(1f / 50f);
-                var swung = _audio.Step(1f / 50f);
+                _rig.MoveAngelTo(new Vector2(x, 0f));
+                _rig.Step();
+                var swung = _audio.Step(TestRig.Dt);
                 if (i >= 150)
                 {
                     Assert.IsFalse(swung, $"step {i}: relative speed {_audio.LastSwingSpeed}");
@@ -135,43 +97,43 @@ namespace MindAttic.Chain.Tests
         [Test]
         public void MaceHit_PlaysAnImpact_AndALethalOne_AlsoADeath()
         {
-            var detector = _chain.gameObject.AddComponent<MaceHitDetector>();
-            detector.Chain = _chain;
-            detector.MaceIndex = 6;
-            detector.HitRadius = 0.25f;
-            _audio.HitDetector = detector;
-
-            DragChain(10, 0.3f);
-            SpawnEnemy(detector.MacePosition);
-            Assert.AreEqual(1, detector.Step());
+            _rig.Swing();
+            _rig.SpawnEnemy(_rig.Player.MacePosition.ToUnity());
+            _rig.Step();
             Assert.AreEqual(1, _played.Count);
             Assert.AreEqual(ChainSound.Impact, _played[0].sound);
 
             _played.Clear();
-            DragChain(1, 0.3f);
-            SpawnEnemy(detector.MacePosition + new Vector2(0f, 0.01f), hp: 0.0001f);
-            detector.Step();
+            _rig.SpawnEnemy(_rig.Player.MacePosition.ToUnity() + new Vector2(0f, 0.01f), hp: 0.0001f);
+            _rig.Step();
             CollectionAssert.Contains(_played.ConvertAll(p => p.sound), ChainSound.EnemyDeath);
         }
 
         [Test]
         public void Grapple_PlaysCatchAndThrow()
         {
-            var grapple = _chain.gameObject.AddComponent<GrappleController>();
-            grapple.Chain = _chain;
-            grapple.UseMouseButton = false;
-            grapple.MaceIndex = 6;
-            _audio.Grapple = grapple;
-
-            DragChain(10, 0.3f);
-            grapple.SetButtonHeld(true);
-            grapple.Step();
-            Assert.IsTrue(grapple.TryCatch(SpawnEnemy(grapple.MacePosition)));
+            _rig.Swing();
+            _rig.Grapple.SetButtonHeld(true);
+            _rig.Step();
+            _rig.SpawnEnemy(_rig.Player.MacePosition.ToUnity());
+            _rig.Step();
+            Assert.IsNotNull(_rig.Grapple.HeldEnemy);
             Assert.AreEqual(ChainSound.GrappleCatch, _played[_played.Count - 1].sound);
 
-            grapple.SetButtonHeld(false);
-            grapple.Step();
+            _rig.Grapple.SetButtonHeld(false);
+            _rig.Step();
             Assert.AreEqual(ChainSound.GrappleThrow, _played[_played.Count - 1].sound);
+        }
+
+        [Test]
+        public void AnotherPlayersHits_AreNotThisChainsSounds()
+        {
+            _audio.Play(new EnemyHit(new PlayerId(7), new EnemyId(1), 1f, Vec2.One, 1000, true));
+            _audio.Play(new Grabbed(new PlayerId(7), new EnemyId(1)));
+            Assert.IsEmpty(_played);
+
+            _audio.Play(new EnemyHit(_rig.Id, new EnemyId(1), 1f, Vec2.One, 1000, false));
+            Assert.AreEqual(ChainSound.Impact, _played[0].sound);
         }
 
         [Test]
@@ -187,17 +149,13 @@ namespace MindAttic.Chain.Tests
         }
 
         [Test]
-        public void DetachedComponents_NoLongerTriggerSounds()
+        public void DetachedAudio_NoLongerPlaysTheSessionsEvents()
         {
-            var detector = _chain.gameObject.AddComponent<MaceHitDetector>();
-            detector.Chain = _chain;
-            detector.MaceIndex = 6;
-            _audio.HitDetector = detector;
-            _audio.HitDetector = null;
+            _audio.Chain = null;
 
-            DragChain(10, 0.3f);
-            SpawnEnemy(detector.MacePosition);
-            Assert.AreEqual(1, detector.Step());
+            _rig.Swing();
+            _rig.SpawnEnemy(_rig.Player.MacePosition.ToUnity());
+            _rig.Step();
             Assert.IsEmpty(_played);
         }
     }

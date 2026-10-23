@@ -1,301 +1,67 @@
-using System;
-using System.Collections.Generic;
 using MindAttic.Chain.Core;
 using UnityEngine;
 
 namespace MindAttic.Chain
 {
     /// <summary>
-    /// An enemy (Enemy.vb): a kinematic <see cref="Rigidbody2D"/> with a <see cref="Collider2D"/>
-    /// driven by <see cref="EnemyBrain"/>. It seeks the angel, is knocked back and damaged by
-    /// mace hits (<see cref="MaceHitDetector"/>), can be caught and thrown by the grapple (it is
-    /// its own <see cref="IGrappleTarget"/>, so do not add a <see cref="GrappleTarget"/> too), and
-    /// while thrown knocks any enemy its collider touches. It is destroyed when its HP runs out.
+    /// How one enemy (Enemy.vb) looks: a sprite that stands wherever the world's
+    /// <see cref="EnemyEntity"/> is. The enemy's rules (seek, knockback, grab, throw, flocking, HP)
+    /// all run in the <see cref="GameWorld"/>; this view only reads them. <see cref="EnemySpawner"/>
+    /// makes one for every <see cref="EnemySpawned"/> event and plays <see cref="PlayDeath"/> on
+    /// <see cref="EnemyKilled"/>.
     /// </summary>
     [DisallowMultipleComponent]
-    [RequireComponent(typeof(Rigidbody2D))]
-    public sealed class Enemy : MonoBehaviour, IGrappleTarget
+    public sealed class Enemy : MonoBehaviour
     {
-        [Header("Stats")]
-        [Min(0.0001f)]
-        [SerializeField] private float hp = 1f;
-        [Tooltip("Random mass range (Enemy.vb: 1-2). Knockback is divided by mass.")]
-        [SerializeField] private Vector2 massRange = new Vector2(1f, 2f);
-
-        [Header("Movement")]
-        [Tooltip("What the enemy seeks. Defaults to the scene's AngelController.")]
-        [SerializeField] private Transform target;
-        [Tooltip("Offset from the target that the enemy homes on.")]
-        [SerializeField] private Vector2 seekOffset = Vector2.zero;
-        [Min(0f)]
-        [SerializeField] private float seekRate = 0.36f;
-        [Min(0f)]
-        [SerializeField] private float hurtDeceleration = 6f;
-        [Min(0f)]
-        [SerializeField] private float recoverSpeed = 0.05f;
-
-        [Header("Flocking")]
-        [Tooltip("Engine.vb flockSpd 0.0005/frame, converted at 60 fps and for the original's double visit of each pair (0.06): speed (units/s, per axis, per overlapping neighbour) at which overlapping live, non-grabbed enemies push each other apart. 0 turns separation off.")]
-        [Min(0f)]
-        [SerializeField] private float flockSpeed = EnemyBrain.DefaultFlockSpeed;
-
         [Header("Death")]
         [Tooltip("Seconds after death before the GameObject is destroyed (play mode).")]
         [Min(0f)]
         [SerializeField] private float destroyDelay = 0f;
 
-        private readonly List<Collider2D> _overlaps = new List<Collider2D>();
-        private EnemyBrain _brain;
-        private Rigidbody2D _body;
+        /// <summary>The world enemy this view shows. Kept after it dies, so its last state can still be read.</summary>
+        public EnemyEntity Entity { get; private set; }
 
-        /// <summary>Raised on each mace hit with the damage dealt.</summary>
-        public event Action<Enemy, float> Hurt;
+        public EnemyId Id => Entity != null ? Entity.Id : default;
+        public EnemyState State => Entity != null ? Entity.State : EnemyState.Dead;
+        public float Hp => Entity != null ? Entity.Hp : 0f;
+        public bool IsAlive => Entity != null && Entity.IsAlive;
+        public Vector2 Velocity => Entity != null ? Entity.Velocity.ToUnity() : Vector2.zero;
+        public Vector2 Position => Entity != null ? Entity.Position.ToUnity() : (Vector2)transform.position;
 
-        /// <summary>Raised once when the enemy's HP runs out.</summary>
-        public event Action<Enemy> Died;
-
-        public EnemyBrain Brain => _brain ?? (_brain = CreateBrain());
-        public EnemyState State => Brain.State;
-        public float Hp => Brain.Hp;
-        public bool IsAlive => Brain.IsAlive;
-        public bool CanBeHit => isActiveAndEnabled && Brain.CanBeHit;
-        public Vector2 Velocity => Brain.Velocity.ToUnity();
-        public Vector2 Position => Body.position;
-
-        public Transform Target
+        /// <summary>Shows <paramref name="entity"/>.</summary>
+        public void Bind(EnemyEntity entity)
         {
-            get => target;
-            set => target = value;
+            Entity = entity;
+            Follow();
         }
 
-        /// <summary>Starting HP. Only takes effect before the brain is created (first use).</summary>
-        public float StartingHp
+        /// <summary>Stands the sprite where the world has the enemy. Called every frame; public so tests can drive it.</summary>
+        public void Follow()
         {
-            get => hp;
-            set
-            {
-                hp = Mathf.Max(0.0001f, value);
-                _brain = null;
-            }
-        }
-
-        /// <summary>Fixes the mass (both ends of the random range). Takes effect like <see cref="StartingHp"/>.</summary>
-        public float FixedMass
-        {
-            set
-            {
-                massRange = new Vector2(value, value);
-                _brain = null;
-            }
-        }
-
-        private Rigidbody2D Body => _body != null ? _body : _body = GetComponent<Rigidbody2D>();
-
-        // --- IGrappleTarget -------------------------------------------------------------
-
-        public bool CanBeGrappled => CanBeHit;
-
-        public void OnGrappled() => Brain.Grab();
-
-        public void HoldAt(Vector2 position) => MoveTo(position);
-
-        public void Throw(Vector2 velocity) => Brain.Throw(velocity.ToCore());
-
-        // --- Combat ---------------------------------------------------------------------
-
-        /// <summary>
-        /// A mace hit: knockback at <paramref name="maceVelocity"/> / mass and damage of mace
-        /// speed x <paramref name="damagePerSpeed"/>. Returns the damage dealt (0 if it could not
-        /// be hit).
-        /// </summary>
-        public float TakeHit(Vector2 maceVelocity, float damagePerSpeed)
-        {
-            if (!CanBeHit)
-            {
-                return 0f;
-            }
-
-            var damage = Brain.Hit(maceVelocity.ToCore(), damagePerSpeed);
-            Hurt?.Invoke(this, damage);
-            if (!Brain.IsAlive)
-            {
-                Die();
-            }
-
-            return damage;
-        }
-
-        /// <summary>Takes damage without knockback (a held enemy when the mace hits something). Returns true if it died.</summary>
-        public bool TakeDamage(float amount)
-        {
-            if (!isActiveAndEnabled || !Brain.Damage(amount))
-            {
-                return false;
-            }
-
-            Die();
-            return true;
-        }
-
-        /// <summary>One AI step: move by the brain's velocity; while thrown, knock enemies touched.</summary>
-        public void Step(float deltaTime)
-        {
-            if (!Brain.IsAlive || Brain.State == EnemyState.Grabbed)
+            if (Entity == null || !Entity.InWorld)
             {
                 return;
             }
 
-            var seekPoint = (target != null ? (Vector2)target.position : Position) + seekOffset;
-            var velocity = Brain.Step(Position.ToCore(), seekPoint.ToCore(), deltaTime).ToUnity();
-            MoveTo(Position + velocity * deltaTime + FlockingPush(deltaTime));
-
-            if (Brain.IsThrown)
-            {
-                KnockTouchedEnemies();
-            }
+            var p = Entity.Position;
+            transform.position = new Vector3(p.X, p.Y, transform.position.z);
         }
 
-        /// <summary>Enemy-vs-enemy separation (Engine.vb checkFlocking): pushed away from each live, non-grabbed enemy this one overlaps.</summary>
-        private Vector2 FlockingPush(float deltaTime)
+        /// <summary>The enemy died: hide it now and remove it (after <c>destroyDelay</c> in play mode).</summary>
+        public void PlayDeath()
         {
-            if (flockSpeed <= 0f)
-            {
-                return Vector2.zero;
-            }
-
-            var push = Vector2.zero;
-            var counted = new HashSet<Enemy>();
-            var filter = new ContactFilter2D { useTriggers = true };
-            filter.NoFilter();
-
-            foreach (var collider in GetComponentsInChildren<Collider2D>())
-            {
-                if (!collider.enabled)
-                {
-                    continue;
-                }
-
-                _overlaps.Clear();
-                collider.Overlap(filter, _overlaps);
-                foreach (var hit in _overlaps)
-                {
-                    var other = hit.GetComponentInParent<Enemy>();
-                    if (other == null || other == this || !other.isActiveAndEnabled || !other.IsAlive
-                        || other.State == EnemyState.Grabbed || !counted.Add(other))
-                    {
-                        continue;
-                    }
-
-                    var tieBreak = GetInstanceID() < other.GetInstanceID() ? 1 : -1;
-                    push += EnemyBrain.FlockPush(Position.ToCore(), other.Position.ToCore(), flockSpeed, deltaTime, tieBreak).ToUnity();
-                }
-            }
-
-            return push;
-        }
-
-        private void KnockTouchedEnemies()
-        {
-            var filter = new ContactFilter2D { useTriggers = true };
-            filter.NoFilter();
-
-            foreach (var collider in GetComponentsInChildren<Collider2D>())
-            {
-                if (!collider.enabled)
-                {
-                    continue;
-                }
-
-                _overlaps.Clear();
-                collider.Overlap(filter, _overlaps);
-                foreach (var hit in _overlaps)
-                {
-                    var other = hit.GetComponentInParent<Enemy>();
-                    if (other != null && other != this && other.CanBeHit)
-                    {
-                        other.Brain.Knock(Brain.Velocity);
-                    }
-                }
-            }
-        }
-
-        private void MoveTo(Vector2 position)
-        {
-            if (Application.isPlaying)
-            {
-                Body.MovePosition(position);
-            }
-            else
-            {
-                Body.position = position;
-                transform.position = new Vector3(position.x, position.y, transform.position.z);
-            }
-        }
-
-        private void Die()
-        {
-            Died?.Invoke(this);
-
-            foreach (var collider in GetComponentsInChildren<Collider2D>())
-            {
-                collider.enabled = false;
-            }
-
             if (Application.isPlaying)
             {
                 Destroy(gameObject, destroyDelay);
-            }
-            else
-            {
-                gameObject.SetActive(false);
-            }
-        }
-
-        private EnemyBrain CreateBrain()
-        {
-            var lo = Mathf.Min(massRange.x, massRange.y);
-            var hi = Mathf.Max(massRange.x, massRange.y);
-            var mass = Mathf.Approximately(lo, hi) ? lo : UnityEngine.Random.Range(lo, hi);
-            return new EnemyBrain(hp, mass, new EnemyBrain.Settings
-            {
-                SeekRate = seekRate,
-                HurtDeceleration = hurtDeceleration,
-                RecoverSpeed = recoverSpeed,
-            });
-        }
-
-        private void Reset()
-        {
-            GetComponent<Rigidbody2D>().bodyType = RigidbodyType2D.Kinematic;
-        }
-
-        private void Awake()
-        {
-            Body.bodyType = RigidbodyType2D.Kinematic;
-            Body.gravityScale = 0f;
-
-            if (target == null)
-            {
-                var angel = FindAnyObjectByType<AngelController>();
-                if (angel != null)
+                if (destroyDelay > 0f)
                 {
-                    target = angel.transform;
+                    return;
                 }
             }
+
+            gameObject.SetActive(false);
         }
 
-        private void FixedUpdate() => Step(Time.fixedDeltaTime);
-
-        private void OnValidate()
-        {
-            if (_brain != null)
-            {
-                var config = _brain.Config;
-                config.SeekRate = seekRate;
-                config.HurtDeceleration = hurtDeceleration;
-                config.RecoverSpeed = recoverSpeed;
-                _brain.Config = config;
-            }
-        }
+        private void LateUpdate() => Follow();
     }
 }

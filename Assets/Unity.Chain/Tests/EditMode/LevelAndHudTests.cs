@@ -67,32 +67,29 @@ namespace MindAttic.Chain.Tests
         }
 
         [Test]
-        public void ChainController_BouncesLinksOffTheLevel()
+        public void Chain_BouncesLinksOffTheLevel_UnlessKeepInLevelIsOff()
         {
-            var level = MakeLevel(Vector2.zero, new Vector2(4f, 2f));
-            var go = Track(new GameObject("Chain"));
-            var chain = go.AddComponent<ChainController>();
-            chain.LevelBounds = level;
-            chain.Rebuild();
-
-            go.transform.position = new Vector3(0f, 0.9f, 0f);
-            for (var i = 0; i < 200; i++)
+            using (var rig = new TestRig(levelSize: new Vector2(4f, 2f)))
             {
-                chain.Simulate(1f / 50f);
-            }
+                rig.MoveAngelTo(new Vector2(0f, 0.9f));
+                for (var i = 0; i < 200; i++)
+                {
+                    rig.Step();
+                }
 
-            for (var i = 1; i < chain.LinkCount; i++)
-            {
-                Assert.GreaterOrEqual(chain.GetLinkPosition(i).y, -1f - 1e-4f, $"link {i} fell through the floor");
-            }
+                for (var i = 1; i < rig.Chain.LinkCount; i++)
+                {
+                    Assert.GreaterOrEqual(rig.Chain.GetLinkPosition(i).y, -1f - 1e-4f, $"link {i} fell through the floor");
+                }
 
-            chain.KeepInLevel = false;
-            for (var i = 0; i < 200; i++)
-            {
-                chain.Simulate(1f / 50f);
-            }
+                rig.Chain.KeepInLevel = false;
+                for (var i = 0; i < 200; i++)
+                {
+                    rig.Step();
+                }
 
-            Assert.Less(chain.GetLinkPosition(chain.LinkCount - 1).y, -1f, "with bounds off the chain hangs past the floor");
+                Assert.Less(rig.Mace.MacePosition.y, -1f, "with bounds off the chain hangs past the floor");
+            }
         }
 
         private CameraRig MakeCamera(float aspect)
@@ -189,103 +186,101 @@ namespace MindAttic.Chain.Tests
 
     public class GameSessionTests
     {
-        private readonly List<GameObject> _objects = new List<GameObject>();
-        private GameSession _session;
-        private AngelController _angel;
+        private TestRig _rig;
+        private readonly List<GameEvent> _events = new List<GameEvent>();
 
         [SetUp]
         public void SetUp()
         {
-            _angel = Track(new GameObject("Angel")).AddComponent<AngelController>();
-            _session = Track(new GameObject("Session")).AddComponent<GameSession>();
-            _session.Angel = _angel;
-            _session.ContactRadius = 0.35f;
+            _rig = new TestRig();
+            _rig.Session.EventRaised += _events.Add;
         }
 
         [TearDown]
         public void TearDown()
         {
-            foreach (var go in _objects)
-            {
-                if (go != null)
-                {
-                    Object.DestroyImmediate(go);
-                }
-            }
-
-            _objects.Clear();
+            _rig.Dispose();
+            _events.Clear();
         }
 
-        private GameObject Track(GameObject go)
-        {
-            _objects.Add(go);
-            return go;
-        }
+        private GameSession Session => _rig.Session;
 
-        private Enemy SpawnEnemy(Vector2 position)
+        [Test]
+        public void Join_SeatsTheAngel_WhichDrawsWhereTheWorldFliesIt()
         {
-            var go = Track(new GameObject("Enemy"));
-            go.transform.position = position;
-            var body = go.AddComponent<Rigidbody2D>();
-            body.bodyType = RigidbodyType2D.Kinematic;
-            go.AddComponent<CircleCollider2D>().radius = 0.2f;
-            var enemy = go.AddComponent<Enemy>();
-            enemy.StartingHp = 1f;
-            enemy.FixedMass = 1f;
-            Physics2D.SyncTransforms();
-            return enemy;
+            Assert.AreSame(Session, _rig.Angel.Session);
+            Assert.AreEqual(new PlayerId(0), _rig.Angel.Seat);
+            Assert.IsNotNull(Session.World.FindPlayer(_rig.Angel.Seat));
+
+            Assert.IsTrue(_rig.Angel.SendInput(new Vector2(100f, -50f), 0f));
+
+            Assert.AreEqual(new Vec2(1f, -0.5f), _rig.Player.Flight.Position);
+            Assert.AreEqual(new Vector2(1f, -0.5f), (Vector2)_rig.Angel.transform.position);
+            Assert.Throws<System.ArgumentException>(() => Session.Join(_rig.Angel), "a seat is taken once");
         }
 
         [Test]
-        public void EnemyTouchingAngel_CostsHp_ThroughHurtDelay()
+        public void EnemyTouchingTheAngel_CostsHp_ThroughTheHurtDelay()
         {
-            SpawnEnemy(new Vector2(0.3f, 0f));
+            _rig.SpawnEnemy(new Vector2(-0.5f, 0f));
 
-            Assert.IsTrue(_session.CheckContact(1f));
-            Assert.IsFalse(_session.CheckContact(1.1f));
-            Assert.IsTrue(_session.CheckContact(1.3f));
-            Assert.AreEqual(28, _session.State.Hp);
-        }
+            _rig.Step(0.1f);
+            Assert.AreEqual(29, Session.State.Hp);
+            _rig.Step(0.1f);
+            _rig.Step(0.1f);
+            Assert.AreEqual(29, Session.State.Hp);
+            _rig.Step(0.1f);
+            Assert.AreEqual(28, Session.State.Hp);
 
-        [Test]
-        public void FarEnemy_DoesNotHurt()
-        {
-            SpawnEnemy(new Vector2(3f, 0f));
-            Assert.IsFalse(_session.CheckContact(1f));
-            Assert.AreEqual(30, _session.State.Hp);
-        }
-
-        [Test]
-        public void GrabbedEnemy_DoesNotHurt()
-        {
-            var enemy = SpawnEnemy(new Vector2(0.3f, 0f));
-            enemy.OnGrappled();
-            Assert.AreEqual(EnemyState.Grabbed, enemy.State);
-
-            Assert.IsFalse(_session.CheckContact(1f));
+            var hurt = _events.FindAll(e => e is AngelHurt);
+            Assert.AreEqual(2, hurt.Count);
+            Assert.AreEqual(_rig.Id, ((AngelHurt)hurt[0]).Player);
         }
 
         [Test]
         public void MaceHit_IsScored()
         {
-            var enemy = SpawnEnemy(new Vector2(5f, 5f));
-            _session.RegisterHit(enemy, 0.4f);
-            Assert.AreEqual(400, _session.State.Score);
+            _rig.Swing();
+            _rig.SpawnEnemy(_rig.Player.MacePosition.ToUnity());
+            _rig.Step();
+
+            var hit = _events.Find(e => e is EnemyHit) as EnemyHit;
+            Assert.IsNotNull(hit);
+            Assert.Greater(hit.Points, 0);
+            Assert.AreEqual(hit.Points, Session.State.Score);
         }
 
         [Test]
-        public void Restart_OutsidePlayMode_ResetsInPlace()
+        public void PauseKey_PausesThroughACommand_AndFreezesTheWorld()
         {
-            _session.State.AddHitScore(2f);
-            _session.SetPaused(true);
-            var restarted = 0;
-            _session.Restarted += () => restarted++;
+            _rig.Angel.SendInput(Vector2.zero, 0f, pausePressed: true);
+            Assert.IsTrue(Session.State.IsPaused);
+            var paused = _events.Find(e => e is PauseChanged) as PauseChanged;
+            Assert.IsNotNull(paused);
+            Assert.AreEqual(_rig.Id, paused.Player);
 
-            _session.Restart();
+            var time = Session.World.Time;
+            Assert.IsFalse(_rig.Angel.SendInput(new Vector2(100f, 0f), 0.1f), "the angel does not fly while paused");
+            _rig.Step();
+            Assert.AreEqual(time, Session.World.Time);
 
-            Assert.AreEqual(0, _session.State.Score);
-            Assert.IsTrue(_session.State.IsPlaying);
-            Assert.AreEqual(1, restarted);
+            _rig.Angel.SendInput(Vector2.zero, 0f, pausePressed: true);
+            Assert.IsFalse(Session.State.IsPaused);
+        }
+
+        [Test]
+        public void Restart_ResetsInPlace()
+        {
+            Session.State.AddHitScore(2f);
+            _rig.MoveAngelTo(new Vector2(2f, 2f));
+            Session.Submit(new Pause(_rig.Id, true));
+
+            Session.Restart();
+
+            Assert.AreEqual(0, Session.State.Score);
+            Assert.IsTrue(Session.State.IsPlaying);
+            Assert.AreEqual(Vector2.zero, _rig.Player.Flight.Position.ToUnity());
+            Assert.IsTrue(_events.Exists(e => e is WorldReset));
         }
 
         [Test]
@@ -310,7 +305,7 @@ namespace MindAttic.Chain.Tests
             }
 
             Assert.AreEqual(50, frames, "255 down by 5 while above 6, then the finished frame");
-            Assert.IsTrue(state.IsGameOver, "the fade only reports done; the session resets");
+            Assert.IsTrue(state.IsGameOver, "the fade only reports done; the world resets");
             Assert.AreEqual(GameState.FadeFloor - 1, state.Ambient);
             state.Reset();
             Assert.IsFalse(state.IsGameOver);
@@ -322,37 +317,35 @@ namespace MindAttic.Chain.Tests
         [Test]
         public void Session_GameOver_RestartsWithoutAClick()
         {
-            var restarted = 0;
-            _session.Restarted += () => restarted++;
-            for (var i = 0; i < 31; i++) { _session.State.TryHurt(i); }
-            Assert.IsTrue(_session.State.IsGameOver);
+            Session.State.Config.HurtDelay = 0f;
+            _rig.SpawnEnemy(new Vector2(-0.5f, 0f));
+            for (var i = 0; i < 60 && !Session.State.IsGameOver; i++) { _rig.Step(0.1f); }
+            Assert.IsTrue(Session.State.IsGameOver);
+            Assert.IsTrue(_events.Exists(e => e is GameOver));
 
-            for (var i = 0; i < 60 && restarted == 0; i++) { _session.StepGameOver(); }
+            for (var i = 0; i < 60 && Session.State.IsGameOver; i++) { _rig.Step(); }
 
-            Assert.AreEqual(1, restarted);
-            Assert.IsTrue(_session.State.IsPlaying);
+            Assert.IsTrue(_events.Exists(e => e is WorldReset));
+            Assert.IsTrue(Session.State.IsPlaying);
+            Assert.AreEqual(Session.State.MaxHp, Session.State.Hp);
         }
 
         [Test]
         public void Hud_ShowsGrappledEnemyHp_OnlyWhileHeld()
         {
-            var chainGo = Track(new GameObject("Chain"));
-            var chain = chainGo.AddComponent<ChainController>();
-            chain.Rebuild();
-            var grapple = chainGo.AddComponent<GrappleController>();
-            grapple.Chain = chain;
-            var hud = Track(new GameObject("Hud")).AddComponent<GameHud>();
-            hud.Session = _session;
-            hud.Grapple = grapple;
-
+            var hud = _rig.Track(new GameObject("Hud")).AddComponent<GameHud>();
+            hud.Session = Session;
+            hud.Grapple = _rig.Grapple;
             Assert.IsNull(hud.GrappledHp);
 
-            var enemy = SpawnEnemy(new Vector2(5f, 5f));
-            grapple.SetButtonHeld(true);
-            grapple.Step(); // arms; the enemy is far from the mace, so nothing is caught yet
+            _rig.SpawnEnemy(new Vector2(5f, 5f), hp: 1f);
+            _rig.Grapple.SetButtonHeld(true);
+            _rig.Step(); // arms; the enemy is far from the mace, so nothing is caught yet
             Assert.IsNull(hud.GrappledHp);
-            Assert.IsTrue(grapple.TryCatch(enemy));
-            Assert.AreEqual(1f, hud.GrappledHp.Value, 1e-5f);
+
+            _rig.SpawnEnemy(_rig.Player.MacePosition.ToUnity(), hp: 0.75f);
+            _rig.Step();
+            Assert.AreEqual(0.75f, hud.GrappledHp.Value, 1e-5f);
         }
     }
 }

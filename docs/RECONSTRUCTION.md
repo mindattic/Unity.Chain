@@ -100,10 +100,10 @@ but unreachable or does nothing; not ported, recorded here), **n/a** (DirectX pl
 | Start values | `loadEnemy`: HP 0.2, mass 1 + rand(0..1), random frame 0..6. `Reset`: HP 1.0, mass unchanged | n/a | UNI-T21 (note both) |
 | Seek | `d = (angel - offset - pos) * 0.006` (proportional, so it eases in) | `EnemyBrain` | ported |
 | Hurt | decays velocity by `resistSPD` 0.001 per axis, back to Seek when both are near zero | `EnemyBrain` | ported |
-| Grabbed | follows the mace link (+0.03, small random jitter), spins | `GrappleController` | ported |
+| Grabbed | follows the mace link (+0.03, small random jitter), spins | `Grapple` in `GameWorld` | ported |
 | Thrown | velocity = mace velocity, **no drag, no end state** (it leaves the arena) | thrown rules | ported, check in UNI-T45 |
 | Dead | HP <= 0: skipped entirely (vanishes) | dead state | ported |
-| Mace hit | alive, not Hurt, not Grabbed: velocity = mace velocity / mass, damage = abs(dX + dY/2), score += damage * 1000; a held enemy takes the same | `MaceHitDetector` (swept circle, speed-based damage) | deliberate deviation (UNI-T45) |
+| Mace hit | alive, not Hurt, not Grabbed: velocity = mace velocity / mass, damage = abs(dX + dY/2), score += damage * 1000; a held enemy takes the same | `GameWorld` mace step (swept circle, speed-based damage) | deliberate deviation (UNI-T45) |
 | Throw impact | thrown enemy knocks any overlapping enemy: v = thrown v / mass, Hurt | `EnemyBrain` | ported |
 | Flocking | overlapping live, not-grabbed pairs pushed apart by 0.0005 per axis, each pair visited twice a frame (so 0.001); range test commented out, `flockRange` unused | `EnemyBrain.FlockPush`, 0.06 u/s | ported, UNI-T23, UNI-T35 |
 | Animation | 7 frames (`Shadow\enemy1..7`), 0.1 s per frame | no art | partial, UNI-T19 |
@@ -228,7 +228,7 @@ Checked against `AGENTS.md` (the owner's rebuild standard) and the reference rep
 | Assembly definitions | Three asmdefs exist (Runtime, Editor, EditMode tests) plus PlayMode; the whole game, rules included, is one Runtime assembly with engine references. No Core. | UNI-T30 |
 | Engine-free Core | Absent. `ChainSimulation`, `AngelFlight`, `EnemyBrain`, `GameState` are mostly pure but sit in Runtime and use `UnityEngine` types | UNI-T30 |
 | Tests outside Unity | Done: `Tests/Core.Tests`, run by `run-core-tests.ps1` | UNI-T31 |
-| Commands and events | Controllers call each other and mutate state directly; no command/event layer, no player id | UNI-T32 |
+| Commands and events | Done: one `GameWorld` in Core, stepped only by `GameSession`; players send `GameCommand`s with a `PlayerId`, presentation plays `GameEvent`s (BIBLE §5.3) | UNI-T32 |
 | Data-driven content | Tuning is `[SerializeField]` constants on components; no data files, no validation | UNI-T33 |
 | Input System | Package installed and `activeInputHandler` is Input System only, but input is read by polling `Keyboard.current` and `Mouse.current`; no action asset, no gamepad | UNI-T34 |
 | URP | Package installed, `GraphicsSettings` points at a pipeline asset that is not in the repo (UNI-T18) | UNI-T18 |

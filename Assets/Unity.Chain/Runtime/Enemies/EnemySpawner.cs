@@ -1,49 +1,33 @@
 using System.Collections.Generic;
+using MindAttic.Chain.Core;
 using UnityEngine;
 
 namespace MindAttic.Chain
 {
     /// <summary>
-    /// Fills the arena with enemies (Enemy.vb <c>loadEnemy</c>: 14 enemies, <c>maxEnemy</c> 13, each at a
-    /// random position with a random frame and a random mass of 1-2, which <see cref="Enemy"/> rolls
-    /// itself). It spawns on start and, when a <see cref="GameSession"/> restarts in place
-    /// (Engine.vb <c>Reset</c>), clears what is left and spawns a fresh set. A scene reload recreates
-    /// the spawner, so that path spawns on start again.
+    /// Makes and removes the enemies' views as the world reports them. The world spawns the flock
+    /// (Enemy.vb <c>loadEnemy</c>: 14 enemies at random points with a random mass of 1-2, tuned on the
+    /// <see cref="GameSession"/>) on every reset; this spawner plays the events: an
+    /// <see cref="EnemySpawned"/> gets a new <see cref="Enemy"/> with a random frame, an
+    /// <see cref="EnemyKilled"/> plays its death, and an <see cref="EnemyRemoved"/> (a reset clearing
+    /// the old flock) destroys it.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class EnemySpawner : MonoBehaviour
     {
-        [Min(0)]
-        [SerializeField] private int count = 14;
-        [Tooltip("Where enemies appear. Falls back to the scene's LevelBounds.")]
-        [SerializeField] private LevelBounds level;
         [SerializeField] private GameSession session;
-        [Tooltip("Frames an enemy picks from at random. Optional: enemies with none keep their sprite.")]
+        [Tooltip("Frames an enemy picks from at random. Optional: enemies with none keep a plain disc.")]
         [SerializeField] private Sprite[] frames = new Sprite[0];
-        [Tooltip("Collider radius of a spawned enemy, world units.")]
-        [Min(0.01f)]
-        [SerializeField] private float colliderRadius = 0.3f;
 
-        private readonly List<Enemy> _spawned = new List<Enemy>();
-
-        public int Count
-        {
-            get => count;
-            set => count = Mathf.Max(0, value);
-        }
-
-        public LevelBounds Level
-        {
-            get => level;
-            set => level = value;
-        }
+        private readonly Dictionary<EnemyId, Enemy> _views = new Dictionary<EnemyId, Enemy>();
+        private readonly System.Random _random = new System.Random();
+        private GameSession _subscribed;
 
         public GameSession Session
         {
             get => session;
             set
             {
-                Unsubscribe();
                 session = value;
                 if (isActiveAndEnabled)
                 {
@@ -58,84 +42,79 @@ namespace MindAttic.Chain
             set => frames = value ?? new Sprite[0];
         }
 
-        /// <summary>Enemies spawned by the last <see cref="Spawn"/> that still exist.</summary>
+        /// <summary>Enemy views showing a live enemy.</summary>
         public int Alive
         {
             get
             {
-                _spawned.RemoveAll(e => e == null);
-                return _spawned.Count;
-            }
-        }
-
-        /// <summary>
-        /// Random points inside <paramref name="area"/>, <paramref name="count"/> of them (pure; tests drive it).
-        /// </summary>
-        public static Vector2[] RandomPositions(Rect area, int count, System.Random rng)
-        {
-            var points = new Vector2[Mathf.Max(0, count)];
-            for (var i = 0; i < points.Length; i++)
-            {
-                points[i] = new Vector2(
-                    area.xMin + (float)rng.NextDouble() * area.width,
-                    area.yMin + (float)rng.NextDouble() * area.height);
-            }
-
-            return points;
-        }
-
-        /// <summary>Spawns <see cref="Count"/> enemies, removing any from an earlier spawn first.</summary>
-        public void Spawn()
-        {
-            Clear();
-            var bounds = level != null ? level : (level = LevelBounds.Find());
-            var area = bounds != null ? bounds.Bounds : new Rect(-8f, -4.5f, 16f, 9f);
-            var rng = new System.Random();
-
-            foreach (var point in RandomPositions(area, count, rng))
-            {
-                _spawned.Add(CreateEnemy(point, rng));
-            }
-        }
-
-        /// <summary>Destroys the enemies this spawner made.</summary>
-        public void Clear()
-        {
-            foreach (var enemy in _spawned)
-            {
-                if (enemy != null)
+                var alive = 0;
+                foreach (var view in _views.Values)
                 {
-                    enemy.gameObject.SetActive(false);
-                    if (Application.isPlaying)
+                    if (view != null && view.IsAlive)
                     {
-                        Destroy(enemy.gameObject);
-                    }
-                    else
-                    {
-                        DestroyImmediate(enemy.gameObject);
+                        alive++;
                     }
                 }
-            }
 
-            _spawned.Clear();
+                return alive;
+            }
         }
 
-        private Enemy CreateEnemy(Vector2 position, System.Random rng)
-        {
-            var go = new GameObject("Enemy");
-            go.SetActive(false); // configure before Enemy.Awake runs
-            go.transform.SetParent(transform, false);
-            go.transform.position = new Vector3(position.x, position.y, 0f);
+        /// <summary>The view showing <paramref name="id"/>, or null.</summary>
+        public Enemy ViewOf(EnemyId id) => _views.TryGetValue(id, out var view) ? view : null;
 
-            var body = go.AddComponent<Rigidbody2D>();
-            body.bodyType = RigidbodyType2D.Kinematic;
-            body.gravityScale = 0f;
-            go.AddComponent<CircleCollider2D>().radius = colliderRadius;
+        /// <summary>Plays one world event. Hooked to <see cref="GameSession.EventRaised"/>; public so tests can drive it.</summary>
+        public void Play(GameEvent gameEvent)
+        {
+            switch (gameEvent)
+            {
+                case EnemySpawned spawned:
+                    Show(spawned.Enemy);
+                    break;
+
+                case EnemyKilled killed:
+                    if (_views.TryGetValue(killed.Enemy, out var dying))
+                    {
+                        _views.Remove(killed.Enemy);
+                        if (dying != null)
+                        {
+                            dying.PlayDeath();
+                        }
+                    }
+
+                    break;
+
+                case EnemyRemoved removed:
+                    if (_views.TryGetValue(removed.Enemy, out var gone))
+                    {
+                        _views.Remove(removed.Enemy);
+                        DestroyView(gone);
+                    }
+
+                    break;
+            }
+        }
+
+        private void Show(EnemyId id)
+        {
+            var entity = session != null ? session.World.FindEnemy(id) : null;
+            if (entity == null || _views.ContainsKey(id))
+            {
+                return;
+            }
+
+            _views[id] = CreateView(entity);
+        }
+
+        private Enemy CreateView(EnemyEntity entity)
+        {
+            var go = new GameObject($"Enemy {entity.Id.Value}");
+            go.transform.SetParent(transform, false);
 
             var renderer = go.AddComponent<SpriteRenderer>();
             if (frames != null && frames.Length > 0)
             {
-                renderer.sprite = frames[rng.Next(frames.Length)];
+                renderer.sprite = frames[_random.Next(frames.Length)];
             }
             else
             {
@@ -144,9 +123,27 @@ namespace MindAttic.Chain
                 renderer.color = new Color(0.85f, 0.2f, 0.2f);
             }
 
-            var enemy = go.AddComponent<Enemy>();
-            go.SetActive(true);
-            return enemy;
+            var view = go.AddComponent<Enemy>();
+            view.Bind(entity);
+            return view;
+        }
+
+        private static void DestroyView(Enemy view)
+        {
+            if (view == null)
+            {
+                return;
+            }
+
+            view.gameObject.SetActive(false);
+            if (Application.isPlaying)
+            {
+                Destroy(view.gameObject);
+            }
+            else
+            {
+                DestroyImmediate(view.gameObject);
+            }
         }
 
         private static Sprite _fallback;
@@ -176,20 +173,34 @@ namespace MindAttic.Chain
             return _fallback;
         }
 
+        /// <summary>Listens to the session, and shows any enemies already in its world.</summary>
         private void Subscribe()
         {
-            if (session != null)
+            if (_subscribed == session)
             {
-                session.Restarted -= Spawn;
-                session.Restarted += Spawn;
+                return;
+            }
+
+            Unsubscribe();
+            if (session == null)
+            {
+                return;
+            }
+
+            session.EventRaised += Play;
+            _subscribed = session;
+            foreach (var enemy in session.World.Enemies)
+            {
+                Show(enemy.Id);
             }
         }
 
         private void Unsubscribe()
         {
-            if (session != null)
+            if (_subscribed != null)
             {
-                session.Restarted -= Spawn;
+                _subscribed.EventRaised -= Play;
+                _subscribed = null;
             }
         }
 
@@ -204,7 +215,5 @@ namespace MindAttic.Chain
         private void OnEnable() => Subscribe();
 
         private void OnDisable() => Unsubscribe();
-
-        private void Start() => Spawn();
     }
 }

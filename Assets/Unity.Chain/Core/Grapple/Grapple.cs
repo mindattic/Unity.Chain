@@ -1,6 +1,4 @@
-using UnityEngine;
-
-namespace MindAttic.Chain
+namespace MindAttic.Chain.Core
 {
     public enum GrappleState
     {
@@ -15,11 +13,10 @@ namespace MindAttic.Chain
     }
 
     /// <summary>
-    /// The grapple/throw rule from Chain.vb, free of Unity input and physics so it can be tested:
-    /// holding the action button arms the grapple; while armed the mace catches one target; on
-    /// release a caught target is thrown with the mace's current velocity (times
-    /// <see cref="ThrowMultiplier"/>) as its launch velocity. Releasing with nothing caught just
-    /// disarms.
+    /// The grapple/throw rule from Chain.vb: holding the action button arms the grapple; while
+    /// armed the mace catches one target; on release a caught target is thrown with the mace's
+    /// current velocity (times <see cref="ThrowMultiplier"/>) as its launch velocity. Releasing
+    /// with nothing caught just disarms. Each player's grapple lives in the <see cref="GameWorld"/>.
     /// </summary>
     public sealed class Grapple
     {
@@ -40,7 +37,7 @@ namespace MindAttic.Chain
         /// Feeds the button state for this step. Pressing arms; releasing throws whatever is held
         /// using <paramref name="maceVelocity"/> and returns the thrown target (null if none).
         /// </summary>
-        public IGrappleTarget SetHeld(bool held, Vector2 maceVelocity)
+        public IGrappleTarget SetHeld(bool held, Vec2 maceVelocity)
         {
             if (held)
             {
@@ -79,7 +76,7 @@ namespace MindAttic.Chain
         }
 
         /// <summary>Drags a held target along with the mace. No-op unless holding.</summary>
-        public void Carry(Vector2 macePosition)
+        public void Carry(Vec2 macePosition)
         {
             if (State == GrappleState.Holding)
             {
@@ -87,7 +84,7 @@ namespace MindAttic.Chain
             }
         }
 
-        /// <summary>Lets go of a held target without throwing it (it was destroyed, say). Stays armed.</summary>
+        /// <summary>Lets go of a held target without throwing it (it died, say). Stays armed.</summary>
         public void Drop()
         {
             if (State != GrappleState.Holding)

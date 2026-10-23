@@ -118,14 +118,45 @@ Unity.
 
 | Assembly | Folder | Contents | Status |
 |---|---|---|---|
-| `Unity.Chain.Runtime` | `Assets/Unity.Chain/Runtime/` | The engine adapters: `Chain/` (ChainController, MaceController), `Player/` (AngelController), `Enemies/` (Enemy, EnemySpawner, MaceHitDetector), `Grapple/` (Grapple and its target interface are still engine-typed rules), `Items/`, `Level/` (LevelBounds, CameraRig), `Lighting/` (SceneLight), `UI/` (GameSession, GameHud, HudText), `Audio/` (ChainAudio), `Adapters/CoreConvert` (the one place Vector2/Rect become Core's Vec2/Rect2) | References Core one way; holds no rule that Core could own |
+| `Unity.Chain.Runtime` | `Assets/Unity.Chain/Runtime/` | Presentation and input: `UI/GameSession` (the one authority: holds and steps the `GameWorld`, seats players, takes their commands, raises the world's events), `Player/AngelController` (mouse and pause keys as commands; draws the angel), `Chain/` (ChainController draws the chain, MaceController sends the `[`/`]` commands and draws the mace), `Grapple/GrappleController` (the grapple button as commands), `Enemies/` (Enemy views, EnemySpawner making them from events), `Items/` (HeartPickup), `Lighting/` (SceneLight), `Level/` (LevelBounds, CameraRig), `UI/` (GameHud, HudText), `Audio/` (ChainAudio plays the world's events), `Adapters/CoreConvert` (the one place Vector2/Rect become Core's Vec2/Rect2) | References Core one way; holds no rule that Core could own, and changes the world only by commands |
 | `Unity.Chain.Editor` | `Assets/Unity.Chain/Editor/` | `SceneBuilder` (generates `Main.unity` and the build settings), `PlayerBuilder` (Windows player) | in place |
 | `Unity.Chain.EditMode.Tests` | `Assets/Unity.Chain/Tests/EditMode/` | NUnit tests of the rules and components | in place; the component tests stay here, the pure rule tests now live in `Tests/Core.Tests` (`dotnet test`) |
 | `Unity.Chain.PlayMode.Tests` | `Assets/Unity.Chain/Tests/PlayMode/` | `MainSceneSmokeTests` | in place |
-| `Unity.Chain.Core` | `Assets/Unity.Chain/Core/` | `noEngineReferences`: `Maths/` (Vec2, Rect2, Calc), `Chain/` (ChainSimulation), `Player/` (AngelFlight), `Enemies/` (EnemyBrain), `Game/` (GameState), `Level/` (CameraFraming, PlayArea), `Lighting/` (LightingState), `Audio/` (SwingSoundTrigger, ClipPicker) | Its rules are tested by `Tests/Core.Tests` with `dotnet test`; the Grapple rule moves in later |
+| `Unity.Chain.Core` | `Assets/Unity.Chain/Core/` | `noEngineReferences`: `World/` (GameWorld, GameCommand, GameEvent, PlayerId, EnemyId, PlayerEntity, EnemyEntity, Sweep), `Maths/` (Vec2, Rect2, Calc), `Chain/` (ChainSimulation, ChainFollow), `Player/` (AngelFlight), `Enemies/` (EnemyBrain), `Grapple/` (Grapple, IGrappleTarget, GrappleState), `Items/` (HeartFloat), `Game/` (GameState), `Level/` (CameraFraming, PlayArea), `Lighting/` (LightingState), `Audio/` (SwingSoundTrigger, ClipPicker) | Its rules are tested by `Tests/Core.Tests` with `dotnet test` |
 
-The command/event layer is planned in UNI-T32, the Input System action asset in UNI-T34, URP assets in UNI-T18,
-Unity.Shared settings in UNI-T36, the UI Toolkit HUD in UNI-T37 and the multiplayer seam in UNI-T26.
+The Input System action asset is planned in UNI-T34, URP assets in UNI-T18, Unity.Shared settings in UNI-T36, the
+UI Toolkit HUD in UNI-T37 and the multiplayer kit in UNI-T26.
+
+### 5.3 Commands, events and the one authority
+
+The whole game is one `GameWorld` (Core): the session rules (`GameState`), every seated player (`PlayerEntity`:
+their `AngelFlight`, `ChainSimulation`, mace link and `Grapple`) and every enemy (`EnemyEntity`: an id, its
+`EnemyBrain`, its position and radius). One authority holds it, `GameSession`, and nothing else changes it:
+
+- **Commands in.** A player's input becomes a `GameCommand` carrying that player's `PlayerId`: `SteerAngel` (mouse
+  delta, applied on arrival so steering is as smooth as the display), `ArmGrapple`, `ReleaseGrapple`,
+  `ChangeChainLength`, `ToggleFollow` (the F key), `Pause`, `TogglePause`, `ResetGame`. `GameSession.Submit` hands it to `GameWorld.Submit`.
+  Commands are plain immutable data, so a networked player's NetEntity can carry them to the authority unchanged.
+- **One step.** `GameSession.FixedUpdate` is the only caller of `GameWorld.Step`: chains swing from their angels'
+  hands, enemies seek the nearest angel, flock and (thrown) knock each other, grapples arm, catch, carry and throw,
+  each mace hits what its swept circle touched, enemies touching an angel cost HP, and a finished game fades and
+  resets itself. Contacts are circle tests in Core (`Sweep`, `EnemyEntity.Overlaps`), not Physics2D queries, so all
+  of it runs and is tested under `dotnet test`. The authority's own sensor, the heart check, calls
+  `GameWorld.CollectHeart`.
+- **Events out.** Everything that happens is a `GameEvent`, in order: `EnemySpawned`, `EnemyRemoved`, `EnemyHit`,
+  `EnemyKnocked`, `EnemyKilled`, `GrappleChanged`, `Grabbed`, `Thrown`, `ChainLengthChanged`, `FollowChanged`, `AngelHurt`,
+  `AngelHealed`, `PauseChanged`, `GameOver`, `WorldReset`. `GameSession.EventRaised` passes them on after each
+  command and step; `EnemySpawner` makes and kills enemy views from them, `ChainAudio` plays its player's hits,
+  catches and throws, and the session freezes time on `PauseChanged`.
+- **No current player.** Each seat is a `PlayerId`; `GameSession.Join` seats an angel and its chain, and each of
+  those components holds its own id. Nothing looks up "the" player. Two seats already play side by side in the
+  world (each with its own angel, chain and grapple; a hit is credited to the mace that landed it).
+- **Tuning** still lives on the components (`[SerializeField]`) and goes to the world when a player is seated or a
+  value changes in the inspector; UNI-T33 moves it to data files.
+
+Where the world departs from the earlier component wiring: pausing now freezes the angel too (Engine.vb renders and
+moves the angel only while not paused; the port had kept flying it), and a finished game resets the world in place
+instead of reloading the scene (V15).
 
 ## 6. Data files {#UNI-§6}
 
@@ -159,7 +190,7 @@ Status: **fixed** (on main), **planned** (the ticket that fixes it).
 
 | # | Defect in the original | Where | What the rebuild does | Status |
 |---|---|---|---|---|
-| D1 | Enemies spawn only at the four corners: `getRndNum(-1, 1)` returns the integers -1, 0, 1 and 0 is rejected, so every "random" spawn is (+/-1, +/-1) and all 14 start stacked | `Enemy.vb` `loadEnemy`, `Root.getRndNum` | spawns each enemy at a real random point in the arena (`EnemySpawner.RandomPositions`) | fixed (UNI-T21 settles the reset path) |
+| D1 | Enemies spawn only at the four corners: `getRndNum(-1, 1)` returns the integers -1, 0, 1 and 0 is rejected, so every "random" spawn is (+/-1, +/-1) and all 14 start stacked | `Enemy.vb` `loadEnemy`, `Root.getRndNum` | spawns each enemy at a real random point in the arena (`GameWorld.RandomPositions`) | fixed (UNI-T21 settles the reset path) |
 | D2 | The game is silent: `bSound` and `bMusic` default to `False` and `playSFX` is never called, though every clip is loaded | `Sound.vb` | sound and music on by default; swing, hit and death play their clip sets (`ChainAudio`), music loops (`MusicPlayer`) | fixed in code; clips planned, UNI-T20 |
 | D3 | No HUD text is drawn: `Root.Write` has its `DrawText` commented out, so HP, score, grappled HP, readouts, clock and FPS never appear (earlier backups drew them) | `Root.vb` `Write` | draws the HUD (`GameHud`) | fixed (IMGUI); layout UNI-T50, UI Toolkit UNI-T37 |
 | D4 | The magnet mace can never be reached: `theMaceMode.Magnet` is declared and `magnet.PNG` loaded, but nothing ever selects it | `Chain.vb` | a selectable magnet mace skin | planned, UNI-T43 |
@@ -169,7 +200,7 @@ Status: **fixed** (on main), **planned** (the ticket that fixes it).
 | D8 | The mace drifts: `link(Mace).X/Y += maceOffset` is added every frame, cumulatively, instead of once as a sprite offset; a stray `link(1).Y -= 0.0004` "fix" does the same | `Chain.vb` `renderChain` | the offset is render-only; no fudge term | fixed |
 | D9 | Speed depends on the machine: every number is per frame with no time step and no frame cap | `Form1` loop, all modules | a fixed step; per-frame figures converted at 60 fps | fixed (UNI-T45 matches the felt speed) |
 | D10 | Off-by-one HP: the HUD draws `HP + 1` bars and the game ends below zero, so 30 HP takes 31 hits | `Engine.vb` `renderDisplay`, `GameOver` | exactly HP bars; game over at 0 (`GameState`) | fixed |
-| D11 | Some swings do no damage: damage is `abs(dX + dY/2)`, which cancels to zero on certain diagonals | `Engine.vb` `checkMaceImpact` | damage from mace speed (`MaceHitDetector`) | fixed (UNI-T45 matches the scale) |
+| D11 | Some swings do no damage: damage is `abs(dX + dY/2)`, which cancels to zero on certain diagonals | `Engine.vb` `checkMaceImpact` | damage from mace speed (`GameWorld`, `EnemyBrain.Hit`) | fixed (UNI-T45 matches the scale) |
 | D12 | Fast swings pass through enemies: one AABB at the mace link per frame | `Engine.vb` `checkMaceImpact` | swept circle from the last position to this one | fixed |
 | D13 | Game speed does nothing: Minus/Equals change `gameSpeed` and the HUD shows it, but it is never applied | `Engine.vb`, `Form1.OnKeyDown` | game speed scales the step | planned, UNI-T52 |
 | D14 | The joystick binds nothing: axes and buttons are read and ignored | `Input.vb` | a gamepad drives the same actions as the mouse | planned, UNI-T34 |
@@ -194,7 +225,7 @@ Working behaviour of the original the rebuild does differently, and why. Status:
 | V2 | Units are the camera's NDC-like plane (half-height 0.414) | world units; every figure converted, mostly as fractions of the play area | Unity physics, sprites and cameras work in world units | kept |
 | V3 | All 25 links simulate; only 0..`Mace` are drawn | only 0..`Mace` simulate; the rest park on the mace and pay out from it when lengthened | with both-neighbour pull (D7) an undrawn tail would drag the mace | kept, follows D7 |
 | V4 | Chain wall bounce commented out | links bounce off `LevelBounds` at 0.5 (`keepInLevel` turns it off) | *Elastic Trail* bounced; keeps the mace on screen | to settle, UNI-T45 |
-| V5 | Angel contact rectangle X..X+0.06 by Y+0.03..Y+0.15 | a Physics2D circle | fits the sprite at any scale and with Physics2D queries | kept |
+| V5 | Angel contact rectangle X..X+0.06 by Y+0.03..Y+0.15 | a circle (contact radius plus the enemy's radius), tested in Core | fits the sprite at any scale; runs outside Unity | kept |
 | V6 | Flocking pushes 0.0005 per axis per frame, and each overlapping pair is visited twice a frame (0.001 per neighbour) | 0.06 world units per second per neighbour (0.0005 x 2 x 60 fps, D9) | the original's figure at the fixed step; the commented-out `flockRange` test means any overlap pushes, as before | kept, UNI-T35 |
 | V7 | The heart is gone after a pickup until `Reset` | the same: consumed on touch, drawn again by `Reset` (the first guess had it respawn at the top) | matches `Item.vb` exactly (UNI-T44) in the original's own figures, taken 1:1 into world units as flocking is (V6): start (0, 0.4), wrap -0.5 to 0.5, so in the 16 x 9 arena it drifts in a one-unit band at the centre, whereas in the original -0.5 to 0.5 was the whole screen height. Whether the heart should instead be scaled to the arena is the owner's call | to settle: space mapping, owner |
 | V8 | Pause is the Pause key; Escape quits | P or Escape pause | interim keys before the input pass | to settle, UNI-T54 |
@@ -204,7 +235,7 @@ Working behaviour of the original the rebuild does differently, and why. Status:
 | V12 | 640x480 borderless form, options in the registry | resizable window (1600x900 today), options in a Unity.Shared profile | modern displays; the shared settings standard | to settle, UNI-T38, UNI-T36, UNI-T59 |
 | V13 | Input by exclusive DirectInput mouse delta and key polling | Input System (polling today) | the modern Unity input stack | kept; action asset UNI-T34 |
 | V14 | F1-F3 switch D3D wireframe, textures and culling | the nearest URP equivalents | the D3D render states do not exist in URP | planned, UNI-T56 |
-| V15 | Game over then `Reset` in place | the same fade, then a scene reload or an in-place reset | both end in the original's state | kept |
+| V15 | Game over then `Reset` in place | the same fade, then the world resets itself in place (`GameWorld.Reset`: angels home, chains on the hand, a fresh flock) | matches | matches (UNI-T32) |
 | V16 | The ambient and tint light D3D materials | a URP 2D global light carries ambient x tint (`SceneLight`); until the 2D pipeline is committed the light renders nothing, so the HUD draws the game-over fade as an overlay, and stops once the light shows it | there is no D3D material lighting in URP | temporary, UNI-T18 |
 
 ### Keeping these tables current

@@ -1,198 +1,161 @@
-using MindAttic.Chain;
+using System.Collections.Generic;
+using MindAttic.Chain.Core;
 using NUnit.Framework;
 using UnityEngine;
 
 namespace MindAttic.Chain.Tests
 {
+    /// <summary>The chain-length keys as commands, the mace's tuning, and its visual.</summary>
     public class MaceControllerTests
     {
-        private GameObject _root;
-        private Transform _socket;
-        private ChainController _chain;
+        private TestRig _rig;
         private MaceController _mace;
+        private readonly List<GameEvent> _events = new List<GameEvent>();
 
         [SetUp]
         public void SetUp()
         {
-            _root = new GameObject("Chain");
-            _socket = new GameObject("HandSocket").transform;
-            _socket.SetParent(_root.transform, false);
-            _socket.position = new Vector3(1f, 2f, 0f);
-
-            _chain = _root.AddComponent<ChainController>();
-            _chain.HandSocket = _socket;
-            _chain.Rebuild();
-
-            // Awake does not run for AddComponent in edit mode, so push the mace explicitly.
-            _mace = _root.AddComponent<MaceController>();
-            _mace.ApplyToChain();
+            _rig = new TestRig();
+            _mace = _rig.Mace;
+            _rig.Session.EventRaised += _events.Add;
         }
 
         [TearDown]
         public void TearDown()
         {
-            Object.DestroyImmediate(_root);
+            _rig.Dispose();
+            _events.Clear();
         }
 
         [Test]
         public void Default_MaceIsLinkSixAndEndsTheChain()
         {
             Assert.AreEqual(6, _mace.MaceIndex);
-            Assert.AreEqual(7, _chain.ActiveLinkCount);
-
-            _chain.RenderChain(1f);
-            Assert.AreEqual(7, _root.GetComponent<LineRenderer>().positionCount);
+            Assert.AreEqual(7, _rig.Chain.ActiveLinkCount);
+            _rig.Chain.RenderChain(1f);
+            Assert.AreEqual(7, _rig.Chain.GetComponent<LineRenderer>().positionCount);
         }
 
         [Test]
-        public void ShortenAndLengthen_MoveTheMaceOneLinkAndResizeTheChain()
+        public void ShortenAndLengthen_SendCommands_ThatMoveTheMaceAndResizeTheChain()
         {
             Assert.IsTrue(_mace.Shorten());
             Assert.AreEqual(5, _mace.MaceIndex);
-            Assert.AreEqual(6, _chain.ActiveLinkCount);
+            Assert.AreEqual(6, _rig.Chain.ActiveLinkCount);
+            var changed = _events.Find(e => e is ChainLengthChanged) as ChainLengthChanged;
+            Assert.IsNotNull(changed);
+            Assert.AreEqual(_rig.Id, changed.Player);
 
             Assert.IsTrue(_mace.Lengthen());
             Assert.IsTrue(_mace.Lengthen());
             Assert.AreEqual(7, _mace.MaceIndex);
-            Assert.AreEqual(8, _chain.ActiveLinkCount);
+            Assert.AreEqual(8, _rig.Chain.ActiveLinkCount);
         }
 
         [Test]
-        public void Shorten_StopsAtOneLink()
+        public void ChainLength_StopsAtOneAndTwelveLinks()
         {
-            _mace.MaceIndex = 1;
-
-            Assert.IsFalse(_mace.Shorten());
+            while (_mace.Shorten()) { }
             Assert.AreEqual(1, _mace.MaceIndex);
-            Assert.AreEqual(2, _chain.ActiveLinkCount);
-        }
+            Assert.AreEqual(2, _rig.Chain.ActiveLinkCount);
 
-        [Test]
-        public void Lengthen_StopsAtTwelveLinks()
-        {
-            _mace.MaceIndex = 12;
-
-            Assert.IsFalse(_mace.Lengthen());
+            while (_mace.Lengthen()) { }
             Assert.AreEqual(12, _mace.MaceIndex);
         }
 
         [Test]
         public void MaxIndex_IsCappedByAShortChain()
         {
-            _chain.SetLinkCount(5);
+            _rig.Chain.SetLinkCount(5);
 
             Assert.AreEqual(4, _mace.MaxIndex);
             Assert.AreEqual(4, _mace.MaceIndex);
         }
 
         [Test]
-        public void MaceMass_FollowsTheMaceWhenItMoves()
+        public void MaceTuning_GoesToTheWorld()
         {
             _mace.MaceMass = 3f;
-            Assert.AreEqual(3f, _chain.Simulation.GetMass(6));
-            Assert.AreEqual(1f, _chain.Simulation.GetMass(5));
+            _mace.HitRadius = 0.4f;
+            _mace.DamagePerSpeed = 0.2f;
+
+            Assert.AreEqual(3f, _rig.Player.Chain.GetMass(6));
+            Assert.AreEqual(1f, _rig.Player.Chain.GetMass(5));
+            Assert.AreEqual(0.4f, _rig.Player.Setup.HitRadius);
+            Assert.AreEqual(0.2f, _rig.Player.Setup.DamagePerSpeed);
 
             _mace.Shorten();
-            Assert.AreEqual(3f, _chain.Simulation.GetMass(5));
-            Assert.AreEqual(1f, _chain.Simulation.GetMass(6));
+            Assert.AreEqual(3f, _rig.Player.Chain.GetMass(5));
         }
 
         [Test]
-        public void ShortenedChain_StillHangsAndSwingsFromTheHand()
+        public void RenderMace_PlacesAndSizesTheVisualOnTheDrawnMaceLink_WithoutMovingIt()
         {
-            _mace.MaceIndex = 3;
-            for (var i = 0; i < 50; i++)
-            {
-                _chain.Simulate(1f / 50f);
-            }
-
-            Assert.Less(_mace.MacePosition.y, _socket.position.y, "the mace should hang below the hand");
-            Assert.AreEqual(_mace.MacePosition, _chain.GetLinkPosition(_chain.LinkCount - 1),
-                "the hidden tail rides on the mace");
-            Assert.AreEqual(_chain.Simulation.GetVelocity(3).ToUnity(), _mace.MaceVelocity);
-        }
-
-        [Test]
-        public void RenderMace_PlacesAndSizesTheVisualOnTheDrawnMaceLink()
-        {
-            var visual = new GameObject("Mace").transform;
-            visual.SetParent(_root.transform, false);
+            var visual = _rig.Track(new GameObject("Mace")).transform;
             _mace.MaceVisual = visual;
             _mace.SpriteOffset = new Vector2(0.1f, -0.2f);
             _mace.MaceScale = 3.5f;
-            _root.GetComponent<LineRenderer>().widthMultiplier = 0.1f;
+            _rig.Chain.GetComponent<LineRenderer>().widthMultiplier = 0.1f;
+            _rig.MoveAngelTo(new Vector2(4f, 2f));
+            _rig.Step();
+            _rig.Chain.RenderChain(1f);
+            var before = _mace.MacePosition;
 
-            _socket.position = new Vector3(4f, 2f, 0f);
-            _chain.Simulate(1f / 50f);
-            _chain.RenderChain(1f);
+            _mace.RenderMace();
             _mace.RenderMace();
 
-            var expected = _chain.GetRenderedLinkPosition(6) + new Vector3(0.1f, -0.2f, 0f);
+            var expected = _rig.Chain.GetRenderedLinkPosition(6) + new Vector3(0.1f, -0.2f, 0f);
             Assert.AreEqual(expected, visual.position);
             Assert.AreEqual(0.35f, visual.localScale.x, 1e-5f);
-        }
-
-        [Test]
-        public void Grapple_FollowsTheMaceWhenTheChainIsShortened()
-        {
-            var grapple = _root.AddComponent<GrappleController>();
-            grapple.Chain = _chain;
-            grapple.MaceIndex = 10;
-
-            Assert.AreEqual(6, grapple.MaceIndex, "the chain's MaceController wins over the grapple's own index");
-
-            _mace.Shorten();
-            Assert.AreEqual(5, grapple.MaceIndex);
-        }
-
-        [Test]
-        public void RenderMace_DoesNotMoveTheSimulatedLink()
-        {
-            var visual = new GameObject("Mace").transform;
-            visual.SetParent(_root.transform, false);
-            _mace.MaceVisual = visual;
-            _mace.SpriteOffset = new Vector2(0.5f, 0.5f);
-
-            var before = _mace.MacePosition;
-            _chain.RenderChain(1f);
-            _mace.RenderMace();
-            _mace.RenderMace();
-
             Assert.AreEqual(before, _mace.MacePosition, "the sprite offset is render-only");
         }
 
         [Test]
         public void NotFollowing_TheMaceIsDrawnAsALink_WithoutItsOffset_UntilFollowIsBackOn()
         {
-            var visual = new GameObject("Mace").transform;
-            visual.SetParent(_root.transform, false);
+            var visual = _rig.Track(new GameObject("Mace")).transform;
             _mace.MaceVisual = visual;
             _mace.SpriteOffset = new Vector2(0.1f, -0.2f);
-            _root.GetComponent<LineRenderer>().widthMultiplier = 0.1f;
+            _rig.Chain.GetComponent<LineRenderer>().widthMultiplier = 0.1f;
 
-            var events = 0;
-            _chain.FollowChanged += e => events++;
-            Assert.IsFalse(_chain.ToggleFollow());
-            Assert.IsFalse(_chain.Simulation.IsFollowing);
-            Assert.AreEqual(1, events);
+            Assert.IsFalse(_rig.Chain.ToggleFollow());
+            Assert.IsFalse(_rig.Player.IsFollowing);
+            var changed = _events.Find(e => e is FollowChanged) as FollowChanged;
+            Assert.IsNotNull(changed);
+            Assert.AreEqual(_rig.Id, changed.Player);
+            Assert.IsFalse(changed.IsFollowing);
 
-            _chain.Simulate(1f / 50f);
-            _chain.RenderChain(1f);
+            _rig.Step();
+            _rig.Chain.RenderChain(1f);
             _mace.RenderMace();
-            Assert.AreEqual(_chain.GetRenderedLinkPosition(6), visual.position);
+            Assert.AreEqual(_rig.Chain.GetRenderedLinkPosition(6), visual.position);
             Assert.AreEqual(0.1f, visual.localScale.x, 1e-5f);
 
-            Assert.IsTrue(_chain.ToggleFollow());
+            Assert.IsTrue(_rig.Chain.ToggleFollow());
             _mace.RenderMace();
             Assert.AreEqual(0.35f, visual.localScale.x, 1e-5f);
         }
 
         [Test]
-        public void IsFollowing_SurvivesAChainRebuild()
+        public void IsFollowing_SurvivesAChainRebuildAndAReset()
         {
-            _chain.IsFollowing = false;
-            _chain.Rebuild();
-            Assert.IsFalse(_chain.Simulation.IsFollowing);
+            _rig.Chain.ToggleFollow();
+            _rig.Chain.SetLinkCount(10);
+            Assert.IsFalse(_rig.Chain.Simulation.IsFollowing);
+
+            _rig.Session.Restart();
+            Assert.IsFalse(_rig.Chain.Simulation.IsFollowing, "Root.vb's Reset leaves followMouse alone");
+        }
+
+        [Test]
+        public void UnseatedMace_SendsNothing()
+        {
+            var go = _rig.Track(new GameObject("Loose"));
+            go.AddComponent<ChainController>();
+            var loose = go.AddComponent<MaceController>();
+
+            Assert.IsFalse(loose.Shorten());
+            Assert.AreEqual(6, loose.MaceIndex);
         }
     }
 }

@@ -1,141 +1,107 @@
-using MindAttic.Chain;
+using MindAttic.Chain.Core;
 using NUnit.Framework;
 using UnityEngine;
 
 namespace MindAttic.Chain.Tests
 {
+    /// <summary>The chain view: it draws the world's chain for its player and hands its tuning to the world. The spring rule is tested in Tests/Core.Tests.</summary>
     public class ChainControllerTests
     {
-        private GameObject _root;
-        private Transform _socket;
-        private ChainController _controller;
+        private TestRig _rig;
+        private ChainController _chain;
+        private LineRenderer _line;
 
         [SetUp]
         public void SetUp()
         {
-            _root = new GameObject("Chain");
-            _socket = new GameObject("HandSocket").transform;
-            _socket.SetParent(_root.transform, false);
-            _socket.position = new Vector3(1f, 2f, 0f);
-
-            _controller = _root.AddComponent<ChainController>();
-            _controller.HandSocket = _socket;
-            _controller.Rebuild();
+            _rig = new TestRig(mace: false, grapple: false);
+            _chain = _rig.Chain;
+            _line = _chain.GetComponent<LineRenderer>();
         }
 
         [TearDown]
-        public void TearDown()
-        {
-            Object.DestroyImmediate(_root);
-        }
+        public void TearDown() => _rig.Dispose();
 
         [Test]
-        public void Rebuild_CollapsesEveryLinkOntoTheHandSocket()
+        public void Seating_BindsTheChainToItsPlayersWorldChain()
         {
-            for (var i = 0; i < _controller.LinkCount; i++)
+            Assert.AreSame(_rig.Session, _chain.Session);
+            Assert.AreEqual(_rig.Id, _chain.Player);
+            Assert.AreSame(_rig.Player.Chain, _chain.Simulation);
+            for (var i = 0; i < _chain.LinkCount; i++)
             {
-                Assert.AreEqual((Vector2)_socket.position, _controller.GetLinkPosition(i));
+                Assert.AreEqual(_rig.Angel.HandSocket, _chain.GetLinkPosition(i), "every link starts on the hand");
             }
         }
 
         [Test]
-        public void Simulate_PinsLinkZeroToTheHandSocketAfterItMoves()
+        public void LinkZero_FollowsTheAngelsHand()
         {
-            _socket.position = new Vector3(4f, -3f, 0f);
-            _controller.Simulate(1f / 50f);
+            _rig.MoveAngelTo(new Vector2(4f, -3f));
+            _rig.Step();
 
-            Assert.AreEqual(new Vector2(4f, -3f), _controller.GetLinkPosition(0));
+            Assert.AreEqual(_rig.Angel.HandSocket, _chain.GetLinkPosition(0));
         }
 
         [Test]
-        public void Simulate_DraggedAnchorPullsTheChainAfterIt()
+        public void RenderChain_DrawsTheLiveLinks()
         {
-            var start = _controller.GetLinkPosition(1);
-            _socket.position = new Vector3(6f, 2f, 0f);
+            _rig.MoveAngelTo(new Vector2(3f, 0f));
+            _rig.Step();
+            _chain.RenderChain(1f);
 
-            for (var i = 0; i < 20; i++)
+            Assert.AreEqual(_chain.ActiveLinkCount, _line.positionCount);
+            Assert.AreEqual(7, _line.positionCount, "the default mace is link 6");
+            Assert.IsTrue(_line.useWorldSpace);
+            for (var i = 0; i < _line.positionCount; i++)
             {
-                _controller.Simulate(1f / 50f);
-            }
-
-            Assert.Greater(_controller.GetLinkPosition(1).x, start.x);
-        }
-
-        [Test]
-        public void Simulate_WithoutASocket_AnchorsToOwnTransform()
-        {
-            _controller.HandSocket = null;
-            _root.transform.position = new Vector3(-2f, 5f, 0f);
-            _controller.Simulate(1f / 50f);
-
-            Assert.AreEqual(new Vector2(-2f, 5f), _controller.GetLinkPosition(0));
-        }
-
-        [Test]
-        public void RenderChain_WritesOneLinePointPerLink()
-        {
-            _socket.position = new Vector3(3f, 0f, 0f);
-            _controller.Simulate(1f / 50f);
-            _controller.RenderChain(1f);
-
-            var line = _root.GetComponent<LineRenderer>();
-            Assert.AreEqual(_controller.LinkCount, line.positionCount);
-            Assert.IsTrue(line.useWorldSpace);
-            for (var i = 0; i < _controller.LinkCount; i++)
-            {
-                Assert.AreEqual((Vector3)_controller.GetLinkPosition(i), line.GetPosition(i));
+                Assert.AreEqual((Vector3)_chain.GetLinkPosition(i), _line.GetPosition(i));
             }
         }
 
         [Test]
         public void RenderChain_InterpolatesBetweenPhysicsSteps()
         {
-            _socket.position = new Vector3(5f, 2f, 0f);
-            _controller.Simulate(1f / 50f);
-            _controller.RenderChain(0.5f);
+            var before = _chain.GetLinkPosition(0);
+            _rig.MoveAngelTo(new Vector2(4f, 0f));
+            _rig.Step();
+            _chain.RenderChain(0.5f);
 
-            var line = _root.GetComponent<LineRenderer>();
-            var expected = Vector3.Lerp(new Vector3(1f, 2f, 0f), new Vector3(5f, 2f, 0f), 0.5f);
-            Assert.AreEqual(expected, line.GetPosition(0));
+            var expected = Vector2.Lerp(before, _chain.GetLinkPosition(0), 0.5f);
+            Assert.AreEqual((Vector3)expected, _line.GetPosition(0));
         }
 
         [Test]
-        public void SetLinkCount_RebuildsTheChainAndTheLine()
+        public void SetLinkCount_RebuildsTheWorldsChain()
         {
-            _controller.SetLinkCount(8);
+            _chain.SetLinkCount(8);
+            _chain.RenderChain(1f);
 
-            Assert.AreEqual(8, _controller.Simulation.LinkCount);
-            Assert.AreEqual(8, _root.GetComponent<LineRenderer>().positionCount);
+            Assert.AreEqual(8, _chain.Simulation.LinkCount);
+            Assert.AreEqual(8, _rig.Player.Chain.LinkCount);
         }
 
         [Test]
-        public void ActiveLinkCount_DrawsOnlyTheLivePartOfTheChain()
+        public void Tuning_GoesToTheWorld()
         {
-            _controller.ActiveLinkCount = 7;
-            _controller.Simulate(1f / 50f);
-            _controller.RenderChain(1f);
+            _chain.OverheadBoost = 3f;
+            _chain.OverheadMargin = 0.4f;
+            _chain.WallBounce = 0.25f;
 
-            Assert.AreEqual(7, _controller.Simulation.ActiveLinkCount);
-            Assert.AreEqual(7, _root.GetComponent<LineRenderer>().positionCount);
+            Assert.AreEqual(3f, _chain.CurrentSettings.OverheadBoost);
+            Assert.AreEqual(3f, _chain.Simulation.Config.OverheadBoost);
+            Assert.AreEqual(0.4f, _chain.Simulation.Config.OverheadMargin);
+            Assert.AreEqual(0.25f, _chain.Simulation.WallBounce);
         }
 
         [Test]
-        public void ActiveLinkCount_SurvivesARebuild()
+        public void UnseatedChain_DrawsNothing()
         {
-            _controller.ActiveLinkCount = 5;
-            _controller.Rebuild();
+            var loose = _rig.Track(new GameObject("Loose")).AddComponent<ChainController>();
 
-            Assert.AreEqual(5, _controller.Simulation.ActiveLinkCount);
-        }
-
-        [Test]
-        public void CurrentSettings_CarryTheOverheadBoost()
-        {
-            _controller.OverheadBoost = 3f;
-            _controller.OverheadMargin = 0.4f;
-
-            Assert.AreEqual(3f, _controller.CurrentSettings.OverheadBoost);
-            Assert.AreEqual(0.4f, _controller.CurrentSettings.OverheadMargin);
+            Assert.IsNull(loose.Simulation);
+            Assert.DoesNotThrow(() => loose.RenderChain(1f));
+            Assert.AreEqual(25, loose.ActiveLinkCount);
         }
     }
 }

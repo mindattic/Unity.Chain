@@ -1,3 +1,4 @@
+using MindAttic.Chain.Core;
 using UnityEngine;
 
 namespace MindAttic.Chain
@@ -7,7 +8,8 @@ namespace MindAttic.Chain
     /// Engine.vb's <c>renderDisplay</c>: the HP bar and score top-left, the grappled enemy's HP
     /// under them while the grapple holds one, a centered "- PAUSE -" banner while paused, and a
     /// game-over banner over the ambient fade (dimmed here unless <see cref="SceneLight"/> shows it). Text scales with the screen height. Reads
-    /// everything from <see cref="GameSession"/> and <see cref="GrappleController"/>; the strings
+    /// everything from the world through <see cref="GameSession"/> and the player's
+    /// <see cref="GrappleController"/>, and changes nothing; the strings
     /// come from <see cref="HudText"/>.
     /// </summary>
     [DisallowMultipleComponent]
@@ -63,7 +65,7 @@ namespace MindAttic.Chain
             : 1f - session.State.AmbientLevel;
 
         /// <summary>The HP of the enemy the grapple holds, or null when it holds none.</summary>
-        public float? GrappledHp => grapple != null && grapple.Target is Enemy enemy && enemy.IsAlive
+        public float? GrappledHp => grapple != null && grapple.HeldEnemy is EnemyEntity enemy && enemy.IsAlive
             ? enemy.Hp
             : (float?)null;
 

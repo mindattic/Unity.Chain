@@ -5,14 +5,15 @@ using UnityEngine.InputSystem;
 namespace MindAttic.Chain
 {
     /// <summary>
-    /// The heavy end of the chain. One link index (<c>Mace</c> in Chain.vb, default 6,
+    /// The heavy end of one player's chain. One link index (<c>Mace</c> in Chain.vb, default 6,
     /// adjustable 1-12 at runtime) is the business end: it is drawn bigger (3.5x the link) as a
-    /// spiked ball and everything past it is hidden. Shortening/lengthening the chain moves that
-    /// index, and the chain's live length follows it (<see cref="ChainController.ActiveLinkCount"/>),
-    /// so the mace is always the end link. The sprite offset is a render-only transform, never a
-    /// position mutation (see docs/chain-physics.md for why Chain.vb's per-frame offset is not
-    /// ported). The overhead-swing boost itself is chain physics and is tuned on
-    /// <see cref="ChainController"/>.
+    /// spiked ball and everything past it is hidden. The <c>[</c> and <c>]</c> keys send
+    /// <see cref="ChangeChainLength"/> commands with this player's id; the world moves the mace link,
+    /// ends the live chain on it and gives it the mace's mass. The mace's hit tuning (hit radius,
+    /// damage per speed) lives here and goes to the world when the player is seated; the world does
+    /// the hitting (Engine.vb checkMaceImpact, on a swept circle). The sprite offset is a
+    /// render-only transform, never a position mutation (see docs/chain-physics.md for why
+    /// Chain.vb's per-frame offset is not ported).
     /// </summary>
     [DisallowMultipleComponent]
     [DefaultExecutionOrder(100)] // after ChainController, so the visual tracks this frame's drawn chain
@@ -32,6 +33,14 @@ namespace MindAttic.Chain
         [Min(0.01f)]
         [SerializeField] private float maceMass = 1f;
 
+        [Header("Hit")]
+        [Tooltip("Radius of the mace's hit circle, world units.")]
+        [Min(0f)]
+        [SerializeField] private float hitRadius = 0.25f;
+        [Tooltip("Damage per world unit per second of mace speed at impact.")]
+        [Min(0f)]
+        [SerializeField] private float damagePerSpeed = 0.05f;
+
         [Header("Rendering")]
         [Tooltip("The spiked-ball sprite (or any transform) drawn at the mace link.")]
         [SerializeField] private Transform maceVisual;
@@ -48,33 +57,15 @@ namespace MindAttic.Chain
 
         private ChainController _chain;
 
-        public ChainController Chain
-        {
-            get
-            {
-                if (_chain == null)
-                {
-                    _chain = GetComponent<ChainController>();
-                }
-
-                return _chain;
-            }
-        }
+        public ChainController Chain => _chain != null ? _chain : _chain = GetComponent<ChainController>();
 
         /// <summary>Upper bound for <see cref="MaceIndex"/>: <c>maxIndex</c>, capped by the chain.</summary>
-        public int MaxIndex => Mathf.Clamp(maxIndex, 1, Mathf.Max(1, Chain.LinkCount - 1));
+        public int MaxIndex => Chain.Entity?.MaxMaceIndex ?? Mathf.Clamp(maxIndex, 1, Mathf.Max(1, Chain.LinkCount - 1));
 
-        public int MinIndex => Mathf.Clamp(minIndex, 1, MaxIndex);
+        public int MinIndex => Chain.Entity?.MinMaceIndex ?? Mathf.Clamp(minIndex, 1, MaxIndex);
 
-        public int MaceIndex
-        {
-            get => Mathf.Clamp(maceIndex, MinIndex, MaxIndex);
-            set
-            {
-                maceIndex = Mathf.Clamp(value, MinIndex, MaxIndex);
-                ApplyToChain();
-            }
-        }
+        /// <summary>The mace link: the world's once seated, else the configured starting link.</summary>
+        public int MaceIndex => Chain.Entity?.MaceIndex ?? Mathf.Clamp(maceIndex, MinIndex, MaxIndex);
 
         public float MaceMass
         {
@@ -82,7 +73,27 @@ namespace MindAttic.Chain
             set
             {
                 maceMass = Mathf.Max(0.01f, value);
-                ApplyToChain();
+                Retune();
+            }
+        }
+
+        public float HitRadius
+        {
+            get => hitRadius;
+            set
+            {
+                hitRadius = Mathf.Max(0f, value);
+                Retune();
+            }
+        }
+
+        public float DamagePerSpeed
+        {
+            get => damagePerSpeed;
+            set
+            {
+                damagePerSpeed = Mathf.Max(0f, value);
+                Retune();
             }
         }
 
@@ -104,44 +115,31 @@ namespace MindAttic.Chain
             set => spriteOffset = value;
         }
 
-        /// <summary>The mace link's simulated position (for hit detection and grapple throws).</summary>
+        /// <summary>The mace link's simulated position.</summary>
         public Vector2 MacePosition => Chain.GetLinkPosition(MaceIndex);
 
         /// <summary>The mace link's velocity (the grapple throw's launch velocity).</summary>
-        public Vector2 MaceVelocity => Chain.Simulation.GetVelocity(MaceIndex).ToUnity();
+        public Vector2 MaceVelocity => Chain.GetLinkVelocity(MaceIndex);
 
-        /// <summary>One link shorter (Chain.vb's chain-minus key). Returns false at the minimum.</summary>
-        public bool Shorten()
+        /// <summary>Called when the chain's player is seated.</summary>
+        public void Bind(ChainController chain) => _chain = chain;
+
+        /// <summary>Hands the mace's tuning to the world's player setup.</summary>
+        public void Contribute(ref PlayerSetup setup)
         {
-            var before = MaceIndex;
-            MaceIndex = before - 1;
-            return MaceIndex != before;
+            setup.MaxMaceIndex = Mathf.Max(1, maxIndex);
+            setup.MinMaceIndex = Mathf.Clamp(minIndex, 1, setup.MaxMaceIndex);
+            setup.MaceIndex = Mathf.Clamp(maceIndex, setup.MinMaceIndex, setup.MaxMaceIndex);
+            setup.MaceMass = maceMass;
+            setup.HitRadius = hitRadius;
+            setup.DamagePerSpeed = damagePerSpeed;
         }
 
-        /// <summary>One link longer (Chain.vb's chain-plus key). Returns false at the maximum.</summary>
-        public bool Lengthen()
-        {
-            var before = MaceIndex;
-            MaceIndex = before + 1;
-            return MaceIndex != before;
-        }
+        /// <summary>One link shorter (Chain.vb's chain-minus key). Returns false at the minimum or before the player is seated.</summary>
+        public bool Shorten() => Send(-1);
 
-        /// <summary>
-        /// Pushes the mace onto the chain: the live length ends at the mace link, and the mace
-        /// link carries <see cref="MaceMass"/> while every other link has mass 1.
-        /// </summary>
-        public void ApplyToChain()
-        {
-            var chain = Chain;
-            var index = MaceIndex;
-            chain.ActiveLinkCount = index + 1;
-
-            var simulation = chain.Simulation;
-            for (var i = 1; i < simulation.LinkCount; i++)
-            {
-                simulation.SetMass(i, i == index ? maceMass : 1f);
-            }
-        }
+        /// <summary>One link longer (Chain.vb's chain-plus key). Returns false at the maximum or before the player is seated.</summary>
+        public bool Lengthen() => Send(1);
 
         /// <summary>
         /// The visual's size relative to the chain's line width: <see cref="MaceScale"/> while the
@@ -155,7 +153,7 @@ namespace MindAttic.Chain
         /// </summary>
         public void RenderMace()
         {
-            if (maceVisual == null)
+            if (maceVisual == null || Chain.Simulation == null)
             {
                 return;
             }
@@ -169,6 +167,20 @@ namespace MindAttic.Chain
             maceVisual.localScale = Vector3.one * (width * CurrentScale);
         }
 
+        private bool Send(int links)
+        {
+            var session = Chain.Session;
+            return session != null && session.Submit(new ChangeChainLength(Chain.Player, links));
+        }
+
+        private void Retune()
+        {
+            if (Chain.Session != null)
+            {
+                Chain.Session.Retune(Chain.Player);
+            }
+        }
+
         private static InputAction Button(string name, params string[] bindings)
         {
             var action = new InputAction(name, InputActionType.Button);
@@ -179,8 +191,6 @@ namespace MindAttic.Chain
 
             return action;
         }
-
-        private void Awake() => ApplyToChain();
 
         private void OnEnable()
         {
@@ -205,9 +215,6 @@ namespace MindAttic.Chain
             {
                 Lengthen();
             }
-
-            // Re-apply every frame: a chain rebuild (link count change in the inspector) resets masses.
-            ApplyToChain();
         }
 
         private void LateUpdate() => RenderMace();
@@ -217,9 +224,9 @@ namespace MindAttic.Chain
             maxIndex = Mathf.Max(1, maxIndex);
             minIndex = Mathf.Clamp(minIndex, 1, maxIndex);
             maceIndex = Mathf.Clamp(maceIndex, minIndex, maxIndex);
-            if (Application.isPlaying && _chain != null)
+            if (_chain != null)
             {
-                ApplyToChain();
+                Retune();
             }
         }
     }

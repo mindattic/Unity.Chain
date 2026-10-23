@@ -62,16 +62,16 @@ JS original: both-neighbor pull.
   is grabbed if the grapple is armed, otherwise gets `velocity = mace velocity / mass`, loses HP
   and goes Hurt (slows by `resistSPD` per axis, then seeks again); a grabbed enemy takes the same
   damage. A thrown enemy knocks any enemy it touches (`checkThrowImpact`) without damage.
-- **In Unity** (`Assets/Unity.Chain/Runtime/Enemies/`): `MaceHitDetector` replaces the AABB with
-  Physics2D: each step it sweeps a mace-sized circle (`Physics2D.CircleCast`) from the mace link's
-  previous position to its current one, plus an `OverlapCircle` at the end, so fast swings cannot
-  tunnel. `Enemy` (kinematic `Rigidbody2D` + any `Collider2D`, its own `IGrappleTarget`) runs
-  `EnemyBrain`, the Seek/Hurt/Grabbed/Dead rules above. One deliberate change: damage is mace
+- **In Unity** (`Assets/Unity.Chain/Core/World/`): the `GameWorld` step replaces the AABB with a
+  swept circle: each step it sweeps a mace-sized circle (`Sweep.CircleCast`) from the mace link's
+  previous position to its current one against every enemy's circle, plus an overlap at the end, so
+  fast swings cannot tunnel. Each `EnemyEntity` (its own `IGrappleTarget`) runs `EnemyBrain`, the
+  Seek/Hurt/Grabbed/Dead rules above; the `Enemy` component only draws it. One deliberate change: damage is mace
   speed x `damagePerSpeed`, not Engine.vb's `|dX + dY/2|`, which cancels to zero on some
   diagonal swings. Enemy-vs-enemy flocking separation (`checkFlocking`) is ported: each `Enemy` step it is pushed
-  `flockSpeed` (default 0.06 u/s: `flockSpd` 0.0005 per frame x 2 because `checkFlocking` loops every ordered pair so each overlapping pair is pushed twice a frame, x 60 fps; the port's units are the original's, as `seekSpd` 0.006 is 0.36) per axis away from every live, non-grabbed enemy its collider
-  overlaps (the original's range test is commented out and `flockRange` 0.08 is never read, so any rectangle overlap pushes, as here; `EnemyBrain.FlockPush`; a perfect stack splits by instance id). Not ported here: enemy-vs-angel damage
-  (`checkAngelHit`, part of the HUD/health work).
+  `flockSpeed` (default 0.06 u/s: `flockSpd` 0.0005 per frame x 2 because `checkFlocking` loops every ordered pair so each overlapping pair is pushed twice a frame, x 60 fps; the port's units are the original's, as `seekSpd` 0.006 is 0.36) per axis away from every live, non-grabbed enemy its circle
+  overlaps (the original's range test is commented out and `flockRange` 0.08 is never read, so any rectangle overlap pushes, as here; `EnemyBrain.FlockPush`; a perfect stack splits by enemy id). Enemy-vs-angel damage
+  (`checkAngelHit`) is the same step's contact check.
 - **Audio** (Sound.vb): DirectSound buffers loaded from `sfx\` — `sword_swing_1..7`,
   `sword_hit_1..3`, `defend`, `footstep_1..2`, `death_1..4` — at `sfxVolume` -1000 mB, and one
   looping `music\music.wma` (DirectX AudioVideoPlayback) that `rndMusicPos` can start at a random
@@ -80,8 +80,8 @@ JS original: both-neighbor pull.
   time, never the same twice running): a swing when the mace link's speed *relative to the hand*
   rises past `swingSpeed` (default 6 u/s, re-armed below 3 u/s, repeated every 0.6 s while it keeps
   whirling) — relative so flying with a trailing mace is not a swing; an impact per
-  `MaceHitDetector.Hit`, louder with mace speed, plus a death sound when the hit kills; and a catch /
-  throw sound from `GrappleController.Caught`/`Thrown`. `MusicPlayer` loops one track on its own
+  `EnemyHit` event of its player, louder with mace speed, plus a death sound when the hit kills; and a catch /
+  throw sound from the `Grabbed`/`Thrown` events. `MusicPlayer` loops one track on its own
   2D `AudioSource` with its own volume/mute and the optional random start. No clips ship in the
   repo yet: the original WAVs can be dropped into the clip sets as they are, but `music.wma` has to
   be converted (Unity does not import WMA).
@@ -91,13 +91,13 @@ JS original: both-neighbor pull.
   HP per enemy touch at most every `hurtDelay` (0.25 s) from `maxHP` 30, and clamped the angel to a
   fixed rect under a fixed 4:3 camera; the chain's wall bounce was commented out. **In Unity**
   (`Runtime/Level/`, `Runtime/UI/`): `LevelBounds` is the play-space rect; `AngelController`
-  clamps to it inset by its sprite margin (camera view only as a fallback); `ChainController`
-  bounces simulated links off it (`ChainSimulation.Bounds`, default bounce 0.5, `keepInLevel` to
+  clamps to it inset by its sprite margin (camera view only as a fallback); the world
+  bounces simulated links off it (`ChainSimulation.Bounds`, default bounce 0.5, `ChainController.keepInLevel` to
   turn off); `CameraRig` fits the whole level on any aspect (`FitLevel`) or follows the angel with
   a dead zone and frame-rate independent smoothing, clamped inside the level (`Follow`);
-  `GameSession` (pure rules in `GameState`) checks enemy contact with a Physics2D circle, ignoring
-  grabbed and dead enemies, scores `MaceHitDetector.Hit`, pauses on P/Escape and on game over
-  fades out and restarts by itself (see Game over below); `GameHud` draws the original's lines with IMGUI. One deliberate
+  the `GameWorld` (pure rules in `GameState`) checks enemy contact with a circle, ignoring
+  grabbed and dead enemies, scores every mace hit, pauses on the P/Escape command and on game over
+  fades out and resets itself (see Game over below); `GameHud` draws the original's lines with IMGUI. One deliberate
   change: the original drew `HP + 1` bars and ended the game below zero (31 hits from 30 HP); the
   port shows exactly HP bars and ends at 0.
 - Two things in `renderChain` look like leftover hacks rather than intended behavior and are

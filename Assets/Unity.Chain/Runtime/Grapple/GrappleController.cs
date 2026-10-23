@@ -1,32 +1,25 @@
-using System;
-using System.Collections.Generic;
+using MindAttic.Chain.Core;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
 namespace MindAttic.Chain
 {
     /// <summary>
-    /// Wires <see cref="Grapple"/> to the game: reads the action button (left mouse by default),
-    /// and every physics step, after <see cref="ChainController"/> has stepped the chain, arms or
-    /// releases the grapple, catches the first <see cref="IGrappleTarget"/> overlapping the mace
-    /// link while armed, carries it along with the mace, and on release throws it with the mace
-    /// link's current velocity.
+    /// One player's grapple button (left mouse by default). Pressing it sends
+    /// <see cref="ArmGrapple"/> and letting go sends <see cref="ReleaseGrapple"/>, each with this
+    /// player's id; the world arms the mace, catches the nearest enemy inside
+    /// <see cref="CatchRadius"/> while armed, carries it on the mace, and on release throws it with
+    /// the mace's velocity x <see cref="ThrowMultiplier"/> (the <see cref="Grabbed"/> and
+    /// <see cref="Thrown"/> events). The catch and throw tuning lives here and goes to the world when
+    /// the player is seated. Sits beside the player's <see cref="ChainController"/>.
     /// </summary>
     [DisallowMultipleComponent]
-    [DefaultExecutionOrder(100)] // after ChainController.FixedUpdate, so the mace velocity is this step's
     public sealed class GrappleController : MonoBehaviour
     {
-        [SerializeField] private ChainController chain;
-
-        [Tooltip("Index of the chain link that acts as the mace (Chain.vb default 6). Ignored when the chain has a MaceController.")]
-        [Min(1)]
-        [SerializeField] private int maceIndex = 6;
-
         [Header("Catch")]
         [Tooltip("Radius around the mace link that catches a target while armed, world units.")]
         [Min(0f)]
         [SerializeField] private float catchRadius = 0.3f;
-        [SerializeField] private LayerMask targetLayers = ~0;
 
         [Header("Throw")]
         [Tooltip("Launch velocity = mace velocity x this.")]
@@ -37,58 +30,37 @@ namespace MindAttic.Chain
         [Tooltip("Read the left mouse button as the grapple button. Turn off to drive SetButtonHeld yourself.")]
         [SerializeField] private bool useMouseButton = true;
 
-        private readonly List<Collider2D> _overlaps = new List<Collider2D>();
-        private Grapple _grapple;
+        private ChainController _chain;
         private bool _buttonHeld;
-        private bool _pressedSinceLastStep;
 
-        /// <summary>Raised when the armed mace catches a target.</summary>
-        public event Action<IGrappleTarget> Caught;
+        public ChainController Chain => _chain != null ? _chain : _chain = GetComponent<ChainController>();
 
-        /// <summary>Raised on release with the thrown target and its launch velocity.</summary>
-        public event Action<IGrappleTarget, Vector2> Thrown;
+        /// <summary>The world's grapple state for this player (Idle until seated).</summary>
+        public GrappleState State => Chain != null && Chain.Entity != null ? Chain.Entity.Grapple.State : GrappleState.Idle;
 
-        public Grapple Grapple => _grapple ?? (_grapple = new Grapple(throwMultiplier));
-        public GrappleState State => Grapple.State;
-        public bool IsArmed => Grapple.IsArmed;
-        public IGrappleTarget Target => Grapple.Target;
+        public bool IsArmed => State != GrappleState.Idle;
 
-        public ChainController Chain
-        {
-            get => chain;
-            set => chain = value;
-        }
-
-        /// <summary>
-        /// The mace link. Follows the chain's <see cref="MaceController"/> when it has one, so a
-        /// shortened/lengthened chain grapples from its current end; otherwise this component's
-        /// own index.
-        /// </summary>
-        public int MaceIndex
-        {
-            get
-            {
-                if (chain == null)
-                {
-                    return maceIndex;
-                }
-
-                var mace = chain.GetComponent<MaceController>();
-                return mace != null ? mace.MaceIndex : Mathf.Clamp(maceIndex, 1, chain.LinkCount - 1);
-            }
-            set => maceIndex = Mathf.Max(1, value);
-        }
+        /// <summary>The enemy in the mace's grip, or null.</summary>
+        public EnemyEntity HeldEnemy => Chain != null ? Chain.Entity?.HeldEnemy : null;
 
         public float CatchRadius
         {
             get => catchRadius;
-            set => catchRadius = Mathf.Max(0f, value);
+            set
+            {
+                catchRadius = Mathf.Max(0f, value);
+                Retune();
+            }
         }
 
         public float ThrowMultiplier
         {
             get => throwMultiplier;
-            set => Grapple.ThrowMultiplier = throwMultiplier = Mathf.Max(0f, value);
+            set
+            {
+                throwMultiplier = Mathf.Max(0f, value);
+                Retune();
+            }
         }
 
         public bool UseMouseButton
@@ -97,116 +69,39 @@ namespace MindAttic.Chain
             set => useMouseButton = value;
         }
 
-        public Vector2 MacePosition => chain.GetLinkPosition(MaceIndex);
-        public Vector2 MaceVelocity => chain.GetLinkVelocity(MaceIndex);
+        /// <summary>Called when the chain's player is seated.</summary>
+        public void Bind(ChainController chain) => _chain = chain;
 
-        /// <summary>Sets the grapple button state, for custom input or tests.</summary>
-        public void SetButtonHeld(bool held)
+        /// <summary>Hands the grapple's tuning to the world's player setup.</summary>
+        public void Contribute(ref PlayerSetup setup)
         {
-            if (held && !_buttonHeld)
-            {
-                _pressedSinceLastStep = true;
-            }
-
-            _buttonHeld = held;
+            setup.CatchRadius = catchRadius;
+            setup.ThrowMultiplier = throwMultiplier;
         }
 
-        /// <summary>
-        /// One grapple step: arm/release from the button, catch while armed, carry what is held.
-        /// Called from <c>FixedUpdate</c>; public so tests can drive it.
-        /// </summary>
-        public void Step()
+        /// <summary>Sets the grapple button state, for custom input or tests: a change is sent as a command.</summary>
+        public void SetButtonHeld(bool held)
         {
-            if (chain == null)
+            if (held == _buttonHeld)
             {
                 return;
             }
 
-            Grapple.ThrowMultiplier = throwMultiplier;
-
-            if (Grapple.State == GrappleState.Holding && IsGone(Grapple.Target))
+            var session = Chain != null ? Chain.Session : null;
+            if (session == null)
             {
-                Grapple.Drop();
+                return;
             }
 
-            // A press and release that both landed between two physics steps still counts as a
-            // press: arm for this step so a quick tap can catch what the mace is touching.
-            var held = _buttonHeld || _pressedSinceLastStep;
-            _pressedSinceLastStep = false;
-
-            var thrown = Grapple.SetHeld(held, MaceVelocity);
-            if (thrown != null)
-            {
-                Thrown?.Invoke(thrown, MaceVelocity * throwMultiplier);
-            }
-
-            // The catch is the mace's touch (Engine.vb's checkMaceImpact on rectMace), which is not
-            // kept while the chain is not following (F key, BIBLE D17).
-            if (Grapple.State == GrappleState.Armed && MindAttic.Chain.Core.ChainFollow.MaceHits(chain.IsFollowing))
-            {
-                TryCatch(FindTargetAtMace());
-            }
-
-            Grapple.Carry(MacePosition);
+            _buttonHeld = held;
+            session.Submit(held ? (GameCommand)new ArmGrapple(Chain.Player) : new ReleaseGrapple(Chain.Player));
         }
 
-        /// <summary>Catches <paramref name="target"/> if the grapple is armed with an empty grip.</summary>
-        public bool TryCatch(IGrappleTarget target)
+        private void Retune()
         {
-            if (IsGone(target) || !Grapple.TryCatch(target))
+            if (Chain != null && Chain.Session != null)
             {
-                return false;
-            }
-
-            Grapple.Carry(MacePosition);
-            Caught?.Invoke(target);
-            return true;
-        }
-
-        private IGrappleTarget FindTargetAtMace()
-        {
-            var filter = new ContactFilter2D
-            {
-                useLayerMask = true,
-                layerMask = targetLayers,
-                useTriggers = true,
-            };
-
-            _overlaps.Clear();
-            Physics2D.OverlapCircle(MacePosition, catchRadius, filter, _overlaps);
-
-            IGrappleTarget nearest = null;
-            var nearestDistance = float.PositiveInfinity;
-            foreach (var hit in _overlaps)
-            {
-                var target = hit.GetComponentInParent<IGrappleTarget>();
-                if (target == null || !target.CanBeGrappled)
-                {
-                    continue;
-                }
-
-                var distance = ((Vector2)hit.bounds.center - MacePosition).sqrMagnitude;
-                if (distance < nearestDistance)
-                {
-                    nearest = target;
-                    nearestDistance = distance;
-                }
-            }
-
-            return nearest;
-        }
-
-        // A destroyed MonoBehaviour behind the interface is not C# null; ask Unity.
-        private static bool IsGone(IGrappleTarget target) =>
-            target == null || (target is UnityEngine.Object o && o == null);
-
-        private void Reset() => chain = GetComponent<ChainController>();
-
-        private void Awake()
-        {
-            if (chain == null)
-            {
-                chain = GetComponent<ChainController>();
+                Chain.Session.Retune(Chain.Player);
             }
         }
 
@@ -221,31 +116,21 @@ namespace MindAttic.Chain
             SetButtonHeld(mouse != null && mouse.leftButton.isPressed);
         }
 
-        private void FixedUpdate() => Step();
+        // Never leave an enemy held by a button nobody can let go of.
+        private void OnDisable() => SetButtonHeld(false);
 
-        private void OnDisable()
-        {
-            // Never leave a target frozen kinematic in mid-air: let go of it gently.
-            if (Grapple.State == GrappleState.Holding && IsGone(Grapple.Target))
-            {
-                Grapple.Drop();
-            }
-
-            Grapple.SetHeld(false, Vector2.zero);
-
-            _buttonHeld = false;
-            _pressedSinceLastStep = false;
-        }
+        private void OnValidate() => Retune();
 
         private void OnDrawGizmosSelected()
         {
-            if (chain == null)
+            var player = Chain != null ? Chain.Entity : null;
+            if (player == null)
             {
                 return;
             }
 
             Gizmos.color = IsArmed ? Color.green : Color.gray;
-            Gizmos.DrawWireSphere(MacePosition, catchRadius);
+            Gizmos.DrawWireSphere(player.MacePosition.ToUnity(), catchRadius);
         }
     }
 }

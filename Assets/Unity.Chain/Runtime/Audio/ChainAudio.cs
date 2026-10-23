@@ -27,18 +27,18 @@ namespace MindAttic.Chain
     /// Sound effects for the mace (Sound.vb's DirectSound buffers, ported to an
     /// <see cref="AudioSource"/>): a swing whoosh when the mace link's speed relative to the hand crosses
     /// <see cref="SwingSpeed"/> (<see cref="SwingSoundTrigger"/>), an impact for every enemy
-    /// <see cref="MaceHitDetector"/> hits (louder for faster hits) plus a death sound for a
-    /// lethal one, and a catch/throw sound from <see cref="GrappleController"/>. Each sound has a
+    /// the mace hits (louder for faster hits) plus a death sound for a
+    /// lethal one, and a catch/throw sound for the grapple. Hits, catches and throws are the world's
+    /// events for this chain's player (<see cref="EnemyHit"/>, <see cref="Grabbed"/>,
+    /// <see cref="Thrown"/>), played as they come from the session. Each sound has a
     /// set of clips; a random one plays each time, never the same twice in a row. Leave a set
     /// empty to mute that sound. Put this on the chain object next to the other mace components.
     /// </summary>
     [DisallowMultipleComponent]
-    [DefaultExecutionOrder(120)] // after MaceHitDetector (110), so this step's mace velocity is final
+    [DefaultExecutionOrder(120)] // after the authority's step, so this step's mace velocity is final
     public sealed class ChainAudio : MonoBehaviour
     {
         [SerializeField] private ChainController chain;
-        [SerializeField] private GrappleController grapple;
-        [SerializeField] private MaceHitDetector hitDetector;
         [Tooltip("Plays the one-shots. Defaults to an AudioSource on this object (added if missing).")]
         [SerializeField] private AudioSource sfxSource;
 
@@ -82,8 +82,7 @@ namespace MindAttic.Chain
         private SwingSoundTrigger _swing;
         private Vector2 _previousAnchor;
         private bool _hasAnchor;
-        private MaceHitDetector _subscribedDetector;
-        private GrappleController _subscribedGrapple;
+        private GameSession _subscribed;
 
         /// <summary>Raised for every sound played (also when its clip set is empty or muted), with the chosen clip (may be null) and volume.</summary>
         public event Action<ChainSound, AudioClip, float> Played;
@@ -96,28 +95,6 @@ namespace MindAttic.Chain
                 chain = value;
                 Swing.Reset();
                 _hasAnchor = false;
-            }
-        }
-
-        public GrappleController Grapple
-        {
-            get => grapple;
-            set
-            {
-                grapple = value;
-                if (isActiveAndEnabled)
-                {
-                    Subscribe();
-                }
-            }
-        }
-
-        public MaceHitDetector HitDetector
-        {
-            get => hitDetector;
-            set
-            {
-                hitDetector = value;
                 if (isActiveAndEnabled)
                 {
                     Subscribe();
@@ -243,7 +220,7 @@ namespace MindAttic.Chain
         /// </summary>
         public bool Step(float deltaTime)
         {
-            if (chain == null)
+            if (chain == null || chain.Simulation == null)
             {
                 return false;
             }
@@ -280,61 +257,71 @@ namespace MindAttic.Chain
         private float SpeedVolume(float speed) =>
             SwingSoundTrigger.VolumeForSpeed(speed, swingSpeed, fullVolumeSpeed, minSpeedVolume);
 
-        private void OnHit(Enemy enemy, float damage)
+        /// <summary>Called when the chain's player is seated: listen to that player's events.</summary>
+        public void Bind(ChainController boundChain)
         {
-            var speed = chain != null ? chain.GetLinkVelocity(MaceIndex).magnitude : fullVolumeSpeed;
-            Play(ChainSound.Impact, SpeedVolume(speed));
+            chain = boundChain;
+            Subscribe();
+        }
 
-            if (enemy != null && !enemy.IsAlive)
+        /// <summary>Plays the sound for one world event of this chain's player. Hooked to <see cref="GameSession.EventRaised"/>; public so tests can drive it.</summary>
+        public void Play(GameEvent gameEvent)
+        {
+            if (chain == null)
             {
-                Play(ChainSound.EnemyDeath);
+                return;
+            }
+
+            var player = chain.Player;
+            switch (gameEvent)
+            {
+                case EnemyHit hit when hit.Player == player:
+                    Play(ChainSound.Impact, SpeedVolume(hit.MaceVelocity.Magnitude));
+                    if (hit.Killed)
+                    {
+                        Play(ChainSound.EnemyDeath);
+                    }
+
+                    break;
+
+                case Grabbed grabbed when grabbed.Player == player:
+                    Play(ChainSound.GrappleCatch);
+                    break;
+
+                case Thrown thrown when thrown.Player == player:
+                    Play(ChainSound.GrappleThrow, SpeedVolume(thrown.Velocity.Magnitude));
+                    break;
             }
         }
 
-        private void OnCaught(IGrappleTarget target) => Play(ChainSound.GrappleCatch);
-
-        private void OnThrown(IGrappleTarget target, Vector2 velocity) =>
-            Play(ChainSound.GrappleThrow, SpeedVolume(velocity.magnitude));
-
         private void Subscribe()
         {
-            Unsubscribe();
-
-            if (hitDetector != null)
+            var session = chain != null ? chain.Session : null;
+            if (_subscribed == session)
             {
-                hitDetector.Hit += OnHit;
-                _subscribedDetector = hitDetector;
+                return;
             }
 
-            if (grapple != null)
+            Unsubscribe();
+            if (session != null)
             {
-                grapple.Caught += OnCaught;
-                grapple.Thrown += OnThrown;
-                _subscribedGrapple = grapple;
+                session.EventRaised += Play;
+                _subscribed = session;
             }
         }
 
         private void Unsubscribe()
         {
-            if (_subscribedDetector != null)
+            if (_subscribed != null)
             {
-                _subscribedDetector.Hit -= OnHit;
-                _subscribedDetector = null;
-            }
-
-            if (_subscribedGrapple != null)
-            {
-                _subscribedGrapple.Caught -= OnCaught;
-                _subscribedGrapple.Thrown -= OnThrown;
-                _subscribedGrapple = null;
+                _subscribed.EventRaised -= Play;
+                _subscribed = null;
             }
         }
 
         private void Reset()
         {
             chain = GetComponent<ChainController>();
-            grapple = GetComponent<GrappleController>();
-            hitDetector = GetComponent<MaceHitDetector>();
             sfxSource = GetComponent<AudioSource>();
         }
 
@@ -343,16 +330,6 @@ namespace MindAttic.Chain
             if (chain == null)
             {
                 chain = GetComponent<ChainController>();
-            }
-
-            if (grapple == null)
-            {
-                grapple = GetComponent<GrappleController>();
-            }
-
-            if (hitDetector == null)
-            {
-                hitDetector = GetComponent<MaceHitDetector>();
             }
 
             if (sfxSource == null)

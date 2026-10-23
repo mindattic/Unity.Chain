@@ -5,18 +5,26 @@ using UnityEngine.InputSystem;
 namespace MindAttic.Chain
 {
     /// <summary>
-    /// Mouse-steered angel: reads the mouse delta from the Input System, steps
-    /// <see cref="AngelFlight"/>, and applies position, facing and the wing-flap frame to this
-    /// GameObject's Transform and SpriteRenderer. Play-space bounds come from the level's
-    /// <see cref="LevelBounds"/> (assigned, or found in the scene) inset by
+    /// One player's angel: their input and the angel's look. It reads the mouse delta and sends it to
+    /// the authority as a <see cref="SteerAngel"/> command with this player's id, and P or Escape as
+    /// <see cref="TogglePause"/>; then it draws the angel where the world's <see cref="AngelFlight"/>
+    /// says (position, facing, wing-flap frame) and moves the optional hand-socket transform to the
+    /// hand. It never moves the angel itself. Its tuning (sensitivity, bounds, hover, flap) is handed
+    /// to the world when the session seats it (<see cref="GameSession.Join(AngelController)"/>):
+    /// bounds come from the level's <see cref="LevelBounds"/> (assigned, or found in the scene) inset by
     /// <see cref="boundsMargin"/>; with no level they fall back to the camera's orthographic view,
     /// then to <see cref="fallbackBounds"/>.
-    /// The chain anchors its link 0 to <see cref="HandSocket"/>, published to
-    /// <see cref="ChainController"/> through the optional hand-socket transform.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class AngelController : MonoBehaviour
     {
+        [Header("Player")]
+        [Tooltip("This player's seat: the player id every command from this angel carries.")]
+        [Min(0)]
+        [SerializeField] private int seat;
+        [Tooltip("This player's chain. Falls back to the scene's ChainController.")]
+        [SerializeField] private ChainController chain;
+
         [Header("Flight")]
         [Tooltip("World units moved per pixel of mouse motion.")]
         [SerializeField] private float sensitivity = 0.01f;
@@ -48,24 +56,90 @@ namespace MindAttic.Chain
         [Header("Chain")]
         [Tooltip("Hand socket offset from the body when facing right; mirrored when facing left.")]
         [SerializeField] private Vector2 handOffset = new Vector2(0.25f, -0.1f);
-        [Tooltip("Optional transform moved to the hand socket every frame; assign it as the " +
-                 "ChainController's Hand Socket so link 0 follows the angel's hand.")]
+        [Tooltip("Optional transform moved to the hand socket every frame (link 0 of the chain hangs from the hand).")]
         [SerializeField] private Transform handSocketTransform;
 
-        private AngelFlight _flight;
+        private bool _levelSearched;
 
-        public AngelFlight Flight => _flight;
-        public Facing Facing => _flight != null ? _flight.Facing : Facing.Right;
+        /// <summary>The session this angel sends its commands to, once seated.</summary>
+        public GameSession Session { get; private set; }
+
+        /// <summary>This angel's player id.</summary>
+        public PlayerId Seat
+        {
+            get => new PlayerId(seat);
+            set => seat = Mathf.Max(0, value.Value);
+        }
+
+        public ChainController Chain
+        {
+            get
+            {
+                if (chain == null)
+                {
+                    chain = FindAnyObjectByType<ChainController>();
+                }
+
+                return chain;
+            }
+            set => chain = value;
+        }
+
+        /// <summary>The world's flight model for this angel (null until seated). Read only.</summary>
+        public AngelFlight Flight => Session != null ? Session.World.FindPlayer(Seat)?.Flight : null;
+
+        public Facing Facing => Flight != null ? Flight.Facing : Facing.Right;
+
         public LevelBounds LevelBounds
         {
             get => levelBounds;
-            set => levelBounds = value;
+            set
+            {
+                levelBounds = value;
+                _levelSearched = value != null;
+            }
         }
 
-        /// <summary>The rect the flight position is clamped to this frame.</summary>
+        /// <summary>The rect the flight position is clamped to.</summary>
         public Rect Bounds => ComputeBounds();
 
-        public Vector2 HandSocket => _flight != null ? _flight.HandSocket.ToUnity() : (Vector2)transform.position;
+        public Vector2 HandSocket => Flight != null ? Flight.HandSocket.ToUnity() : (Vector2)transform.position;
+
+        /// <summary>Called by the session when it seats this angel.</summary>
+        public void Bind(GameSession session, PlayerId id)
+        {
+            Session = session;
+            seat = id.Value;
+            Apply();
+        }
+
+        /// <summary>Hands this angel's tuning to the world's player setup.</summary>
+        public void Contribute(ref PlayerSetup setup)
+        {
+            setup.Start = transform.position.ToCore();
+            setup.Flight = BuildSettings();
+        }
+
+        /// <summary>
+        /// This frame's input: the mouse delta steers, P or Escape pauses. Called from <c>Update</c>;
+        /// public so tests can drive it. Returns true if the steer was applied.
+        /// </summary>
+        public bool SendInput(Vector2 mouseDelta, float deltaTime, bool pausePressed = false)
+        {
+            if (Session == null)
+            {
+                return false;
+            }
+
+            if (pausePressed)
+            {
+                Session.Submit(new TogglePause(Seat));
+            }
+
+            var steered = Session.Submit(new SteerAngel(Seat, mouseDelta.ToCore(), deltaTime));
+            Apply();
+            return steered;
+        }
 
         private void Awake()
         {
@@ -73,14 +147,6 @@ namespace MindAttic.Chain
             {
                 spriteRenderer = GetComponentInChildren<SpriteRenderer>();
             }
-
-            if (levelBounds == null)
-            {
-                levelBounds = LevelBounds.Find();
-            }
-
-            _flight = new AngelFlight(transform.position.ToCore(), BuildSettings());
-            Apply();
         }
 
         private void OnEnable()
@@ -103,13 +169,19 @@ namespace MindAttic.Chain
 
         private void Update()
         {
-            // Re-read settings each frame so inspector tweaks and camera resizes apply live.
-            _flight.Config = BuildSettings();
-
             var mouse = Mouse.current;
+            var keyboard = Keyboard.current;
             var delta = mouse != null ? mouse.delta.ReadValue() : Vector2.zero;
-            _flight.Step(delta.ToCore(), Time.deltaTime);
-            Apply();
+            var pause = keyboard != null && (keyboard.pKey.wasPressedThisFrame || keyboard.escapeKey.wasPressedThisFrame);
+            SendInput(delta, Time.deltaTime, pause);
+        }
+
+        private void OnValidate()
+        {
+            if (Session != null)
+            {
+                Session.Retune(Seat);
+            }
         }
 
         private AngelFlight.Settings BuildSettings()
@@ -127,6 +199,12 @@ namespace MindAttic.Chain
 
         private Rect ComputeBounds()
         {
+            if (levelBounds == null && !_levelSearched)
+            {
+                levelBounds = LevelBounds.Find();
+                _levelSearched = true;
+            }
+
             if (levelBounds != null)
             {
                 return levelBounds.Inset(boundsMargin);
@@ -146,14 +224,21 @@ namespace MindAttic.Chain
             return new Rect(center.x - hx, center.y - hy, hx * 2f, hy * 2f);
         }
 
+        /// <summary>Draws the angel where the world has it.</summary>
         private void Apply()
         {
-            var p = _flight.RenderPosition.ToUnity();
+            var flight = Flight;
+            if (flight == null)
+            {
+                return;
+            }
+
+            var p = flight.RenderPosition.ToUnity();
             transform.position = new Vector3(p.x, p.y, transform.position.z);
 
             if (handSocketTransform != null)
             {
-                var hand = _flight.HandSocket.ToUnity();
+                var hand = flight.HandSocket.ToUnity();
                 handSocketTransform.position = new Vector3(hand.x, hand.y, handSocketTransform.position.z);
             }
 
@@ -162,20 +247,20 @@ namespace MindAttic.Chain
                 return;
             }
 
-            var facingLeft = _flight.Facing == Facing.Left;
+            var facingLeft = flight.Facing == Facing.Left;
             var useLeftSet = facingLeft && leftFrames.Length > 0;
             var frames = useLeftSet ? leftFrames : rightFrames;
             spriteRenderer.flipX = facingLeft && !useLeftSet;
 
             if (frames.Length > 0)
             {
-                spriteRenderer.sprite = frames[_flight.Frame % frames.Length];
+                spriteRenderer.sprite = frames[flight.Frame % frames.Length];
             }
         }
 
         private void OnDrawGizmosSelected()
         {
-            var b = Application.isPlaying && _flight != null ? _flight.Config.Bounds.ToUnity() : ComputeBounds();
+            var b = Flight != null ? Flight.Config.Bounds.ToUnity() : ComputeBounds();
             Gizmos.color = Color.cyan;
             Gizmos.DrawWireCube(b.center, b.size);
             Gizmos.color = Color.yellow;

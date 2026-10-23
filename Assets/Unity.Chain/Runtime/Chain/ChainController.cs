@@ -1,4 +1,3 @@
-using System;
 using MindAttic.Chain.Core;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -6,20 +5,17 @@ using UnityEngine.InputSystem;
 namespace MindAttic.Chain
 {
     /// <summary>
-    /// Drives a <see cref="ChainSimulation"/> from <c>FixedUpdate</c>, pins link 0 to the
-    /// player's hand socket every physics step (link(0) tracking the angel in Chain.vb), and
-    /// draws the chain through a world-space <see cref="LineRenderer"/> each frame. Rendering
-    /// interpolates between the last two physics steps so the chain stays smooth when the
-    /// render rate and the fixed timestep differ.
+    /// Draws one player's chain. The chain itself (<see cref="ChainSimulation"/>, link 0 pinned to the
+    /// angel's hand) lives in the <see cref="GameWorld"/> and is stepped by the authority; this
+    /// component holds the chain's tuning, which the world takes when the player is seated, and each
+    /// frame writes the live links into a world-space <see cref="LineRenderer"/>, interpolating between
+    /// the last two physics steps so the chain stays smooth when the render rate and the fixed timestep
+    /// differ. Seating it also binds the mace, grapple and audio components beside it.
     /// </summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(LineRenderer))]
     public sealed class ChainController : MonoBehaviour
     {
-        [Header("Anchor")]
-        [Tooltip("Link 0 is snapped here every physics step. Falls back to this transform when unset.")]
-        [SerializeField] private Transform handSocket;
-
         [Header("Chain")]
         [Min(2)]
         [SerializeField] private int linkCount = 25;
@@ -46,69 +42,61 @@ namespace MindAttic.Chain
         [Header("Level bounds")]
         [Tooltip("Bounce links off the level's walls (Elastic Trail's wall bounce) so the mace cannot be swung out of the play space.")]
         [SerializeField] private bool keepInLevel = true;
-        [Tooltip("The play space. Falls back to the scene's LevelBounds.")]
-        [SerializeField] private LevelBounds levelBounds;
         [Tooltip("Fraction of a link's speed into a wall kept after the bounce.")]
         [Range(0f, 1f)]
         [SerializeField] private float wallBounce = 0.5f;
 
         [Header("Follow (F key)")]
-        [Tooltip("Chain.vb's followMouse: off, every spring force is zero and the chain falls under gravity.")]
+        [Tooltip("Chain.vb's followMouse at the start: off, every spring force is zero and the chain falls under gravity.")]
         [SerializeField] private bool following = ChainFollow.StartsFollowing;
-        [Tooltip("The player this chain belongs to; carried by the follow command and its event.")]
-        [SerializeField] private int playerId;
         [SerializeField] private InputAction toggleFollow = new InputAction("Toggle Follow", InputActionType.Button, "<Keyboard>/f");
 
         [Header("Rendering")]
         [Tooltip("Blend between the previous and current physics step when drawing.")]
         [SerializeField] private bool interpolate = true;
 
-        private ChainSimulation _simulation;
         private LineRenderer _line;
-        private Vector2[] _previous;
-        private Vector3[] _renderPositions;
+        private ChainSimulation _captured;
+        private Vector2[] _previous = new Vector2[0];
+        private Vector2[] _latest = new Vector2[0];
+        private Vector3[] _renderPositions = new Vector3[0];
         private float _lastStepTime;
-        private int _activeLinkCount = -1;
-        private bool _levelSearched;
 
-        public ChainSimulation Simulation
-        {
-            get
-            {
-                EnsureInitialized();
-                return _simulation;
-            }
-        }
+        /// <summary>The session that owns this chain's world, once seated.</summary>
+        public GameSession Session { get; private set; }
+
+        /// <summary>Whose chain this is.</summary>
+        public PlayerId Player { get; private set; }
+
+        /// <summary>This player in the world (null until seated).</summary>
+        public PlayerEntity Entity => Session != null ? Session.World.FindPlayer(Player) : null;
+
+        /// <summary>The world's chain for this player (null until seated). Read only.</summary>
+        public ChainSimulation Simulation => Entity?.Chain;
 
         public int LinkCount => linkCount;
 
-        public Transform HandSocket
-        {
-            get => handSocket;
-            set => handSocket = value;
-        }
-
-        /// <summary>The play space links bounce inside, or null (none assigned or found).</summary>
-        public LevelBounds LevelBounds
-        {
-            get => levelBounds;
-            set
-            {
-                levelBounds = value;
-                _levelSearched = value != null;
-            }
-        }
+        /// <summary>How many links (anchor included) are live: the mace's link + 1.</summary>
+        public int ActiveLinkCount => Simulation != null ? Simulation.ActiveLinkCount : linkCount;
 
         public bool KeepInLevel
         {
             get => keepInLevel;
-            set => keepInLevel = value;
+            set
+            {
+                keepInLevel = value;
+                Retune();
+            }
         }
 
         public float WallBounce
         {
             get => wallBounce;
-            set => wallBounce = Mathf.Clamp01(value);
+            set
+            {
+                wallBounce = Mathf.Clamp01(value);
+                Retune();
+            }
         }
 
         public bool Interpolate
@@ -117,48 +105,46 @@ namespace MindAttic.Chain
             set => interpolate = value;
         }
 
-        /// <summary>Raised when the F key (or <see cref="ToggleFollow"/>) changes the follow flag.</summary>
-        public event Action<FollowChangedEvent> FollowChanged;
-
-        /// <summary>
-        /// Chain.vb's <c>followMouse</c>: true pulls the links by their springs; false leaves the
-        /// springs at zero so the chain falls under gravity (see <see cref="ChainFollow"/>).
-        /// </summary>
-        public bool IsFollowing
+        public float OverheadBoost
         {
-            get => following;
+            get => overheadBoost;
             set
             {
-                following = value;
-                if (_simulation != null)
-                {
-                    _simulation.IsFollowing = value;
-                }
+                overheadBoost = Mathf.Max(1f, value);
+                Retune();
             }
         }
 
-        public int PlayerId
+        public float OverheadMargin
         {
-            get => playerId;
-            set => playerId = value;
+            get => overheadMargin;
+            set
+            {
+                overheadMargin = Mathf.Max(0f, value);
+                Retune();
+            }
         }
 
         /// <summary>
-        /// The F key: sends this chain's player a <see cref="ToggleFollowCommand"/> through Core and
-        /// raises <see cref="FollowChanged"/> with the event it produces. Returns the new state.
+        /// Chain.vb's <c>followMouse</c>: true pulls the links by their springs; false leaves the
+        /// springs at zero so the chain falls under gravity and the mace neither hits nor catches
+        /// (see <see cref="ChainFollow"/>). The world's flag once seated, else the starting one.
+        /// </summary>
+        public bool IsFollowing => Simulation != null ? Simulation.IsFollowing : following;
+
+        /// <summary>
+        /// The F key: sends this chain's player a <see cref="Core.ToggleFollow"/> command; the world
+        /// flips the flag and raises <see cref="FollowChanged"/>. Returns the new state.
         /// </summary>
         public bool ToggleFollow()
         {
-            EnsureInitialized();
-            _simulation.IsFollowing = following;
-            var changed = ChainFollow.Apply(_simulation, new ToggleFollowCommand(playerId));
-            following = changed.IsFollowing;
-            FollowChanged?.Invoke(changed);
-            return following;
-        }
+            if (Session != null)
+            {
+                Session.Submit(new Core.ToggleFollow(Player));
+            }
 
-        /// <summary>The world point link 0 is pinned to: the hand socket, or this transform.</summary>
-        public Vector2 AnchorPosition => (handSocket != null ? handSocket : transform).position;
+            return IsFollowing;
+        }
 
         public ChainSimulation.Settings CurrentSettings => new ChainSimulation.Settings(
             segmentLength,
@@ -170,88 +156,102 @@ namespace MindAttic.Chain
             overheadBoost,
             overheadMargin);
 
-        public float OverheadBoost
-        {
-            get => overheadBoost;
-            set => overheadBoost = Mathf.Max(1f, value);
-        }
-
-        public float OverheadMargin
-        {
-            get => overheadMargin;
-            set => overheadMargin = Mathf.Max(0f, value);
-        }
-
-        /// <summary>
-        /// How many links (anchor included) are simulated and drawn; the rest stay parked on the
-        /// end link. Lets the chain be shortened/lengthened live without a rebuild. Defaults to
-        /// every link; clamped to [2, LinkCount].
-        /// </summary>
-        public int ActiveLinkCount
-        {
-            get => _activeLinkCount < 0 ? linkCount : Mathf.Clamp(_activeLinkCount, 2, linkCount);
-            set
-            {
-                _activeLinkCount = Mathf.Clamp(value, 2, Mathf.Max(2, linkCount));
-                if (_simulation != null)
-                {
-                    _simulation.ActiveLinkCount = _activeLinkCount;
-                }
-            }
-        }
-
         public Vector2 GetLinkPosition(int index) => Simulation.GetPosition(index).ToUnity();
 
         public Vector2 GetLinkVelocity(int index) => Simulation.GetVelocity(index).ToUnity();
 
         /// <summary>Where link <paramref name="index"/> was last drawn (interpolated), in world space.</summary>
-        public Vector3 GetRenderedLinkPosition(int index)
-        {
-            EnsureInitialized();
-            return _renderPositions[index];
-        }
+        public Vector3 GetRenderedLinkPosition(int index) => _renderPositions[index];
 
-        /// <summary>
-        /// Changes the link count and rebuilds the chain, all links starting at the anchor. For
-        /// live shortening/lengthening use <see cref="ActiveLinkCount"/> instead.
-        /// </summary>
-        public void SetLinkCount(int count)
+        /// <summary>Called by the session when it seats this chain's player; binds the mace, grapple and audio beside it too.</summary>
+        public void Bind(GameSession session, PlayerId player)
         {
-            linkCount = Mathf.Max(2, count);
-            Rebuild();
-        }
+            Session = session;
+            Player = player;
 
-        /// <summary>Recreates the simulation with every link collapsed onto the anchor.</summary>
-        public void Rebuild()
-        {
-            linkCount = Mathf.Max(2, linkCount);
-            _line = GetComponent<LineRenderer>();
-            _line.useWorldSpace = true;
+            var mace = GetComponent<MaceController>();
+            if (mace != null)
+            {
+                mace.Bind(this);
+            }
 
-            _simulation = new ChainSimulation(linkCount, AnchorPosition.ToCore(), CurrentSettings);
-            _simulation.ActiveLinkCount = ActiveLinkCount;
-            _simulation.IsFollowing = following;
-            _previous = new Vector2[linkCount];
-            _renderPositions = new Vector3[linkCount];
-            CaptureCurrent(_previous);
-            _lastStepTime = Time.fixedTime;
+            var grapple = GetComponent<GrappleController>();
+            if (grapple != null)
+            {
+                grapple.Bind(this);
+            }
+
+            var audio = GetComponent<ChainAudio>();
+            if (audio != null)
+            {
+                audio.Bind(this);
+            }
+
+            CaptureStep();
             RenderChain(1f);
         }
 
-        /// <summary>
-        /// One physics step: re-pin link 0 to the hand socket, then integrate. Called from
-        /// <c>FixedUpdate</c> with <c>Time.fixedDeltaTime</c>; public so tests can drive it.
-        /// </summary>
-        public void Simulate(float deltaTime)
+        /// <summary>Hands this chain's tuning (and the mace's and grapple's) to the world's player setup.</summary>
+        public void Contribute(ref PlayerSetup setup)
         {
-            EnsureInitialized();
-            CaptureCurrent(_previous);
-            _simulation.Config = CurrentSettings;
-            _simulation.Bounds = ResolveBounds();
-            _simulation.WallBounce = wallBounce;
-            _simulation.IsFollowing = following;
-            _simulation.SetAnchor(AnchorPosition.ToCore());
-            _simulation.Step(deltaTime);
+            setup.LinkCount = Mathf.Max(2, linkCount);
+            setup.Chain = CurrentSettings;
+            setup.KeepChainInArena = keepInLevel;
+            setup.WallBounce = wallBounce;
+            setup.Following = following;
+
+            var mace = GetComponent<MaceController>();
+            if (mace != null)
+            {
+                mace.Contribute(ref setup);
+            }
+
+            var grapple = GetComponent<GrappleController>();
+            if (grapple != null)
+            {
+                grapple.Contribute(ref setup);
+            }
+        }
+
+        /// <summary>Changes the link count; the world rebuilds the chain at the hand.</summary>
+        public void SetLinkCount(int count)
+        {
+            linkCount = Mathf.Max(2, count);
+            Retune();
+        }
+
+        /// <summary>
+        /// Remembers the pose of the step just taken, and the one before it, so drawing can blend
+        /// between them. Called from <c>FixedUpdate</c>, once per authority step and after it; public
+        /// so tests can drive it.
+        /// </summary>
+        public void CaptureStep()
+        {
+            var simulation = Simulation;
+            if (simulation == null)
+            {
+                return;
+            }
+
+            var count = simulation.LinkCount;
+            var fresh = simulation != _captured || _latest.Length != count;
+            if (fresh)
+            {
+                // A new chain (seated, reset, rebuilt): nothing to blend from.
+                _previous = new Vector2[count];
+                _latest = new Vector2[count];
+                _renderPositions = new Vector3[count];
+                _captured = simulation;
+            }
+
+            for (var i = 0; i < count; i++)
+            {
+                var now = simulation.GetPosition(i).ToUnity();
+                _previous[i] = fresh ? now : _latest[i];
+                _latest[i] = now;
+            }
+
+            _lastStepTime = Time.fixedTime;
         }
 
         /// <summary>
@@ -260,30 +260,49 @@ namespace MindAttic.Chain
         /// </summary>
         public void RenderChain(float blend)
         {
-            EnsureInitialized();
-            blend = Mathf.Clamp01(blend);
-            var z = (handSocket != null ? handSocket : transform).position.z;
-
-            for (var i = 0; i < linkCount; i++)
+            var simulation = Simulation;
+            if (simulation == null)
             {
-                var p = Vector2.LerpUnclamped(_previous[i], _simulation.GetPosition(i).ToUnity(), blend);
+                return;
+            }
+
+            if (simulation != _captured)
+            {
+                CaptureStep();
+            }
+
+            blend = Mathf.Clamp01(blend);
+            var z = transform.position.z;
+            for (var i = 0; i < _previous.Length; i++)
+            {
+                var p = Vector2.LerpUnclamped(_previous[i], simulation.GetPosition(i).ToUnity(), blend);
                 _renderPositions[i] = new Vector3(p.x, p.y, z);
             }
 
             // Only the live part of the chain is drawn; the parked tail stays hidden.
-            var visible = _simulation.ActiveLinkCount;
-            if (_line.positionCount != visible)
+            var line = Line;
+            line.useWorldSpace = true;
+            var visible = simulation.ActiveLinkCount;
+            if (line.positionCount != visible)
             {
-                _line.positionCount = visible;
+                line.positionCount = visible;
             }
 
             for (var i = 0; i < visible; i++)
             {
-                _line.SetPosition(i, _renderPositions[i]);
+                line.SetPosition(i, _renderPositions[i]);
             }
         }
 
-        private void Awake() => EnsureInitialized();
+        private LineRenderer Line => _line != null ? _line : _line = GetComponent<LineRenderer>();
+
+        private void Retune()
+        {
+            if (Session != null)
+            {
+                Session.Retune(Player);
+            }
+        }
 
         private void OnEnable() => toggleFollow.Enable();
 
@@ -297,11 +316,7 @@ namespace MindAttic.Chain
             }
         }
 
-        private void FixedUpdate()
-        {
-            Simulate(Time.fixedDeltaTime);
-            _lastStepTime = Time.fixedTime;
-        }
+        private void FixedUpdate() => CaptureStep();
 
         private void LateUpdate()
         {
@@ -317,52 +332,7 @@ namespace MindAttic.Chain
         private void OnValidate()
         {
             linkCount = Mathf.Max(2, linkCount);
-            if (_simulation == null)
-            {
-                return;
-            }
-
-            if (_simulation.LinkCount != linkCount)
-            {
-                Rebuild();
-            }
-            else
-            {
-                _simulation.Config = CurrentSettings;
-            }
-        }
-
-        private void EnsureInitialized()
-        {
-            if (_simulation == null || _simulation.LinkCount != linkCount)
-            {
-                Rebuild();
-            }
-        }
-
-        private Rect2? ResolveBounds()
-        {
-            if (!keepInLevel)
-            {
-                return null;
-            }
-
-            // Look the scene's LevelBounds up once, not every physics step.
-            if (levelBounds == null && !_levelSearched)
-            {
-                levelBounds = LevelBounds.Find();
-                _levelSearched = true;
-            }
-
-            return levelBounds != null ? levelBounds.Bounds.ToCore() : (Rect2?)null;
-        }
-
-        private void CaptureCurrent(Vector2[] into)
-        {
-            for (var i = 0; i < into.Length; i++)
-            {
-                into[i] = _simulation.GetPosition(i).ToUnity();
-            }
+            Retune();
         }
     }
 }

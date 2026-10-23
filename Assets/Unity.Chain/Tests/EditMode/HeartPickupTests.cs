@@ -18,6 +18,7 @@ namespace MindAttic.Chain.Tests
             _session = Track(new GameObject("Session")).AddComponent<GameSession>();
             _session.Angel = _angel;
             _angel.transform.position = new Vector3(0f, 0.27f, 0f); // its rectangle touches the heart's start
+            _session.Join(_angel); // seated where it stands
         }
 
         [TearDown]
@@ -79,7 +80,7 @@ namespace MindAttic.Chain.Tests
         public void FarAngel_DoesNotHeal()
         {
             _session.State.TryHurt(1f);
-            _angel.transform.position = new Vector3(5f, 5f, 0f);
+            _angel.SendInput(new Vector2(500f, 500f), 0f); // the world flies it away
             SpawnHeart();
 
             Assert.AreEqual(0, _session.CheckPickups());

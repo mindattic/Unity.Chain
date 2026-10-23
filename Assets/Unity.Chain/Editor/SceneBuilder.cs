@@ -33,13 +33,14 @@ namespace MindAttic.Chain.EditorTools
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
             var levelBounds = CreateLevelBounds();
-            var (angel, handSocket) = CreateAngel(levelBounds);
+            var angel = CreateAngel(levelBounds);
             CreateCamera(levelBounds);
-            var (grapple, hitDetector) = CreateChain(handSocket, levelBounds);
-            var session = CreateGameSession(angel, hitDetector);
+            var (chain, grapple) = CreateChain();
+            angel.Chain = chain;
+            var session = CreateGameSession(angel, levelBounds);
             var sceneLight = CreateSceneLight(session);
             CreateGameHud(session, grapple, sceneLight);
-            CreateEnemySpawner(session, levelBounds);
+            CreateEnemySpawner(session);
             CreateHeart();
             CreateMusicPlayer();
 
@@ -57,7 +58,7 @@ namespace MindAttic.Chain.EditorTools
             return go.AddComponent<LevelBounds>();
         }
 
-        private static (AngelController angel, Transform handSocket) CreateAngel(LevelBounds levelBounds)
+        private static AngelController CreateAngel(LevelBounds levelBounds)
         {
             var go = new GameObject("Angel");
             var spriteRenderer = go.AddComponent<SpriteRenderer>();
@@ -69,13 +70,13 @@ namespace MindAttic.Chain.EditorTools
             angel.LevelBounds = levelBounds;
             // Neither has a public setter: AngelController finds both via GetComponentInChildren
             // / LevelBounds.Find() when unset, but wiring them here makes the scene's intent
-            // explicit instead of relying on that runtime fallback. handSocketTransform is what
-            // ChainController pins link 0 to below; there is no sprite art in the repo yet
+            // explicit instead of relying on that runtime fallback. handSocketTransform follows the
+            // hand the world hangs link 0 from; there is no sprite art in the repo yet
             // (scaffold stage), so this renderer has no sprite or frames to show until that lands.
             SetPrivateField(angel, "spriteRenderer", spriteRenderer);
             SetPrivateField(angel, "handSocketTransform", handSocketGo.transform);
 
-            return (angel, handSocketGo.transform);
+            return angel;
         }
 
         private static void CreateCamera(LevelBounds levelBounds)
@@ -90,8 +91,7 @@ namespace MindAttic.Chain.EditorTools
             rig.Level = levelBounds;
         }
 
-        private static (GrappleController grapple, MaceHitDetector hitDetector) CreateChain(
-            Transform handSocket, LevelBounds levelBounds)
+        private static (ChainController chain, GrappleController grapple) CreateChain()
         {
             var go = new GameObject("Chain");
 
@@ -100,18 +100,10 @@ namespace MindAttic.Chain.EditorTools
             line.useWorldSpace = true;
             line.widthMultiplier = 0.08f;
 
+            // The chain's player is seated by the GameSession, which binds these to the world.
             var chain = go.AddComponent<ChainController>();
-            chain.HandSocket = handSocket;
-            chain.LevelBounds = levelBounds;
-
             go.AddComponent<MaceController>();
-
             var grapple = go.AddComponent<GrappleController>();
-            grapple.Chain = chain;
-
-            var hitDetector = go.AddComponent<MaceHitDetector>();
-            hitDetector.Chain = chain;
-            hitDetector.Grapple = grapple;
 
             var audioSource = go.AddComponent<AudioSource>();
             audioSource.playOnAwake = false;
@@ -119,27 +111,25 @@ namespace MindAttic.Chain.EditorTools
 
             var chainAudio = go.AddComponent<ChainAudio>();
             chainAudio.Chain = chain;
-            chainAudio.Grapple = grapple;
-            chainAudio.HitDetector = hitDetector;
             chainAudio.SfxSource = audioSource;
 
-            return (grapple, hitDetector);
+            return (chain, grapple);
         }
 
-        private static GameSession CreateGameSession(AngelController angel, MaceHitDetector hitDetector)
+        private static GameSession CreateGameSession(AngelController angel, LevelBounds levelBounds)
         {
+            // The one authority: it holds the world, seats the angel (seat 0) and steps everything.
             var go = new GameObject("GameSession");
             var session = go.AddComponent<GameSession>();
             session.Angel = angel;
-            session.MaceHits = hitDetector;
+            session.Level = levelBounds;
             return session;
         }
 
-        private static void CreateEnemySpawner(GameSession session, LevelBounds levelBounds)
+        private static void CreateEnemySpawner(GameSession session)
         {
             var go = new GameObject("EnemySpawner");
             var spawner = go.AddComponent<EnemySpawner>();
-            spawner.Level = levelBounds;
             spawner.Session = session;
         }
 

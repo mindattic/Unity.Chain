@@ -1,133 +1,102 @@
+using MindAttic.Chain.Core;
 using NUnit.Framework;
 using UnityEngine;
 
 namespace MindAttic.Chain.Tests
 {
+    /// <summary>The spawner makes, kills and removes enemy views as the world reports its enemies.</summary>
     public class EnemySpawnerTests
     {
-        private GameObject _go;
+        private TestRig _rig;
+        private EnemySpawner _spawner;
+
+        [SetUp]
+        public void SetUp()
+        {
+            _rig = new TestRig();
+            _spawner = _rig.Track(new GameObject("Spawner")).AddComponent<EnemySpawner>();
+            _spawner.Session = _rig.Session;
+        }
 
         [TearDown]
-        public void TearDown()
-        {
-            if (_go != null)
-            {
-                Object.DestroyImmediate(_go);
-            }
-        }
+        public void TearDown() => _rig.Dispose();
 
-        private EnemySpawner NewSpawner()
-        {
-            _go = new GameObject("Spawner");
-            return _go.AddComponent<EnemySpawner>();
-        }
+        private Enemy[] Views() => _spawner.GetComponentsInChildren<Enemy>();
 
         [Test]
-        public void DefaultCount_IsFourteen()
+        public void Reset_SpawnsFourteen_AndAnotherResetReplacesThem()
         {
-            Assert.AreEqual(14, NewSpawner().Count);
-        }
+            _rig.Session.Restart();
+            Assert.AreEqual(14, _rig.Session.World.Enemies.Count);
+            Assert.AreEqual(14, _spawner.Alive);
+            var before = Views();
+            Assert.AreEqual(14, before.Length);
 
-        [Test]
-        public void RandomPositions_AreInsideArea()
-        {
-            var area = new Rect(-8f, -4.5f, 16f, 9f);
-            var points = EnemySpawner.RandomPositions(area, 200, new System.Random(1));
-
-            Assert.AreEqual(200, points.Length);
-            foreach (var p in points)
+            _rig.Session.Restart();
+            var after = Views();
+            Assert.AreEqual(14, after.Length);
+            foreach (var enemy in after)
             {
-                Assert.IsTrue(area.Contains(p));
+                CollectionAssert.DoesNotContain(before, enemy);
+                Assert.IsTrue(enemy.IsAlive);
+                Assert.IsTrue(enemy.Entity.Brain.Mass >= 1f && enemy.Entity.Brain.Mass <= 2f);
             }
         }
 
         [Test]
-        public void Spawn_CreatesCount_AndRespawnReplacesThem()
+        public void Views_PickFrames_OrFallBackToADisc()
         {
-            var spawner = NewSpawner();
-            spawner.Spawn();
-            Assert.AreEqual(14, spawner.Alive);
-            Assert.AreEqual(14, _go.GetComponentsInChildren<Enemy>().Length);
-
-            spawner.Spawn();
-            Assert.AreEqual(14, spawner.Alive);
-            Assert.AreEqual(14, _go.GetComponentsInChildren<Enemy>().Length);
-        }
-
-        [Test]
-        public void Spawn_PicksFrames_AndMassInRange()
-        {
-            var spawner = NewSpawner();
-            var tex = new Texture2D(2, 2);
-            spawner.Frames = new[] { Sprite.Create(tex, new Rect(0, 0, 2, 2), Vector2.zero) };
-            spawner.Spawn();
-
-            foreach (var enemy in _go.GetComponentsInChildren<Enemy>())
+            _rig.Session.Restart();
+            foreach (var enemy in Views())
             {
                 Assert.IsNotNull(enemy.GetComponent<SpriteRenderer>().sprite);
-                Assert.IsTrue(enemy.Brain.Mass >= 1f && enemy.Brain.Mass <= 2f);
+            }
+
+            var tex = new Texture2D(2, 2);
+            var frame = Sprite.Create(tex, new Rect(0, 0, 2, 2), Vector2.zero);
+            _spawner.Frames = new[] { frame };
+            _rig.Session.Restart();
+            foreach (var enemy in Views())
+            {
+                Assert.AreSame(frame, enemy.GetComponent<SpriteRenderer>().sprite);
             }
 
             Object.DestroyImmediate(tex);
         }
 
         [Test]
-        public void Spawn_WithoutFrames_StillDrawsEnemies()
+        public void KilledEnemy_PlaysItsDeath()
         {
-            var spawner = NewSpawner();
-            spawner.Spawn();
+            _rig.Swing();
+            var entity = _rig.SpawnEnemy(_rig.Player.MacePosition.ToUnity(), hp: 0.0001f);
+            _rig.Step(0f); // hands the spawn event over without moving anything
+            var view = _spawner.ViewOf(entity.Id);
+            Assert.IsNotNull(view);
 
-            foreach (var enemy in _go.GetComponentsInChildren<Enemy>())
-            {
-                Assert.IsNotNull(enemy.GetComponent<SpriteRenderer>().sprite);
-            }
+            _rig.Step();
+
+            Assert.IsFalse(entity.InWorld);
+            Assert.IsFalse(view.gameObject.activeSelf);
+            Assert.IsNull(_spawner.ViewOf(entity.Id));
         }
 
         [Test]
-        public void SessionRestart_ReplacesEnemiesWithFreshOnes()
+        public void Spawner_ShowsEnemiesAlreadyInTheWorld_WhenItIsWired()
         {
-            var spawner = NewSpawner();
-            var session = new GameObject("Session").AddComponent<GameSession>();
-            try
-            {
-                spawner.Session = session;
-                spawner.Spawn();
-                var before = _go.GetComponentsInChildren<Enemy>();
+            var late = _rig.Track(new GameObject("Late")).AddComponent<EnemySpawner>();
+            _rig.SpawnEnemy(new Vector2(2f, 2f));
+            late.Session = _rig.Session;
 
-                session.Restart();
-
-                var after = _go.GetComponentsInChildren<Enemy>();
-                Assert.AreEqual(14, after.Length);
-                foreach (var enemy in after)
-                {
-                    CollectionAssert.DoesNotContain(before, enemy);
-                    Assert.IsTrue(enemy.IsAlive);
-                }
-            }
-            finally
-            {
-                Object.DestroyImmediate(session.gameObject);
-            }
+            Assert.AreEqual(1, late.GetComponentsInChildren<Enemy>().Length);
         }
 
         [Test]
-        public void SessionRestart_WithoutWiredSession_DoesNotRespawn()
+        public void UnwiredSpawner_ShowsNothing()
         {
-            var spawner = NewSpawner();
-            var session = new GameObject("Session").AddComponent<GameSession>();
-            try
-            {
-                spawner.Spawn();
-                var before = _go.GetComponentsInChildren<Enemy>();
+            var loose = _rig.Track(new GameObject("Loose")).AddComponent<EnemySpawner>();
+            _rig.Session.Restart();
 
-                session.Restart();
-
-                CollectionAssert.AreEqual(before, _go.GetComponentsInChildren<Enemy>());
-            }
-            finally
-            {
-                Object.DestroyImmediate(session.gameObject);
-            }
+            Assert.AreEqual(0, loose.GetComponentsInChildren<Enemy>().Length);
         }
     }
 }

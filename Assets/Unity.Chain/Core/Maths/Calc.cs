@@ -22,6 +22,7 @@ namespace MindAttic.Chain.Core
         public static float Abs(float value) => MathF.Abs(value);
         public static float Sin(float radians) => MathF.Sin(radians);
         public static float Exp(float power) => MathF.Exp(power);
+        public static float Sqrt(float value) => MathF.Sqrt(value);
 
         /// <summary>+1 for zero and positive, -1 for negative.</summary>
         public static float Sign(float value) => value >= 0f ? 1f : -1f;
