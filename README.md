@@ -23,9 +23,11 @@ source algorithm, what the 2005 port got right and wrong, and the tuning table c
 Scaffold stage: the project, package manifest, and a corrected, unit-tested port of the core
 spring-chain physics (`Assets/Unity.Chain/Runtime/Chain/ChainSimulation.cs`) are in place, driven
 by `ChainController` (FixedUpdate stepping, link 0 pinned to the hand socket, interpolated
-LineRenderer drawing). Player control, the mace/grapple mechanic, enemies and everything else are
-tracked as open
-tickets in the MindAttic ticket database (`tickets ticket list --repo Unity.Chain`).
+LineRenderer drawing), along with the angel's mouse-steered flight controller
+(`Assets/Unity.Chain/Runtime/Player/`: hover bob, left/right facing, wing-flap sprite frames,
+camera-derived screen bounds, and a facing-mirrored hand socket transform the chain anchors to).
+The mace/grapple mechanic, enemies and everything else are tracked as open tickets in the
+MindAttic ticket database (`tickets ticket list --repo Unity.Chain`).
 
 ## Project layout
 
