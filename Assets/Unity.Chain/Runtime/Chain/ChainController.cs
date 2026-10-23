@@ -40,6 +40,15 @@ namespace MindAttic.Chain
         [Min(0f)]
         [SerializeField] private float overheadMargin = 0.25f;
 
+        [Header("Level bounds")]
+        [Tooltip("Bounce links off the level's walls (Elastic Trail's wall bounce) so the mace cannot be swung out of the play space.")]
+        [SerializeField] private bool keepInLevel = true;
+        [Tooltip("The play space. Falls back to the scene's LevelBounds.")]
+        [SerializeField] private LevelBounds levelBounds;
+        [Tooltip("Fraction of a link's speed into a wall kept after the bounce.")]
+        [Range(0f, 1f)]
+        [SerializeField] private float wallBounce = 0.5f;
+
         [Header("Rendering")]
         [Tooltip("Blend between the previous and current physics step when drawing.")]
         [SerializeField] private bool interpolate = true;
@@ -50,6 +59,7 @@ namespace MindAttic.Chain
         private Vector3[] _renderPositions;
         private float _lastStepTime;
         private int _activeLinkCount = -1;
+        private bool _levelSearched;
 
         public ChainSimulation Simulation
         {
@@ -66,6 +76,29 @@ namespace MindAttic.Chain
         {
             get => handSocket;
             set => handSocket = value;
+        }
+
+        /// <summary>The play space links bounce inside, or null (none assigned or found).</summary>
+        public LevelBounds LevelBounds
+        {
+            get => levelBounds;
+            set
+            {
+                levelBounds = value;
+                _levelSearched = value != null;
+            }
+        }
+
+        public bool KeepInLevel
+        {
+            get => keepInLevel;
+            set => keepInLevel = value;
+        }
+
+        public float WallBounce
+        {
+            get => wallBounce;
+            set => wallBounce = Mathf.Clamp01(value);
         }
 
         public bool Interpolate
@@ -163,6 +196,8 @@ namespace MindAttic.Chain
             EnsureInitialized();
             CaptureCurrent(_previous);
             _simulation.Config = CurrentSettings;
+            _simulation.Bounds = ResolveBounds();
+            _simulation.WallBounce = wallBounce;
             _simulation.SetAnchor(AnchorPosition);
             _simulation.Step(deltaTime);
         }
@@ -239,6 +274,23 @@ namespace MindAttic.Chain
             {
                 Rebuild();
             }
+        }
+
+        private Rect? ResolveBounds()
+        {
+            if (!keepInLevel)
+            {
+                return null;
+            }
+
+            // Look the scene's LevelBounds up once, not every physics step.
+            if (levelBounds == null && !_levelSearched)
+            {
+                levelBounds = LevelBounds.Find();
+                _levelSearched = true;
+            }
+
+            return levelBounds != null ? levelBounds.Bounds : (Rect?)null;
         }
 
         private void CaptureCurrent(Vector2[] into)

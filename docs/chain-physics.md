@@ -83,6 +83,21 @@ JS original: both-neighbor pull.
   2D `AudioSource` with its own volume/mute and the optional random start. No clips ship in the
   repo yet: the original WAVs can be dropped into the clip sets as they are, but `music.wma` has to
   be converted (Unity does not import WMA).
+- **HUD, bounds and camera** (Engine.vb `renderDisplay`/`checkAngelHit`, Angel.vb `checkBounds`):
+  the original wrote `HP : ` as one `|` per hit point, `Score : ` (each mace hit adds
+  `damage * 1000`) and `Grappled: <hp>` in plain text, paused with a `- PAUSE -` banner, took one
+  HP per enemy touch at most every `hurtDelay` (0.25 s) from `maxHP` 30, and clamped the angel to a
+  fixed rect under a fixed 4:3 camera; the chain's wall bounce was commented out. **In Unity**
+  (`Runtime/Level/`, `Runtime/UI/`): `LevelBounds` is the play-space rect; `AngelController`
+  clamps to it inset by its sprite margin (camera view only as a fallback); `ChainController`
+  bounces simulated links off it (`ChainSimulation.Bounds`, default bounce 0.5, `keepInLevel` to
+  turn off); `CameraRig` fits the whole level on any aspect (`FitLevel`) or follows the angel with
+  a dead zone and frame-rate independent smoothing, clamped inside the level (`Follow`);
+  `GameSession` (pure rules in `GameState`) checks enemy contact with a Physics2D circle, ignoring
+  grabbed and dead enemies, scores `MaceHitDetector.Hit`, pauses on P/Escape and freezes on game
+  over until a click restarts; `GameHud` draws the original's lines with IMGUI. One deliberate
+  change: the original drew `HP + 1` bars and ended the game below zero (31 hits from 30 HP); the
+  port shows exactly HP bars and ends at 0.
 - Two things in `renderChain` look like leftover hacks rather than intended behavior and are
   **not** being ported as-is: `link(Mace).X/Y += maceOffset` is applied unconditionally every
   frame (a cumulative drift bug, not a one-time sprite-alignment offset), and a stray
@@ -119,4 +134,4 @@ in Unity world units / pixels-per-unit rather than copied literally.
 4. Angel/player controller — mouse-steered flight, hover bob, facing flip, sprite animation.
 5. Mace rendering + grapple/throw mechanic (arm on input, release throws using mace velocity).
 6. Enemies + Physics2D hit detection against the mace (swept circle, replacing the AABB).
-7. Audio, HUD/UI, level bounds and camera.
+7. Audio, HUD/UI, level bounds and camera (done: `Runtime/Audio/`, `Runtime/Level/`, `Runtime/UI/`).

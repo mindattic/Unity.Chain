@@ -6,8 +6,10 @@ namespace MindAttic.Chain
     /// <summary>
     /// Mouse-steered angel: reads the mouse delta from the Input System, steps
     /// <see cref="AngelFlight"/>, and applies position, facing and the wing-flap frame to this
-    /// GameObject's Transform and SpriteRenderer. Play-space bounds come from the camera's
-    /// orthographic view (inset by <see cref="boundsMargin"/>) unless explicit bounds are set.
+    /// GameObject's Transform and SpriteRenderer. Play-space bounds come from the level's
+    /// <see cref="LevelBounds"/> (assigned, or found in the scene) inset by
+    /// <see cref="boundsMargin"/>; with no level they fall back to the camera's orthographic view,
+    /// then to <see cref="fallbackBounds"/>.
     /// The chain anchors its link 0 to <see cref="HandSocket"/>, published to
     /// <see cref="ChainController"/> through the optional hand-socket transform.
     /// </summary>
@@ -21,9 +23,11 @@ namespace MindAttic.Chain
         [SerializeField] private bool lockCursor = true;
 
         [Header("Bounds")]
+        [Tooltip("The level's play space. Falls back to the scene's LevelBounds, then to the camera view.")]
+        [SerializeField] private LevelBounds levelBounds;
         [Tooltip("Derive bounds from this camera's orthographic view. Falls back to Camera.main.")]
         [SerializeField] private Camera boundsCamera;
-        [Tooltip("Inset from the camera edges, world units, so the sprite stays fully on screen.")]
+        [Tooltip("Inset from the level (or camera) edges, world units, so the sprite stays fully inside.")]
         [SerializeField] private Vector2 boundsMargin = new Vector2(0.5f, 0.6f);
         [Tooltip("Used when there is no orthographic camera.")]
         [SerializeField] private Rect fallbackBounds = new Rect(-8f, -4.5f, 16f, 9f);
@@ -51,6 +55,15 @@ namespace MindAttic.Chain
 
         public AngelFlight Flight => _flight;
         public Facing Facing => _flight != null ? _flight.Facing : Facing.Right;
+        public LevelBounds LevelBounds
+        {
+            get => levelBounds;
+            set => levelBounds = value;
+        }
+
+        /// <summary>The rect the flight position is clamped to this frame.</summary>
+        public Rect Bounds => ComputeBounds();
+
         public Vector2 HandSocket => _flight != null ? _flight.HandSocket : (Vector2)transform.position;
 
         private void Awake()
@@ -58,6 +71,11 @@ namespace MindAttic.Chain
             if (spriteRenderer == null)
             {
                 spriteRenderer = GetComponentInChildren<SpriteRenderer>();
+            }
+
+            if (levelBounds == null)
+            {
+                levelBounds = LevelBounds.Find();
             }
 
             _flight = new AngelFlight(transform.position, BuildSettings());
@@ -108,6 +126,11 @@ namespace MindAttic.Chain
 
         private Rect ComputeBounds()
         {
+            if (levelBounds != null)
+            {
+                return levelBounds.Inset(boundsMargin);
+            }
+
             var cam = boundsCamera != null ? boundsCamera : Camera.main;
             if (cam == null || !cam.orthographic)
             {

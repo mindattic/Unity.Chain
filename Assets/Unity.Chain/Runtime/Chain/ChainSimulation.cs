@@ -69,6 +69,17 @@ namespace MindAttic.Chain
         public int LinkCount => _positions.Length;
 
         /// <summary>
+        /// Optional walls (the level's play space). When set, a simulated link that leaves the
+        /// rect is put back on the edge and bounces off it with <see cref="WallBounce"/>, as in
+        /// Elastic Trail (Chain.vb kept the code but commented it out). Null = unbounded.
+        /// The anchor is not constrained: it follows the hand, which the angel keeps in bounds.
+        /// </summary>
+        public Rect? Bounds;
+
+        /// <summary>Fraction of a link's speed into a wall kept after bouncing off it (0-1).</summary>
+        public float WallBounce = 0.5f;
+
+        /// <summary>
         /// How many links (anchor included) are live. Links past this are not simulated: they
         /// ride along parked on the last active link, so lengthening the chain pays a new link
         /// out from the current end instead of snapping one in from wherever it was left. This is
@@ -150,8 +161,14 @@ namespace MindAttic.Chain
                     velocity = Vector2.zero;
                 }
 
+                var position = _positions[i] + velocity * deltaTime;
+                if (Bounds.HasValue)
+                {
+                    PlayArea.Bounce(Bounds.Value, ref position, ref velocity, WallBounce);
+                }
+
                 _velocities[i] = velocity;
-                _positions[i] += velocity * deltaTime;
+                _positions[i] = position;
             }
 
             // Park the inactive tail on the current end link.
