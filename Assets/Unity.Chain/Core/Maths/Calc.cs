@@ -30,6 +30,6 @@ namespace MindAttic.Chain.Core
         public static int RoundToInt(float value) => (int)MathF.Round(value);
 
         public static float MoveTowards(float current, float target, float maxDelta) =>
-            MathF.Abs(target - current) <= maxDelta ? target : current + MathF.Sign(target - current) * maxDelta;
+            MathF.Abs(target - current) <= maxDelta ? target : current + Sign(target - current) * maxDelta;
     }
 }

@@ -120,7 +120,7 @@ Unity.
 |---|---|---|---|
 | `Unity.Chain.Runtime` | `Assets/Unity.Chain/Runtime/` | The engine adapters: `Chain/` (ChainController, MaceController), `Player/` (AngelController), `Enemies/` (Enemy, EnemySpawner, MaceHitDetector), `Grapple/` (Grapple and its target interface are still engine-typed rules), `Items/`, `Level/` (LevelBounds, CameraRig), `UI/` (GameSession, GameHud, HudText), `Audio/` (ChainAudio), `Adapters/CoreConvert` (the one place Vector2/Rect become Core's Vec2/Rect2) | References Core one way; holds no rule that Core could own |
 | `Unity.Chain.Editor` | `Assets/Unity.Chain/Editor/` | `SceneBuilder` (generates `Main.unity` and the build settings), `PlayerBuilder` (Windows player) | in place |
-| `Unity.Chain.EditMode.Tests` | `Assets/Unity.Chain/Tests/EditMode/` | NUnit tests of the rules and components | in place; the pure ones move to `dotnet test` (planned, UNI-T31) |
+| `Unity.Chain.EditMode.Tests` | `Assets/Unity.Chain/Tests/EditMode/` | NUnit tests of the rules and components | in place; the component tests stay here, the pure rule tests now live in `Tests/Core.Tests` (`dotnet test`) |
 | `Unity.Chain.PlayMode.Tests` | `Assets/Unity.Chain/Tests/PlayMode/` | `MainSceneSmokeTests` | in place |
 | `Unity.Chain.Core` | `Assets/Unity.Chain/Core/` | `noEngineReferences`: `Maths/` (Vec2, Rect2, Calc), `Chain/` (ChainSimulation), `Player/` (AngelFlight), `Enemies/` (EnemyBrain), `Game/` (GameState), `Level/` (CameraFraming, PlayArea), `Audio/` (SwingSoundTrigger, ClipPicker) | Its rules are tested by `Tests/Core.Tests` with `dotnet test`; the Grapple rule moves in later |
 

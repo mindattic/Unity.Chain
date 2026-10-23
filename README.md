@@ -64,8 +64,8 @@ $unity = "C:\Program Files\Unity\Hub\Editor\6000.4.3f1\Editor\Unity.exe"
 & $unity -batchmode -projectPath . -runTests -testPlatform PlayMode -testResults TestResults-PlayMode.xml -logFile -
 ```
 
-`build.bat`, `test.bat` and `deploy.bat` like the reference repos' are planned (UNI-T39), as is a `dotnet test`
-project for the engine-free rules (UNI-T31) now exists as `Tests/Core.Tests` (`dotnet test Tests/Core.Tests`).
+`build.bat`, `test.bat` and `deploy.bat` like the reference repos' are planned (UNI-T39). The engine-free rules are
+tested by `Tests/Core.Tests` (`dotnet test Tests/Core.Tests`).
 
 ## Controls
 
