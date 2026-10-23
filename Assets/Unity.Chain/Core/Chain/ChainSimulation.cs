@@ -78,6 +78,13 @@ namespace MindAttic.Chain.Core
         public float WallBounce = 0.5f;
 
         /// <summary>
+        /// Chain.vb's <c>followMouse</c>: while false every link's spring force is zero, so the
+        /// links feel only gravity and drag and the chain falls away from the hand. Toggled by
+        /// <see cref="ChainFollow.Apply"/>; see <see cref="ChainFollow"/> for the mace rules.
+        /// </summary>
+        public bool IsFollowing = ChainFollow.StartsFollowing;
+
+        /// <summary>
         /// How many links (anchor included) are live. Links past this are not simulated: they
         /// ride along parked on the last active link, so lengthening the chain pays a new link
         /// out from the current end instead of snapping one in from wherever it was left. This is
@@ -136,10 +143,13 @@ namespace MindAttic.Chain.Core
             for (var i = 1; i < end; i++)
             {
                 var spring = Vec2.Zero;
-                spring += SpringForce(i, i - 1);
-                if (i < end - 1)
+                if (IsFollowing)
                 {
-                    spring += SpringForce(i, i + 1);
+                    spring += SpringForce(i, i - 1);
+                    if (i < end - 1)
+                    {
+                        spring += SpringForce(i, i + 1);
+                    }
                 }
 
                 // Overhead boost: an upward pull on a link that is above the anchor is amplified,

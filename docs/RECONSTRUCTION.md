@@ -73,7 +73,7 @@ but unreachable or does nothing; not ported, recorded here), **n/a** (DirectX pl
 | Overhead boost | spring.Y doubled when pulling up and above `link(0).Y - linkSize` | `ChainController` 2x boost | ported |
 | Drift hacks | `link(Mace).X/Y += maceOffset` every frame (cumulative); `link(1).Y -= 0.0004` per frame | not ported (render-only offset) | deliberate deviation (UNI-T45) |
 | Wall bounce | commented out | `LevelBounds` bounce 0.5 | deliberate deviation (UNI-T45) |
-| `followMouse` (F key) | when false the spring is zero and the mace scale/rectangle are skipped | none | missing, UNI-T47 |
+| `followMouse` (F key) | starts `True`, never reset; when false `animateChain` leaves every spring force zero (gravity and drag still act, so the chain falls away from the hand) and `renderChain` skips the mace's 3.5x scale, offset and `rectMace`, which is left where it last was | `ChainSimulation.IsFollowing`, `ChainFollow` (Core: `ToggleFollowCommand` with a player id -> `FollowChangedEvent`, the 3.5x and 1x mace scales), F action on `ChainController`; off, the mace draws at link size and neither hits nor catches (BIBLE D17) | ported, UNI-T47 |
 | Live tuning | Ins/Del resistance +/-0.001, Home/End gravity -/+0.00001, PgUp/PgDn spring +/-0.001, `changeBounce` unused | none | missing, UNI-T51 |
 | Link skins | U key sets links 1-5 to aqua, emerald, teardrop, tablet, pearl | none | missing, UNI-T41 |
 | `theMaceMode.Magnet` + `magnet.PNG` | declared, texture loaded, **never selected** | none | dead in original; README promised it, UNI-T43 |
@@ -133,7 +133,7 @@ Every binding of the original, with its state:
 | `[` `]` | mace index -1/+1 (1..12) | ported |
 | Minus / Equals | `gameSpeed` -/+0.01 (min 0); only displayed, never applied | missing, UNI-T52 |
 | Ins/Del, Home/End, PgUp/PgDn | tune resistance, gravity, spring | missing, UNI-T51 |
-| F | `followMouse` toggle | missing, UNI-T47 |
+| F | `followMouse` toggle | ported (`ChainController` Toggle Follow action, UNI-T47) |
 | U | gem link skins | missing, UNI-T41 |
 | R | `Reset` | missing, UNI-T48 |
 | 0 | `shakeScreen(0.02)` | missing, UNI-T49 |

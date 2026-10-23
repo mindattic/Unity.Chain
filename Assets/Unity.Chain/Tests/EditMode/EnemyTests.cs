@@ -94,6 +94,21 @@ namespace MindAttic.Chain.Tests
         }
 
         [Test]
+        public void NotFollowing_TheMaceDoesNotHit_UntilFollowIsBackOn()
+        {
+            SwingChain();
+            _chain.IsFollowing = false;
+            var enemy = SpawnEnemy(_detector.MacePosition);
+
+            Assert.AreEqual(0, _detector.Step());
+            Assert.AreEqual(EnemyState.Seek, enemy.State);
+
+            _chain.IsFollowing = true;
+            Assert.AreEqual(1, _detector.Step());
+            Assert.AreEqual(EnemyState.Hurt, enemy.State);
+        }
+
+        [Test]
         public void EnemyAwayFromTheMace_IsNotHit()
         {
             SwingChain();

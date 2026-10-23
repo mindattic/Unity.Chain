@@ -1,3 +1,4 @@
+using MindAttic.Chain.Core;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -37,7 +38,7 @@ namespace MindAttic.Chain
         [Tooltip("Mace size relative to the chain's line width (Chain.vb: 3.5x the link quad). " +
                  "Assumes the visual is one world unit across at scale 1.")]
         [Min(0f)]
-        [SerializeField] private float maceScale = 3.5f;
+        [SerializeField] private float maceScale = ChainFollow.MaceScale;
         [Tooltip("Render-only offset of the visual from the mace link, in world units.")]
         [SerializeField] private Vector2 spriteOffset = Vector2.zero;
 
@@ -142,7 +143,16 @@ namespace MindAttic.Chain
             }
         }
 
-        /// <summary>Places and sizes the mace visual on the drawn (interpolated) mace link.</summary>
+        /// <summary>
+        /// The visual's size relative to the chain's line width: <see cref="MaceScale"/> while the
+        /// chain follows, one link's width when it does not (Chain.vb skips the 3.5x then).
+        /// </summary>
+        public float CurrentScale => ChainFollow.MaceScaleFor(Chain.IsFollowing, maceScale);
+
+        /// <summary>
+        /// Places and sizes the mace visual on the drawn (interpolated) mace link. With the chain
+        /// not following, the sprite offset and the 3.5x scale are skipped, as in Chain.vb.
+        /// </summary>
         public void RenderMace()
         {
             if (maceVisual == null)
@@ -150,12 +160,13 @@ namespace MindAttic.Chain
                 return;
             }
 
+            var following = Chain.IsFollowing;
             var linkPosition = Chain.GetRenderedLinkPosition(MaceIndex);
-            maceVisual.position = linkPosition + (Vector3)spriteOffset;
+            maceVisual.position = linkPosition + (following ? (Vector3)spriteOffset : Vector3.zero);
 
             var line = Chain.GetComponent<LineRenderer>();
             var width = line != null ? line.widthMultiplier : 1f;
-            maceVisual.localScale = Vector3.one * (width * maceScale);
+            maceVisual.localScale = Vector3.one * (width * CurrentScale);
         }
 
         private static InputAction Button(string name, params string[] bindings)

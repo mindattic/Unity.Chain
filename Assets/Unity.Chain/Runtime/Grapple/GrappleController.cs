@@ -140,7 +140,9 @@ namespace MindAttic.Chain
                 Thrown?.Invoke(thrown, MaceVelocity * throwMultiplier);
             }
 
-            if (Grapple.State == GrappleState.Armed)
+            // The catch is the mace's touch (Engine.vb's checkMaceImpact on rectMace), which is not
+            // kept while the chain is not following (F key, BIBLE D17).
+            if (Grapple.State == GrappleState.Armed && MindAttic.Chain.Core.ChainFollow.MaceHits(chain.IsFollowing))
             {
                 TryCatch(FindTargetAtMace());
             }

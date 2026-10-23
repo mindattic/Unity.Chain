@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using MindAttic.Chain.Core;
 using UnityEngine;
 
 namespace MindAttic.Chain
@@ -109,6 +110,15 @@ namespace MindAttic.Chain
         {
             if (chain == null)
             {
+                return 0;
+            }
+
+            // Not following (F key): Chain.vb stops keeping rectMace on the mace, so the mace does
+            // not hit or catch (BIBLE D17). Forget the last position so turning it back on does not
+            // sweep from where the mace was.
+            if (!ChainFollow.MaceHits(chain.IsFollowing))
+            {
+                _previousIndex = -1;
                 return 0;
             }
 

@@ -1,5 +1,7 @@
+using System;
 using MindAttic.Chain.Core;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 namespace MindAttic.Chain
 {
@@ -49,6 +51,13 @@ namespace MindAttic.Chain
         [Tooltip("Fraction of a link's speed into a wall kept after the bounce.")]
         [Range(0f, 1f)]
         [SerializeField] private float wallBounce = 0.5f;
+
+        [Header("Follow (F key)")]
+        [Tooltip("Chain.vb's followMouse: off, every spring force is zero and the chain falls under gravity.")]
+        [SerializeField] private bool following = ChainFollow.StartsFollowing;
+        [Tooltip("The player this chain belongs to; carried by the follow command and its event.")]
+        [SerializeField] private int playerId;
+        [SerializeField] private InputAction toggleFollow = new InputAction("Toggle Follow", InputActionType.Button, "<Keyboard>/f");
 
         [Header("Rendering")]
         [Tooltip("Blend between the previous and current physics step when drawing.")]
@@ -106,6 +115,46 @@ namespace MindAttic.Chain
         {
             get => interpolate;
             set => interpolate = value;
+        }
+
+        /// <summary>Raised when the F key (or <see cref="ToggleFollow"/>) changes the follow flag.</summary>
+        public event Action<FollowChangedEvent> FollowChanged;
+
+        /// <summary>
+        /// Chain.vb's <c>followMouse</c>: true pulls the links by their springs; false leaves the
+        /// springs at zero so the chain falls under gravity (see <see cref="ChainFollow"/>).
+        /// </summary>
+        public bool IsFollowing
+        {
+            get => following;
+            set
+            {
+                following = value;
+                if (_simulation != null)
+                {
+                    _simulation.IsFollowing = value;
+                }
+            }
+        }
+
+        public int PlayerId
+        {
+            get => playerId;
+            set => playerId = value;
+        }
+
+        /// <summary>
+        /// The F key: sends this chain's player a <see cref="ToggleFollowCommand"/> through Core and
+        /// raises <see cref="FollowChanged"/> with the event it produces. Returns the new state.
+        /// </summary>
+        public bool ToggleFollow()
+        {
+            EnsureInitialized();
+            _simulation.IsFollowing = following;
+            var changed = ChainFollow.Apply(_simulation, new ToggleFollowCommand(playerId));
+            following = changed.IsFollowing;
+            FollowChanged?.Invoke(changed);
+            return following;
         }
 
         /// <summary>The world point link 0 is pinned to: the hand socket, or this transform.</summary>
@@ -181,6 +230,7 @@ namespace MindAttic.Chain
 
             _simulation = new ChainSimulation(linkCount, AnchorPosition.ToCore(), CurrentSettings);
             _simulation.ActiveLinkCount = ActiveLinkCount;
+            _simulation.IsFollowing = following;
             _previous = new Vector2[linkCount];
             _renderPositions = new Vector3[linkCount];
             CaptureCurrent(_previous);
@@ -199,6 +249,7 @@ namespace MindAttic.Chain
             _simulation.Config = CurrentSettings;
             _simulation.Bounds = ResolveBounds();
             _simulation.WallBounce = wallBounce;
+            _simulation.IsFollowing = following;
             _simulation.SetAnchor(AnchorPosition.ToCore());
             _simulation.Step(deltaTime);
         }
@@ -233,6 +284,18 @@ namespace MindAttic.Chain
         }
 
         private void Awake() => EnsureInitialized();
+
+        private void OnEnable() => toggleFollow.Enable();
+
+        private void OnDisable() => toggleFollow.Disable();
+
+        private void Update()
+        {
+            if (toggleFollow.WasPressedThisFrame())
+            {
+                ToggleFollow();
+            }
+        }
 
         private void FixedUpdate()
         {

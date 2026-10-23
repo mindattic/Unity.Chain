@@ -160,5 +160,39 @@ namespace MindAttic.Chain.Tests
 
             Assert.AreEqual(before, _mace.MacePosition, "the sprite offset is render-only");
         }
+
+        [Test]
+        public void NotFollowing_TheMaceIsDrawnAsALink_WithoutItsOffset_UntilFollowIsBackOn()
+        {
+            var visual = new GameObject("Mace").transform;
+            visual.SetParent(_root.transform, false);
+            _mace.MaceVisual = visual;
+            _mace.SpriteOffset = new Vector2(0.1f, -0.2f);
+            _root.GetComponent<LineRenderer>().widthMultiplier = 0.1f;
+
+            var events = 0;
+            _chain.FollowChanged += e => events++;
+            Assert.IsFalse(_chain.ToggleFollow());
+            Assert.IsFalse(_chain.Simulation.IsFollowing);
+            Assert.AreEqual(1, events);
+
+            _chain.Simulate(1f / 50f);
+            _chain.RenderChain(1f);
+            _mace.RenderMace();
+            Assert.AreEqual(_chain.GetRenderedLinkPosition(6), visual.position);
+            Assert.AreEqual(0.1f, visual.localScale.x, 1e-5f);
+
+            Assert.IsTrue(_chain.ToggleFollow());
+            _mace.RenderMace();
+            Assert.AreEqual(0.35f, visual.localScale.x, 1e-5f);
+        }
+
+        [Test]
+        public void IsFollowing_SurvivesAChainRebuild()
+        {
+            _chain.IsFollowing = false;
+            _chain.Rebuild();
+            Assert.IsFalse(_chain.Simulation.IsFollowing);
+        }
     }
 }
