@@ -33,6 +33,11 @@ namespace MindAttic.Chain
         [Min(0f)]
         [SerializeField] private float recoverSpeed = 0.05f;
 
+        [Header("Flocking")]
+        [Tooltip("Engine.vb flockSpd: speed (units/s, per axis) at which overlapping live, non-grabbed enemies push each other apart. 0 turns separation off.")]
+        [Min(0f)]
+        [SerializeField] private float flockSpeed = 1.5f;
+
         [Header("Death")]
         [Tooltip("Seconds after death before the GameObject is destroyed (play mode).")]
         [Min(0f)]
@@ -141,12 +146,51 @@ namespace MindAttic.Chain
 
             var seekPoint = (target != null ? (Vector2)target.position : Position) + seekOffset;
             var velocity = Brain.Step(Position, seekPoint, deltaTime);
-            MoveTo(Position + velocity * deltaTime);
+            MoveTo(Position + velocity * deltaTime + FlockingPush(deltaTime));
 
             if (Brain.IsThrown)
             {
                 KnockTouchedEnemies();
             }
+        }
+
+        /// <summary>Enemy-vs-enemy separation (Engine.vb checkFlocking): pushed away from each live, non-grabbed enemy this one overlaps.</summary>
+        private Vector2 FlockingPush(float deltaTime)
+        {
+            if (flockSpeed <= 0f)
+            {
+                return Vector2.zero;
+            }
+
+            var push = Vector2.zero;
+            var counted = new HashSet<Enemy>();
+            var filter = new ContactFilter2D { useTriggers = true };
+            filter.NoFilter();
+
+            foreach (var collider in GetComponentsInChildren<Collider2D>())
+            {
+                if (!collider.enabled)
+                {
+                    continue;
+                }
+
+                _overlaps.Clear();
+                collider.Overlap(filter, _overlaps);
+                foreach (var hit in _overlaps)
+                {
+                    var other = hit.GetComponentInParent<Enemy>();
+                    if (other == null || other == this || !other.isActiveAndEnabled || !other.IsAlive
+                        || other.State == EnemyState.Grabbed || !counted.Add(other))
+                    {
+                        continue;
+                    }
+
+                    var tieBreak = GetInstanceID() < other.GetInstanceID() ? 1 : -1;
+                    push += EnemyBrain.FlockPush(Position, other.Position, flockSpeed, deltaTime, tieBreak);
+                }
+            }
+
+            return push;
         }
 
         private void KnockTouchedEnemies()

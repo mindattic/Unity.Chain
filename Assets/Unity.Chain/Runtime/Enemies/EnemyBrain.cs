@@ -155,6 +155,29 @@ namespace MindAttic.Chain
             return true;
         }
 
+        /// <summary>
+        /// Engine.vb checkFlocking: the push on an enemy at <paramref name="self"/> overlapping one
+        /// at <paramref name="other"/>, <paramref name="speed"/> x <paramref name="deltaTime"/> per
+        /// axis away from it. On an axis where they are level the push goes by
+        /// <paramref name="tieBreak"/> (+1 or -1, opposite for the two enemies) so a perfect stack
+        /// still comes apart.
+        /// </summary>
+        public static Vector2 FlockPush(Vector2 self, Vector2 other, float speed, float deltaTime, int tieBreak = 1)
+        {
+            var step = Mathf.Max(0f, speed) * deltaTime;
+            return new Vector2(AwaySign(self.x - other.x, tieBreak) * step, AwaySign(self.y - other.y, tieBreak) * step);
+        }
+
+        private static float AwaySign(float difference, int tieBreak)
+        {
+            if (Mathf.Abs(difference) < 1e-6f)
+            {
+                return tieBreak < 0 ? -1f : 1f;
+            }
+
+            return Mathf.Sign(difference);
+        }
+
         /// <summary>Caught by the grapple. Returns false if it cannot be caught.</summary>
         public bool Grab()
         {

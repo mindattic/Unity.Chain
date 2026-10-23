@@ -300,6 +300,48 @@ namespace MindAttic.Chain.Tests
         }
 
         [Test]
+        public void FlockPush_PushesApartPerAxis_AndSplitsAPerfectStack()
+        {
+            var push = EnemyBrain.FlockPush(new Vector2(1f, 0f), new Vector2(0f, 2f), 2f, 0.5f);
+            Assert.AreEqual(new Vector2(1f, -1f), push);
+
+            var a = EnemyBrain.FlockPush(Vector2.zero, Vector2.zero, 1f, 1f, 1);
+            var b = EnemyBrain.FlockPush(Vector2.zero, Vector2.zero, 1f, 1f, -1);
+            Assert.AreEqual(Vector2.zero, a + b);
+            Assert.AreNotEqual(Vector2.zero, a);
+        }
+
+        [Test]
+        public void OverlappingEnemies_SeparateOverTime()
+        {
+            var a = SpawnEnemy(new Vector2(0f, 0f));
+            var b = SpawnEnemy(new Vector2(0.1f, 0f));
+
+            for (var i = 0; i < 50; i++)
+            {
+                a.Step(1f / 50f);
+                b.Step(1f / 50f);
+                Physics2D.SyncTransforms();
+            }
+
+            Assert.Less(a.Position.x, 0f);
+            Assert.Greater(b.Position.x, 0.1f);
+        }
+
+        [Test]
+        public void GrabbedEnemy_IsNotPushedAndNotCounted()
+        {
+            var free = SpawnEnemy(new Vector2(0f, 0f));
+            var held = SpawnEnemy(new Vector2(0.1f, 0f));
+            held.OnGrappled();
+
+            free.Step(1f / 50f);
+
+            Assert.AreEqual(0f, free.Position.x, 1e-6f);
+            Assert.AreEqual(0.1f, held.Position.x, 1e-6f);
+        }
+
+        [Test]
         public void Enemy_SeeksItsTarget()
         {
             var target = Track(new GameObject("Angel"));

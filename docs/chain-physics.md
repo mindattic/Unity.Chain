@@ -68,7 +68,9 @@ JS original: both-neighbor pull.
   tunnel. `Enemy` (kinematic `Rigidbody2D` + any `Collider2D`, its own `IGrappleTarget`) runs
   `EnemyBrain`, the Seek/Hurt/Grabbed/Dead rules above. One deliberate change: damage is mace
   speed x `damagePerSpeed`, not Engine.vb's `|dX + dY/2|`, which cancels to zero on some
-  diagonal swings. Not ported here: enemy-vs-enemy flocking separation and enemy-vs-angel damage
+  diagonal swings. Enemy-vs-enemy flocking separation (`checkFlocking`) is ported: each `Enemy` step it is pushed
+  `flockSpeed` (default 1.5 u/s) per axis away from every live, non-grabbed enemy its collider
+  overlaps (`EnemyBrain.FlockPush`; a perfect stack splits by instance id). Not ported here: enemy-vs-angel damage
   (`checkAngelHit`, part of the HUD/health work).
 - **Audio** (Sound.vb): DirectSound buffers loaded from `sfx\` — `sword_swing_1..7`,
   `sword_hit_1..3`, `defend`, `footstep_1..2`, `death_1..4` — at `sfxVolume` -1000 mB, and one
@@ -155,7 +157,7 @@ in Unity world units / pixels-per-unit rather than copied literally.
 - **Gaps, each filed as a fix ticket**: no scene or build-settings entry (UNI-T16); `.meta` files
   not committed (UNI-T17); URP installed but its global settings and pipeline asset missing
   (UNI-T18); no art imported (UNI-T19); no audio clips (UNI-T20); no enemy spawner (UNI-T21);
-  heart pickup not ported (UNI-T22); enemy flocking separation not ported (UNI-T23); game over
+  heart pickup not ported (UNI-T22); game over
   fade and auto-reset differ, documented as a deliberate deviation below (UNI-T24).
 
 ## Game over (deliberate deviation, UNI-T24)
