@@ -26,10 +26,13 @@ by `ChainController` (FixedUpdate stepping, link 0 pinned to the hand socket, in
 LineRenderer drawing), along with the angel's mouse-steered flight controller
 (`Assets/Unity.Chain/Runtime/Player/`: hover bob, left/right facing, wing-flap sprite frames,
 camera-derived screen bounds, and a facing-mirrored hand socket transform the chain anchors to).
-The grapple/throw mechanic is in `Assets/Unity.Chain/Runtime/Grapple/`: hold the left mouse
-button to arm, the mace link catches the nearest `IGrappleTarget` it touches (`GrappleTarget`
-wraps any `Rigidbody2D`), carries it, and on release throws it with the mace link's current
-velocity. Mace rendering, enemies and everything else are tracked as open tickets in the
+The mace (`MaceController`, `Assets/Unity.Chain/Runtime/Chain/`) is the heavy end link at a
+configurable index, drawn as a spiked ball and shortened/lengthened live with `[`/`]`; the
+overhead-swing boost is tuned on `ChainController`. The grapple/throw mechanic is in
+`Assets/Unity.Chain/Runtime/Grapple/`: hold the left mouse button to arm, the mace link catches
+the nearest `IGrappleTarget` it touches (`GrappleTarget` wraps any `Rigidbody2D`), carries it, and
+on release throws it with the mace link's current velocity. Enemies and everything else are
+tracked as open tickets in the
 MindAttic ticket database (`tickets ticket list --repo Unity.Chain`).
 
 ## Project layout

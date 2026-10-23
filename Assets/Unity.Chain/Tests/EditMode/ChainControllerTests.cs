@@ -107,5 +107,35 @@ namespace MindAttic.Chain.Tests
             Assert.AreEqual(8, _controller.Simulation.LinkCount);
             Assert.AreEqual(8, _root.GetComponent<LineRenderer>().positionCount);
         }
+
+        [Test]
+        public void ActiveLinkCount_DrawsOnlyTheLivePartOfTheChain()
+        {
+            _controller.ActiveLinkCount = 7;
+            _controller.Simulate(1f / 50f);
+            _controller.RenderChain(1f);
+
+            Assert.AreEqual(7, _controller.Simulation.ActiveLinkCount);
+            Assert.AreEqual(7, _root.GetComponent<LineRenderer>().positionCount);
+        }
+
+        [Test]
+        public void ActiveLinkCount_SurvivesARebuild()
+        {
+            _controller.ActiveLinkCount = 5;
+            _controller.Rebuild();
+
+            Assert.AreEqual(5, _controller.Simulation.ActiveLinkCount);
+        }
+
+        [Test]
+        public void CurrentSettings_CarryTheOverheadBoost()
+        {
+            _controller.OverheadBoost = 3f;
+            _controller.OverheadMargin = 0.4f;
+
+            Assert.AreEqual(3f, _controller.CurrentSettings.OverheadBoost);
+            Assert.AreEqual(0.4f, _controller.CurrentSettings.OverheadMargin);
+        }
     }
 }

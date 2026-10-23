@@ -18,7 +18,7 @@ namespace MindAttic.Chain
     {
         [SerializeField] private ChainController chain;
 
-        [Tooltip("Index of the chain link that acts as the mace (Chain.vb default 6).")]
+        [Tooltip("Index of the chain link that acts as the mace (Chain.vb default 6). Ignored when the chain has a MaceController.")]
         [Min(1)]
         [SerializeField] private int maceIndex = 6;
 
@@ -59,9 +59,23 @@ namespace MindAttic.Chain
             set => chain = value;
         }
 
+        /// <summary>
+        /// The mace link. Follows the chain's <see cref="MaceController"/> when it has one, so a
+        /// shortened/lengthened chain grapples from its current end; otherwise this component's
+        /// own index.
+        /// </summary>
         public int MaceIndex
         {
-            get => chain != null ? Mathf.Clamp(maceIndex, 1, chain.LinkCount - 1) : maceIndex;
+            get
+            {
+                if (chain == null)
+                {
+                    return maceIndex;
+                }
+
+                var mace = chain.GetComponent<MaceController>();
+                return mace != null ? mace.MaceIndex : Mathf.Clamp(maceIndex, 1, chain.LinkCount - 1);
+            }
             set => maceIndex = Mathf.Max(1, value);
         }
 

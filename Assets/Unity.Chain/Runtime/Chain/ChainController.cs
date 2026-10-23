@@ -32,6 +32,14 @@ namespace MindAttic.Chain
         [Min(0f)]
         [SerializeField] private float stopAcceleration = 0.0005f;
 
+        [Header("Overhead swing")]
+        [Tooltip("Multiplier on a link's upward spring pull while it is above the hand (Chain.vb doubles it). 1 = off.")]
+        [Min(1f)]
+        [SerializeField] private float overheadBoost = 2f;
+        [Tooltip("How far below the hand a link still counts as overhead (Chain.vb: one link size).")]
+        [Min(0f)]
+        [SerializeField] private float overheadMargin = 0.25f;
+
         [Header("Rendering")]
         [Tooltip("Blend between the previous and current physics step when drawing.")]
         [SerializeField] private bool interpolate = true;
@@ -41,6 +49,7 @@ namespace MindAttic.Chain
         private Vector2[] _previous;
         private Vector3[] _renderPositions;
         private float _lastStepTime;
+        private int _activeLinkCount = -1;
 
         public ChainSimulation Simulation
         {
@@ -74,13 +83,55 @@ namespace MindAttic.Chain
             resistance,
             gravity,
             stopVelocity,
-            stopAcceleration);
+            stopAcceleration,
+            overheadBoost,
+            overheadMargin);
+
+        public float OverheadBoost
+        {
+            get => overheadBoost;
+            set => overheadBoost = Mathf.Max(1f, value);
+        }
+
+        public float OverheadMargin
+        {
+            get => overheadMargin;
+            set => overheadMargin = Mathf.Max(0f, value);
+        }
+
+        /// <summary>
+        /// How many links (anchor included) are simulated and drawn; the rest stay parked on the
+        /// end link. Lets the chain be shortened/lengthened live without a rebuild. Defaults to
+        /// every link; clamped to [2, LinkCount].
+        /// </summary>
+        public int ActiveLinkCount
+        {
+            get => _activeLinkCount < 0 ? linkCount : Mathf.Clamp(_activeLinkCount, 2, linkCount);
+            set
+            {
+                _activeLinkCount = Mathf.Clamp(value, 2, Mathf.Max(2, linkCount));
+                if (_simulation != null)
+                {
+                    _simulation.ActiveLinkCount = _activeLinkCount;
+                }
+            }
+        }
 
         public Vector2 GetLinkPosition(int index) => Simulation.GetPosition(index);
 
         public Vector2 GetLinkVelocity(int index) => Simulation.GetVelocity(index);
 
-        /// <summary>Changes the link count and rebuilds the chain, all links starting at the anchor.</summary>
+        /// <summary>Where link <paramref name="index"/> was last drawn (interpolated), in world space.</summary>
+        public Vector3 GetRenderedLinkPosition(int index)
+        {
+            EnsureInitialized();
+            return _renderPositions[index];
+        }
+
+        /// <summary>
+        /// Changes the link count and rebuilds the chain, all links starting at the anchor. For
+        /// live shortening/lengthening use <see cref="ActiveLinkCount"/> instead.
+        /// </summary>
         public void SetLinkCount(int count)
         {
             linkCount = Mathf.Max(2, count);
@@ -95,6 +146,7 @@ namespace MindAttic.Chain
             _line.useWorldSpace = true;
 
             _simulation = new ChainSimulation(linkCount, AnchorPosition, CurrentSettings);
+            _simulation.ActiveLinkCount = ActiveLinkCount;
             _previous = new Vector2[linkCount];
             _renderPositions = new Vector3[linkCount];
             CaptureCurrent(_previous);
@@ -131,12 +183,17 @@ namespace MindAttic.Chain
                 _renderPositions[i] = new Vector3(p.x, p.y, z);
             }
 
-            if (_line.positionCount != linkCount)
+            // Only the live part of the chain is drawn; the parked tail stays hidden.
+            var visible = _simulation.ActiveLinkCount;
+            if (_line.positionCount != visible)
             {
-                _line.positionCount = linkCount;
+                _line.positionCount = visible;
             }
 
-            _line.SetPositions(_renderPositions);
+            for (var i = 0; i < visible; i++)
+            {
+                _line.SetPosition(i, _renderPositions[i]);
+            }
         }
 
         private void Awake() => EnsureInitialized();

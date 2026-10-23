@@ -43,7 +43,17 @@ JS original: both-neighbor pull.
   "grapple" texture while the grab button is held.
 - **Mace-overhead boost**: when the mace's spring pulls upward *and* it's above the angel, the
   upward pull is doubled — keeps the mace from drooping weirdly when swung overhead instead of
-  trailing naturally.
+  trailing naturally. (The source comment says "mace", but the code applies it to every link
+  whose spring pulls up while it is above `link(0).Y - linkSize`; the port does the same.)
+- **Shorten/lengthen**: `[`/`]` move `Mace` down/up by one (1–12). All 25 links keep simulating
+  in Chain.vb but only links 0..`Mace` are drawn. Because the port pulls each link by both
+  neighbors, an undrawn tail would drag on the mace, so the Unity version instead simulates only
+  links 0..`Mace` (`ChainSimulation.ActiveLinkCount`) and parks the rest on the mace, so
+  lengthening pays a new link out from the mace.
+- **In Unity**: `MaceController` owns the mace index (default 6, 1–12, `[`/`]`, `-`/`=`), the
+  mace link's mass (default 1, as in Chain.vb) and the spiked-ball visual (3.5x the chain's line
+  width, render-only offset). The overhead boost (default 2x) and its margin (default 0.25 world
+  units) are tuned on `ChainController`.
 - **Grapple**: holding the action button arms the grapple; on release, if an enemy was caught, it's
   thrown using the mace's current velocity as launch velocity.
 - **Hit detection** is a simple AABB (`rectMace`) against enemies, not per-link.
