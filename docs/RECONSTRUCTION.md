@@ -231,8 +231,8 @@ Checked against `AGENTS.md` (the owner's rebuild standard) and the reference rep
 | UI | `GameHud` is IMGUI (`OnGUI`), not UI Toolkit or the shared components | UNI-T37 |
 | Project settings | 1600x900 resizable, no icon, no cursor policy, `applicationIdentifier` empty | UNI-T38 |
 | Build, test and deploy scripts | None (`build.bat`, `test.bat`, `deploy.bat` exist in the reference repos) | UNI-T39 |
-| README | Out of date ("scaffold"), one very long paragraph | UNI-T29 |
-| BIBLE | `docs/BIBLE.md` does not exist | UNI-T29 |
+| README | Rewritten: status, layout, build and test (UNI-T29) | done |
+| BIBLE | `docs/BIBLE.md` written: rules, architecture, data, fixed defects, deviations (UNI-T29) | done |
 | Built in code | `SceneBuilder`/`PlayerBuilder` generate the scene (good); keep it that way | ok |
 | Multiplayer seam | Not started | UNI-T26 |
 | Asset and meta hygiene | `.meta` files committed (UNI-T17); art and audio absent | UNI-T19, UNI-T20 |

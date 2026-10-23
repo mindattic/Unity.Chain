@@ -1,45 +1,112 @@
 # Unity.Chain
 
-A flying angel swings a spiked mace on a physics chain. Unity port of a 2005 DirectX 9/VB.NET
-prototype (`Chain.vb`/`Angel.vb`), which was itself built on Philip Winston's 2000 **Elastic
-Trail** DHTML script — a mouse-follow chain of spring-linked dots.
+A mouse-steered angel swings a spiked mace on a spring chain, knocking down, grabbing and throwing a flock of
+enemies. A Unity 6 rebuild of the 2005 VB.NET / DirectX 9 *Chain Game*, which was itself built on Philip Winston's
+2000 *Elastic Trail* script, a mouse-follow chain of spring-linked dots.
 
-[![Unity](https://img.shields.io/badge/Unity-6000.4.3f1-222222)](https://unity.com/releases/editor/archive)
-[![C#](https://img.shields.io/badge/language-C%23-512BD4)](https://learn.microsoft.com/dotnet/csharp/)
-[![Status](https://img.shields.io/badge/status-scaffold-lightgrey)](#status)
+[![Unity](https://img.shields.io/badge/Unity-6000.4.3f1-222222)](ProjectSettings/ProjectVersion.txt)
+[![C#](https://img.shields.io/badge/language-C%23-512BD4)](Assets/Unity.Chain)
+[![Status](https://img.shields.io/badge/status-in%20development-orange)](docs/BIBLE.md)
 
-## The idea
+There is no public build yet. Build it from source with the steps below.
 
-Move the mouse and an angel flies; trailing behind it is a chain ending in a mace, simulated as a
-spring chain so it lags, swings, and whips around with real momentum — circle the mouse and the
-mace builds up speed like a flail. The original let you grapple and throw enemies with it,
-lengthen/shorten the chain, and swap the mace for a magnet.
+## The game
 
-See [`docs/chain-physics.md`](docs/chain-physics.md) for the full reverse-engineering notes: the
-source algorithm, what the 2005 port got right and wrong, and the tuning table carried into Unity.
+Move the mouse and the angel flies; behind it hangs a chain ending in a mace, simulated link by link as springs
+with drag and gravity, so it lags, swings and whips. Circle the mouse and the mace winds up like a flail. A hit
+knocks an enemy back and scores; hold the left button and the mace grabs instead, and letting go throws the enemy
+into the others. Fourteen enemies home in on you, each touch costs one of your 30 HP, a heart drifts down for +10,
+and at zero the light fades and the round starts again by itself.
 
 ## Status
 
-Scaffold stage: the project, package manifest, and a corrected, unit-tested port of the core
-spring-chain physics (`Assets/Unity.Chain/Runtime/Chain/ChainSimulation.cs`) are in place, driven
-by `ChainController` (FixedUpdate stepping, link 0 pinned to the hand socket, interpolated
-LineRenderer drawing), along with the angel's mouse-steered flight controller
-(`Assets/Unity.Chain/Runtime/Player/`: hover bob, left/right facing, wing-flap sprite frames,
-camera-derived screen bounds, and a facing-mirrored hand socket transform the chain anchors to).
-The mace (`MaceController`, `Assets/Unity.Chain/Runtime/Chain/`) is the heavy end link at a
-configurable index, drawn as a spiked ball and shortened/lengthened live with `[`/`]`; the
-overhead-swing boost is tuned on `ChainController`. The grapple/throw mechanic is in
-`Assets/Unity.Chain/Runtime/Grapple/`: hold the left mouse button to arm, the mace link catches
-the nearest `IGrappleTarget` it touches (`GrappleTarget` wraps any `Rigidbody2D`), carries it, and
-on release throws it with the mace link's current velocity. Enemies are in
-`Assets/Unity.Chain/Runtime/Enemies/`: an `Enemy` seeks the angel and is knocked back and damaged
-by the mace, which `MaceHitDetector` finds with a swept Physics2D circle (replacing the original's
-single AABB check); enemies are grapple targets themselves, and a thrown one knocks the others it
-touches. Audio is in `Assets/Unity.Chain/Runtime/Audio/`: `ChainAudio` plays a swing whoosh when the mace whips around the hand, an impact (and a death) for each mace hit, and a catch/throw sound for the grapple, each from a set of clips picked at random; `MusicPlayer` loops the background track. Level bounds, camera framing and the HUD are in `Assets/Unity.Chain/Runtime/Level/` and `Runtime/UI/`: `LevelBounds` is the play-space rect the angel is clamped to and the chain's links bounce off (Elastic Trail's wall bounce, opt-out on `ChainController`); `CameraRig` either fits the whole level on any aspect ratio or follows the angel through a dead zone without showing past the level's edges; `GameSession` runs HP (30, one per enemy touch with a 0.25 s hurt delay), score (mace damage x 1000), pause (P/Escape) and game over (the light fades, then it restarts by itself); and `GameHud` draws HP bars, score, the grappled enemy's HP and the pause/game-over banners with IMGUI. Everything else is tracked as open tickets in the
-MindAttic ticket database (`tickets ticket list --repo Unity.Chain`).
+In development, rebuilding the original to full parity. On main and tested:
+
+- the spring chain (`ChainSimulation`, `ChainController`), the mace with `[` / `]` chain length and the overhead
+  boost (`MaceController`)
+- the angel's flight: mouse steering, hover bob, facing, flap frames, bounds (`AngelFlight`, `AngelController`)
+- grapple and throw (`Grapple/`), enemies with seek, knockback, grab, throw and flocking, hit by a swept circle so
+  fast swings never tunnel (`Enemies/`), the enemy spawner and the heart pickup (`Items/`)
+- HP, score, pause, and the original's game-over fade and automatic reset (`GameState`, `GameSession`), with an
+  interim IMGUI HUD (`GameHud`)
+- level bounds and a camera that fits or follows (`Level/`), sound and music players (`Audio/`, no clips yet)
+- the scene and the Windows player generated in code (`Editor/SceneBuilder`, `Editor/PlayerBuilder`)
+
+Still to come, in build order: the engine-free Core assembly and `dotnet test`, commands and events, data files,
+the Input System action asset, URP assets, Unity.Shared settings, a UI Toolkit HUD, the original's art and sound,
+and the remaining keys and screens. The full list, one ticket per step, is
+[docs/RECONSTRUCTION.md §6](docs/RECONSTRUCTION.md); open tickets are in the MindAttic ticket database
+(`tickets ticket list --repo Unity.Chain`).
+
+## Build and test
+
+Prerequisites: Unity 6000.4.3f1. Close the Editor before any batchmode run.
+
+In the Editor, open the project and use the **MindAttic > Chain** menu:
+
+- **Build Main Scene** regenerates `Assets/Scenes/Main.unity` and the build settings from code.
+- **Build Windows Player** writes `Builds/Windows/Unity.Chain.exe`.
+
+Play `Assets/Scenes/Main.unity`, or run the built player. Run the tests from **Window > General > Test Runner**
+(EditMode and PlayMode).
+
+From the command line (PowerShell, from the repo root):
+
+```powershell
+$unity = "C:\Program Files\Unity\Hub\Editor\6000.4.3f1\Editor\Unity.exe"
+
+# regenerate the scene, then build the Windows player
+& $unity -batchmode -quit -projectPath . -executeMethod MindAttic.Chain.EditorTools.SceneBuilder.BuildMainScene -logFile -
+& $unity -batchmode -quit -projectPath . -executeMethod MindAttic.Chain.EditorTools.PlayerBuilder.BuildWindows -logFile -
+
+# edit-mode and play-mode tests
+& $unity -batchmode -projectPath . -runTests -testPlatform EditMode -testResults TestResults-EditMode.xml -logFile -
+& $unity -batchmode -projectPath . -runTests -testPlatform PlayMode -testResults TestResults-PlayMode.xml -logFile -
+```
+
+`build.bat`, `test.bat` and `deploy.bat` like the reference repos' are planned (UNI-T39), as is a `dotnet test`
+project for the engine-free rules (UNI-T31).
+
+## Controls
+
+| Input | Effect |
+|---|---|
+| Mouse | fly |
+| Left button (hold, release) | arm the grapple, throw what it holds |
+| `[` / `]` | shorten / lengthen the chain |
+| P or Escape | pause |
+
+The original's other keys (live spring, drag and gravity tuning, game speed, gem skins, backgrounds, lighting,
+shake, reset, debug views, the script console) are listed with their tickets in
+[docs/RECONSTRUCTION.md §3.5](docs/RECONSTRUCTION.md).
 
 ## Project layout
 
-- `Assets/Unity.Chain/Runtime/` — gameplay code (`Unity.Chain.Runtime` asmdef).
-- `Assets/Unity.Chain/Tests/EditMode/` — NUnit edit-mode tests via the Unity Test Framework.
-- `docs/chain-physics.md` — the reverse-engineering writeup this port is based on.
+```
+Assets/
+  Scenes/Main.unity                generated by SceneBuilder; do not edit by hand
+  Unity.Chain/
+    Runtime/                       Unity.Chain.Runtime asmdef: the game
+      Chain/  Player/  Enemies/  Grapple/  Items/  Level/  UI/  Audio/
+    Editor/                        Unity.Chain.Editor asmdef: SceneBuilder, PlayerBuilder
+    Tests/EditMode/                NUnit edit-mode tests (Unity Test Framework)
+    Tests/PlayMode/                the main-scene smoke test
+    Materials/
+docs/
+  BIBLE.md                         design rules, architecture, data, fixed defects and deviations
+  RECONSTRUCTION.md                the original reverse-engineered in full, parity audit, build order
+  chain-physics.md                 the spring algorithm and its tuning
+  USER_STORIES.md                  generated from the ticket database
+```
+
+The target architecture (an engine-free Core assembly under Runtime, with its own `dotnet test` project) is in
+[docs/BIBLE.md §5](docs/BIBLE.md).
+
+## Documentation
+
+- [docs/BIBLE.md](docs/BIBLE.md): what the game is, the design rules, the architecture, the data files, every
+  defect of the original that the rebuild fixes and every deliberate deviation, with the reason.
+- [docs/RECONSTRUCTION.md](docs/RECONSTRUCTION.md): the reverse engineering of the original, module by module,
+  and the build order to parity.
+- [docs/chain-physics.md](docs/chain-physics.md): the chain algorithm from *Elastic Trail* to Unity.
+- [AGENTS.md](AGENTS.md): the rebuild standard and where the original source lives.
