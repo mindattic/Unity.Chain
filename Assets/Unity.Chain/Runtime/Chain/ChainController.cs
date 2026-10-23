@@ -78,6 +78,8 @@ namespace MindAttic.Chain
 
         public Vector2 GetLinkPosition(int index) => Simulation.GetPosition(index);
 
+        public Vector2 GetLinkVelocity(int index) => Simulation.GetVelocity(index);
+
         /// <summary>Changes the link count and rebuilds the chain, all links starting at the anchor.</summary>
         public void SetLinkCount(int count)
         {

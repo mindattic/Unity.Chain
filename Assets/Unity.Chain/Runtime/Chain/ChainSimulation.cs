@@ -74,6 +74,9 @@ namespace MindAttic.Chain
 
         public Vector2 GetPosition(int index) => _positions[index];
 
+        /// <summary>Velocity of a link after the last step, world units per second.</summary>
+        public Vector2 GetVelocity(int index) => _velocities[index];
+
         public void SetMass(int index, float mass) => _mass[index] = mass;
 
         /// <summary>Link 0 is never simulated: it is snapped to whatever it should follow (the
