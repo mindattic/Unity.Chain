@@ -35,7 +35,7 @@ on release throws it with the mace link's current velocity. Enemies are in
 `Assets/Unity.Chain/Runtime/Enemies/`: an `Enemy` seeks the angel and is knocked back and damaged
 by the mace, which `MaceHitDetector` finds with a swept Physics2D circle (replacing the original's
 single AABB check); enemies are grapple targets themselves, and a thrown one knocks the others it
-touches. Everything else is tracked as open tickets in the
+touches. Audio is in `Assets/Unity.Chain/Runtime/Audio/`: `ChainAudio` plays a swing whoosh when the mace whips around the hand, an impact (and a death) for each mace hit, and a catch/throw sound for the grapple, each from a set of clips picked at random; `MusicPlayer` loops the background track. Everything else is tracked as open tickets in the
 MindAttic ticket database (`tickets ticket list --repo Unity.Chain`).
 
 ## Project layout

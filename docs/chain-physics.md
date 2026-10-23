@@ -70,6 +70,19 @@ JS original: both-neighbor pull.
   speed x `damagePerSpeed`, not Engine.vb's `|dX + dY/2|`, which cancels to zero on some
   diagonal swings. Not ported here: enemy-vs-enemy flocking separation and enemy-vs-angel damage
   (`checkAngelHit`, part of the HUD/health work).
+- **Audio** (Sound.vb): DirectSound buffers loaded from `sfx\` — `sword_swing_1..7`,
+  `sword_hit_1..3`, `defend`, `footstep_1..2`, `death_1..4` — at `sfxVolume` -1000 mB, and one
+  looping `music\music.wma` (DirectX AudioVideoPlayback) that `rndMusicPos` can start at a random
+  point; `bSound`/`bMusic` toggle each. **In Unity** (`Assets/Unity.Chain/Runtime/Audio/`):
+  `ChainAudio` sits on the chain object and plays one-shots from clip sets (a random clip each
+  time, never the same twice running): a swing when the mace link's speed *relative to the hand*
+  rises past `swingSpeed` (default 6 u/s, re-armed below 3 u/s, repeated every 0.6 s while it keeps
+  whirling) — relative so flying with a trailing mace is not a swing; an impact per
+  `MaceHitDetector.Hit`, louder with mace speed, plus a death sound when the hit kills; and a catch /
+  throw sound from `GrappleController.Caught`/`Thrown`. `MusicPlayer` loops one track on its own
+  2D `AudioSource` with its own volume/mute and the optional random start. No clips ship in the
+  repo yet: the original WAVs can be dropped into the clip sets as they are, but `music.wma` has to
+  be converted (Unity does not import WMA).
 - Two things in `renderChain` look like leftover hacks rather than intended behavior and are
   **not** being ported as-is: `link(Mace).X/Y += maceOffset` is applied unconditionally every
   frame (a cumulative drift bug, not a one-time sprite-alignment offset), and a stray
