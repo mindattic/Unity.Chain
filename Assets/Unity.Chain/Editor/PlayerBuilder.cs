@@ -18,21 +18,26 @@ namespace MindAttic.Chain.EditorTools
         public static void BuildWindows()
         {
             var scenes = EditorBuildSettings.scenes;
-            if (scenes.Length == 0)
+            var scenePaths = new System.Collections.Generic.List<string>(scenes.Length);
+            foreach (var scene in scenes)
             {
-                throw new InvalidOperationException(
-                    "No scenes in EditorBuildSettings; run SceneBuilder.BuildMainScene first.");
+                // Match a normal Editor build: a disabled entry stays in the list for later, but
+                // is not part of the build.
+                if (scene.enabled)
+                {
+                    scenePaths.Add(scene.path);
+                }
             }
 
-            var scenePaths = new string[scenes.Length];
-            for (var i = 0; i < scenes.Length; i++)
+            if (scenePaths.Count == 0)
             {
-                scenePaths[i] = scenes[i].path;
+                throw new InvalidOperationException(
+                    "No enabled scenes in EditorBuildSettings; run SceneBuilder.BuildMainScene first.");
             }
 
             var report = BuildPipeline.BuildPlayer(new BuildPlayerOptions
             {
-                scenes = scenePaths,
+                scenes = scenePaths.ToArray(),
                 locationPathName = OutputPath,
                 target = BuildTarget.StandaloneWindows64,
                 options = BuildOptions.None,

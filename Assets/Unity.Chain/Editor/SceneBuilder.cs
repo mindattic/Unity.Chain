@@ -21,6 +21,14 @@ namespace MindAttic.Chain.EditorTools
         [MenuItem("MindAttic/Chain/Build Main Scene")]
         public static void BuildMainScene()
         {
+            // Interactive use (the menu item) must not silently discard unsaved work in whatever
+            // scene is open; batch mode (CI, -executeMethod) has no user to ask and no unsaved
+            // work worth protecting.
+            if (!Application.isBatchMode && !EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+            {
+                return;
+            }
+
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
             var levelBounds = CreateLevelBounds();
@@ -48,15 +56,19 @@ namespace MindAttic.Chain.EditorTools
         private static (AngelController angel, Transform handSocket) CreateAngel(LevelBounds levelBounds)
         {
             var go = new GameObject("Angel");
-            go.AddComponent<SpriteRenderer>();
+            var spriteRenderer = go.AddComponent<SpriteRenderer>();
 
             var handSocketGo = new GameObject("HandSocket");
             handSocketGo.transform.SetParent(go.transform, false);
 
             var angel = go.AddComponent<AngelController>();
             angel.LevelBounds = levelBounds;
-            // No public setter: AngelController moves this transform to the hand socket each
-            // frame, and it is what ChainController pins link 0 to below.
+            // Neither has a public setter: AngelController finds both via GetComponentInChildren
+            // / LevelBounds.Find() when unset, but wiring them here makes the scene's intent
+            // explicit instead of relying on that runtime fallback. handSocketTransform is what
+            // ChainController pins link 0 to below; there is no sprite art in the repo yet
+            // (scaffold stage), so this renderer has no sprite or frames to show until that lands.
+            SetPrivateField(angel, "spriteRenderer", spriteRenderer);
             SetPrivateField(angel, "handSocketTransform", handSocketGo.transform);
 
             return (angel, handSocketGo.transform);
