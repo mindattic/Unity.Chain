@@ -1,4 +1,4 @@
-namespace MindAttic.Chain
+namespace MindAttic.Chain.Core
 {
     /// <summary>Which way Item.vb's heart is swaying (<c>itemFloat</c>).</summary>
     public enum HeartSway
