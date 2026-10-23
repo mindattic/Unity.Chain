@@ -37,6 +37,7 @@ namespace MindAttic.Chain.EditorTools
             var (grapple, hitDetector) = CreateChain(handSocket, levelBounds);
             var session = CreateGameSession(angel, hitDetector);
             CreateGameHud(session, grapple);
+            CreateEnemySpawner(session, levelBounds);
             CreateMusicPlayer();
 
             Directory.CreateDirectory(Path.GetDirectoryName(ScenePath) !);
@@ -129,6 +130,14 @@ namespace MindAttic.Chain.EditorTools
             session.Angel = angel;
             session.MaceHits = hitDetector;
             return session;
+        }
+
+        private static void CreateEnemySpawner(GameSession session, LevelBounds levelBounds)
+        {
+            var go = new GameObject("EnemySpawner");
+            var spawner = go.AddComponent<EnemySpawner>();
+            spawner.Level = levelBounds;
+            spawner.Session = session;
         }
 
         private static void CreateGameHud(GameSession session, GrappleController grapple)
