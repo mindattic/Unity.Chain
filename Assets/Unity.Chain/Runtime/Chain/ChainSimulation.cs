@@ -112,7 +112,8 @@ namespace MindAttic.Chain
 
         private Vector2 SpringForce(int i, int j)
         {
-            var delta = _positions[i] - _positions[j];
+            // Pull i toward j: the force points from i to its neighbor.
+            var delta = _positions[j] - _positions[i];
             var length = delta.magnitude;
             if (length <= Config.SegmentLength || length <= Mathf.Epsilon)
             {

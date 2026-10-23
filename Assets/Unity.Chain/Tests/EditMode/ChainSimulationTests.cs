@@ -83,7 +83,16 @@ namespace MindAttic.Chain.Tests
         {
             // Regression guard for the Chain.vb If/ElseIf bug (docs/chain-physics.md):
             // a middle link must be pulled by BOTH neighbors, not just the previous one.
-            var chain = new ChainSimulation(3, new Vector2(-10f, 0f), NoGravityNoDrag());
+            // Drag is needed: an undamped chain yanked 10 units keeps oscillating for ever,
+            // so the middle/tail distance below would never settle.
+            var damped = new ChainSimulation.Settings(
+                segmentLength: 0.2f,
+                springConstant: 60f,
+                resistance: 4f,
+                gravity: Vector2.zero,
+                stopVelocity: 0f,
+                stopAcceleration: 0f);
+            var chain = new ChainSimulation(3, new Vector2(-10f, 0f), damped);
 
             // Reach into the simulation indirectly: drive link 0 far to the left, let link 2
             // settle near it, then yank link 0 back to the origin. Link 1 must respond to the
