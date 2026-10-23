@@ -11,8 +11,10 @@ namespace MindAttic.Chain
     /// touching the angel (a Physics2D circle at the angel, replacing Engine.vb's
     /// <c>checkAngelHit</c> box test) and costs HP through the hurt delay; it scores every
     /// <see cref="MaceHitDetector.Hit"/>; P or Escape pauses (time scale 0); and when HP runs out
-    /// the game freezes until a click restarts it (the scene reloads when it is in the build,
-    /// otherwise the session resets in place). Grabbed and dead enemies do not hurt the angel.
+    /// the ambient light fades down 5 per frame
+    /// (<see cref="GameState.AdvanceGameOver"/>) and then the game restarts by itself with no click, as
+    /// Engine.vb's <c>GameOver</c> does (the scene reloads when it is in the build, otherwise the
+    /// session resets in place). Grabbed and dead enemies do not hurt the angel.
     /// </summary>
     [DisallowMultipleComponent]
     [DefaultExecutionOrder(120)] // after MaceHitDetector (110), so this step's hits are scored first
@@ -42,16 +44,11 @@ namespace MindAttic.Chain
         [Min(0f)]
         [SerializeField] private float pointsPerDamage = 1000f;
 
-        [Header("Flow")]
-        [Tooltip("Unscaled seconds after game over before a click restarts.")]
-        [Min(0f)]
-        [SerializeField] private float restartDelay = 1f;
-
         private readonly List<Collider2D> _overlaps = new List<Collider2D>();
         private GameState _state;
         private MaceHitDetector _subscribed;
-        private float _gameOverAt;
         private bool _ownsTimeScale;
+        private bool _restarting;
 
         /// <summary>Raised after an in-place restart (when the scene is not reloaded).</summary>
         public event Action Restarted;
@@ -83,8 +80,26 @@ namespace MindAttic.Chain
             set => contactRadius = Mathf.Max(0f, value);
         }
 
-        /// <summary>True once the game is over and the restart delay has passed.</summary>
-        public bool CanRestart => State.IsGameOver && Time.unscaledTime >= _gameOverAt + restartDelay;
+        /// <summary>
+        /// One frame of the game-over fade; when the light has faded out, restarts. Called from
+        /// <c>FixedUpdate</c> (so the fade runs at the fixed step, not the display rate); public so tests can drive it. Returns true if it restarted.
+        /// </summary>
+        public bool StepGameOver()
+        {
+            if (!State.IsGameOver)
+            {
+                return false;
+            }
+
+            ReleaseTimeScale();
+            if (_restarting || !State.AdvanceGameOver())
+            {
+                return false;
+            }
+
+            Restart();
+            return true;
+        }
 
         /// <summary>
         /// One contact check at time <paramref name="now"/>: if a live, ungrabbed enemy overlaps
@@ -145,6 +160,7 @@ namespace MindAttic.Chain
             var scene = SceneManager.GetActiveScene();
             if (Application.isPlaying && scene.buildIndex >= 0)
             {
+                _restarting = true;
                 SceneManager.LoadScene(scene.buildIndex);
                 return;
             }
@@ -180,12 +196,6 @@ namespace MindAttic.Chain
             PointsPerDamage = pointsPerDamage,
         };
 
-        private void OnGameOver()
-        {
-            _gameOverAt = Time.unscaledTime;
-            ApplyTimeScale();
-        }
-
         private void ApplyTimeScale()
         {
             if (!Application.isPlaying)
@@ -193,7 +203,7 @@ namespace MindAttic.Chain
                 return;
             }
 
-            if (State.IsPlaying)
+            if (!State.IsPaused)
             {
                 ReleaseTimeScale();
             }
@@ -248,8 +258,6 @@ namespace MindAttic.Chain
             {
                 maceHits = FindAnyObjectByType<MaceHitDetector>();
             }
-
-            State.GameOver += OnGameOver;
         }
 
         private void OnEnable() => Subscribe();
@@ -260,18 +268,11 @@ namespace MindAttic.Chain
             ReleaseTimeScale();
         }
 
-        private void OnDestroy()
-        {
-            if (_state != null)
-            {
-                _state.GameOver -= OnGameOver;
-            }
-        }
-
         private void FixedUpdate()
         {
             CheckContact(Time.time);
             CheckPickups();
+            StepGameOver();
         }
 
         private void Update()
@@ -280,12 +281,6 @@ namespace MindAttic.Chain
             if (keyboard != null && (keyboard.pKey.wasPressedThisFrame || keyboard.escapeKey.wasPressedThisFrame))
             {
                 TogglePause();
-            }
-
-            var mouse = Mouse.current;
-            if (CanRestart && mouse != null && mouse.leftButton.wasPressedThisFrame)
-            {
-                Restart();
             }
         }
 

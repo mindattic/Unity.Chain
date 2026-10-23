@@ -12,7 +12,6 @@ namespace MindAttic.Chain
     {
         public const string Paused = "- PAUSE -";
         public const string GameOver = "GAME OVER";
-        public const string Restart = "Click to play again";
 
         public static string Hp(int hp) => "HP : " + new string('|', Mathf.Max(0, hp));
 

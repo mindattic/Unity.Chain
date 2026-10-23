@@ -37,6 +37,13 @@ namespace MindAttic.Chain
             };
         }
 
+        /// <summary>Ambient light at full (Root.vb: <c>fadeOut = 255</c>).</summary>
+        public const int FullAmbient = 255;
+        /// <summary>Ambient light lost per frame once the game is over (Engine.vb: <c>fadeOut -= 5</c>).</summary>
+        public const int FadeStep = 5;
+        /// <summary>The game resets once the ambient light is no brighter than this (Engine.vb: <c>fadeOut &gt; 6</c> keeps fading).</summary>
+        public const int FadeFloor = 6;
+
         private float _lastHurtTime = float.NegativeInfinity;
 
         public GameState() : this(Settings.Default)
@@ -57,6 +64,15 @@ namespace MindAttic.Chain
         public bool IsPaused { get; private set; }
         public bool IsGameOver { get; private set; }
 
+        /// <summary>
+        /// Ambient light level 0-255 (Engine.vb's <c>fadeOut</c>): full while playing, fading down by
+        /// <see cref="FadeStep"/> per <see cref="AdvanceGameOver"/> call after game over.
+        /// </summary>
+        public int Ambient { get; private set; } = FullAmbient;
+
+        /// <summary>Ambient light as 0-1, for the presentation to dim the scene with.</summary>
+        public float AmbientLevel => Ambient / (float)FullAmbient;
+
         /// <summary>True while play is running: not paused and not over.</summary>
         public bool IsPlaying => !IsPaused && !IsGameOver;
 
@@ -73,6 +89,7 @@ namespace MindAttic.Chain
             Score = 0;
             IsPaused = false;
             IsGameOver = false;
+            Ambient = FullAmbient;
             _lastHurtTime = float.NegativeInfinity;
         }
 
@@ -97,6 +114,29 @@ namespace MindAttic.Chain
                 IsGameOver = true;
                 IsPaused = false;
                 GameOver?.Invoke();
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// One frame of Engine.vb's <c>GameOver</c>: while the game is over and the ambient light is
+        /// above <see cref="FadeFloor"/>, it drops by <see cref="FadeStep"/>; otherwise the fade is
+        /// finished and the game is due to reset itself. This does not reset: the session resets
+        /// (and reloads the enemies) in one place, so nothing shows a full-light, full-HP frame of
+        /// the old scene. Call once per fixed step. Returns true once the fade is finished.
+        /// </summary>
+        public bool AdvanceGameOver()
+        {
+            if (!IsGameOver)
+            {
+                return false;
+            }
+
+            if (Ambient > FadeFloor)
+            {
+                Ambient -= FadeStep;
+                return false;
             }
 
             return true;

@@ -528,6 +528,51 @@ namespace MindAttic.Chain.Tests
         }
 
         [Test]
+        public void GameOver_FadesFiveAFrame_ThenResetsItself()
+        {
+            var state = new GameState();
+            state.AddHitScore(2f);
+            Assert.IsFalse(state.AdvanceGameOver(), "nothing happens while playing");
+            Assert.AreEqual(GameState.FullAmbient, state.Ambient);
+
+            for (var i = 0; i < state.MaxHp; i++) { state.TryHurt(i); }
+            Assert.IsTrue(state.IsGameOver);
+
+            Assert.IsFalse(state.AdvanceGameOver());
+            Assert.AreEqual(250, state.Ambient);
+
+            var frames = 1;
+            while (!state.AdvanceGameOver())
+            {
+                frames++;
+                Assert.Less(frames, 100);
+            }
+
+            Assert.AreEqual(50, frames, "255 down by 5 while above 6, then the finished frame");
+            Assert.IsTrue(state.IsGameOver, "the fade only reports done; the session resets");
+            Assert.AreEqual(GameState.FadeFloor - 1, state.Ambient);
+            state.Reset();
+            Assert.IsFalse(state.IsGameOver);
+            Assert.AreEqual(state.MaxHp, state.Hp);
+            Assert.AreEqual(0, state.Score);
+            Assert.AreEqual(GameState.FullAmbient, state.Ambient);
+        }
+
+        [Test]
+        public void Session_GameOver_RestartsWithoutAClick()
+        {
+            var restarted = 0;
+            _session.Restarted += () => restarted++;
+            for (var i = 0; i < 31; i++) { _session.State.TryHurt(i); }
+            Assert.IsTrue(_session.State.IsGameOver);
+
+            for (var i = 0; i < 60 && restarted == 0; i++) { _session.StepGameOver(); }
+
+            Assert.AreEqual(1, restarted);
+            Assert.IsTrue(_session.State.IsPlaying);
+        }
+
+        [Test]
         public void Hud_ShowsGrappledEnemyHp_OnlyWhileHeld()
         {
             var chainGo = Track(new GameObject("Chain"));

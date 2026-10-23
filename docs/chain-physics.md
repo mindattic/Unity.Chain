@@ -96,8 +96,8 @@ JS original: both-neighbor pull.
   turn off); `CameraRig` fits the whole level on any aspect (`FitLevel`) or follows the angel with
   a dead zone and frame-rate independent smoothing, clamped inside the level (`Follow`);
   `GameSession` (pure rules in `GameState`) checks enemy contact with a Physics2D circle, ignoring
-  grabbed and dead enemies, scores `MaceHitDetector.Hit`, pauses on P/Escape and freezes on game
-  over until a click restarts; `GameHud` draws the original's lines with IMGUI. One deliberate
+  grabbed and dead enemies, scores `MaceHitDetector.Hit`, pauses on P/Escape and on game over
+  fades out and restarts by itself (see Game over below); `GameHud` draws the original's lines with IMGUI. One deliberate
   change: the original drew `HP + 1` bars and ended the game below zero (31 hits from 30 HP); the
   port shows exactly HP bars and ends at 0.
 - Two things in `renderChain` look like leftover hacks rather than intended behavior and are
@@ -157,14 +157,13 @@ in Unity world units / pixels-per-unit rather than copied literally.
 - **Gaps, each filed as a fix ticket**: no scene or build-settings entry (UNI-T16); `.meta` files
   not committed (UNI-T17); URP installed but its global settings and pipeline asset missing
   (UNI-T18); no art imported (UNI-T19); no audio clips (UNI-T20); no enemy spawner (UNI-T21);
-  game over
-  fade and auto-reset differ, documented as a deliberate deviation below (UNI-T24).
+  game over fade and auto-reset ported exactly (UNI-T28).
 
-## Game over (deliberate deviation, UNI-T24)
+## Game over (matches the original, UNI-T28)
 
-The original VB.NET `Engine.vb` `GameOver` fades the ambient light down 5 per frame and then
-resets on its own (enemies, HP, score). The port does not: on game over it freezes time and shows
-the GAME OVER banner, and `GameSession` restarts only on a click once `restartDelay` unscaled
-seconds have passed (`GameSession.CanRestart`). This is kept on purpose: an explicit restart
-gives the player time to read the final score, and the port has no ambient-light fade to drive.
-The reset itself matches the original (HP, score and enemies are reinitialised).
+The original VB.NET `Engine.vb` `GameOver` fades the ambient light (`fadeOut`, starts at 255) down
+5 per frame while it is above 6, then calls `Reset()` on its own (enemies, HP, score, light back to
+255), with no click. The port does the same: `GameState.AdvanceGameOver` (engine-free Core) holds the
+`Ambient` level and steps it once per fixed step (about 1 s at 50 Hz, not tied to the display rate) and reports when the fade is done;
+`GameSession.StepGameOver` calls it from `FixedUpdate` and then restarts, the one place that resets HP, score and enemies (scene reload, or an in-place
+reset that raises `Restarted`); `GameHud` plays the fade as a black overlay of `1 - AmbientLevel`.

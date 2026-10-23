@@ -96,7 +96,7 @@ namespace MindAttic.Chain
 
             if (state.IsGameOver)
             {
-                Banner(HudText.GameOver, session.CanRestart ? HudText.Restart : null);
+                Banner(HudText.GameOver, null, 1f - state.AmbientLevel);
             }
             else if (state.IsPaused)
             {
@@ -114,11 +114,11 @@ namespace MindAttic.Chain
             y += lineHeight * 1.3f;
         }
 
-        private void Banner(string title, string subtitle)
+        private void Banner(string title, string subtitle, float dim = 0.45f)
         {
             var full = new Rect(0f, 0f, Screen.width, Screen.height);
             var previous = GUI.color;
-            GUI.color = new Color(0f, 0f, 0f, 0.45f);
+            GUI.color = new Color(0f, 0f, 0f, dim);
             GUI.DrawTexture(full, Texture2D.whiteTexture);
             GUI.color = previous;
 
