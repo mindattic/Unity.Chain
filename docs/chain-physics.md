@@ -69,8 +69,8 @@ JS original: both-neighbor pull.
   `EnemyBrain`, the Seek/Hurt/Grabbed/Dead rules above. One deliberate change: damage is mace
   speed x `damagePerSpeed`, not Engine.vb's `|dX + dY/2|`, which cancels to zero on some
   diagonal swings. Enemy-vs-enemy flocking separation (`checkFlocking`) is ported: each `Enemy` step it is pushed
-  `flockSpeed` (default 1.5 u/s) per axis away from every live, non-grabbed enemy its collider
-  overlaps (`EnemyBrain.FlockPush`; a perfect stack splits by instance id). Not ported here: enemy-vs-angel damage
+  `flockSpeed` (default 0.06 u/s: `flockSpd` 0.0005 per frame x 2 because `checkFlocking` loops every ordered pair so each overlapping pair is pushed twice a frame, x 60 fps; the port's units are the original's, as `seekSpd` 0.006 is 0.36) per axis away from every live, non-grabbed enemy its collider
+  overlaps (the original's range test is commented out and `flockRange` 0.08 is never read, so any rectangle overlap pushes, as here; `EnemyBrain.FlockPush`; a perfect stack splits by instance id). Not ported here: enemy-vs-angel damage
   (`checkAngelHit`, part of the HUD/health work).
 - **Audio** (Sound.vb): DirectSound buffers loaded from `sfx\` — `sword_swing_1..7`,
   `sword_hit_1..3`, `defend`, `footstep_1..2`, `death_1..4` — at `sfxVolume` -1000 mB, and one

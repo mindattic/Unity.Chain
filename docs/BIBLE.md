@@ -192,7 +192,7 @@ Working behaviour of the original the rebuild does differently, and why. Status:
 | V3 | All 25 links simulate; only 0..`Mace` are drawn | only 0..`Mace` simulate; the rest park on the mace and pay out from it when lengthened | with both-neighbour pull (D7) an undrawn tail would drag the mace | kept, follows D7 |
 | V4 | Chain wall bounce commented out | links bounce off `LevelBounds` at 0.5 (`keepInLevel` turns it off) | *Elastic Trail* bounced; keeps the mace on screen | to settle, UNI-T45 |
 | V5 | Angel contact rectangle X..X+0.06 by Y+0.03..Y+0.15 | a Physics2D circle | fits the sprite at any scale and with Physics2D queries | kept |
-| V6 | Flocking pushes 0.0005 per axis per frame | 1.5 world units per second | first version guessed the value | to settle, UNI-T35 |
+| V6 | Flocking pushes 0.0005 per axis per frame, and each overlapping pair is visited twice a frame (0.001 per neighbour) | 0.06 world units per second per neighbour (0.0005 x 2 x 60 fps, D9) | the original's figure at the fixed step; the commented-out `flockRange` test means any overlap pushes, as before | kept, UNI-T35 |
 | V7 | The heart is gone after a pickup until `Reset` | it returns to the top and keeps drifting | first version guessed the behaviour | to settle, UNI-T44 |
 | V8 | Pause is the Pause key; Escape quits | P or Escape pause | interim keys before the input pass | to settle, UNI-T54 |
 | V9 | `- PAUSE -` and HUD as plain D3D text | IMGUI `GameHud` | interim | temporary, UNI-T37, UNI-T50 |

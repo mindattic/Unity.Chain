@@ -27,6 +27,21 @@ namespace MindAttic.Chain
     /// </summary>
     public sealed class EnemyBrain
     {
+        /// <summary>Enemy.vb flockSpd: the original's push, world units per axis per frame (the port's units are the original's, as for seekSpd 0.006 to 0.36).</summary>
+        public const float OriginalFlockPerFrame = 0.0005f;
+
+        /// <summary>The frame rate the original's per-frame figures are converted at (BIBLE D9).</summary>
+        public const float OriginalFrameRate = 60f;
+
+        /// <summary>
+        /// Engine.vb checkFlocking loops d and c over every enemy, so each overlapping pair is visited twice
+        /// (d,c then c,d), pushing both the same way each time: an enemy moves 2 x flockSpd per frame per neighbour.
+        /// </summary>
+        public const float OriginalFlockPairVisits = 2f;
+
+        /// <summary>Per-neighbour push speed (units/s per axis) equal to the original's: 0.0005 x 2 x 60 = 0.06.</summary>
+        public const float DefaultFlockSpeed = OriginalFlockPerFrame * OriginalFlockPairVisits * OriginalFrameRate;
+
         public struct Settings
         {
             /// <summary>Seek velocity per unit of distance to the target, per second (Enemy.vb seekSpd 0.006/frame).</summary>

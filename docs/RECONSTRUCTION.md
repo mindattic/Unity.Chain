@@ -105,7 +105,7 @@ but unreachable or does nothing; not ported, recorded here), **n/a** (DirectX pl
 | Dead | HP <= 0: skipped entirely (vanishes) | dead state | ported |
 | Mace hit | alive, not Hurt, not Grabbed: velocity = mace velocity / mass, damage = abs(dX + dY/2), score += damage * 1000; a held enemy takes the same | `MaceHitDetector` (swept circle, speed-based damage) | deliberate deviation (UNI-T45) |
 | Throw impact | thrown enemy knocks any overlapping enemy: v = thrown v / mass, Hurt | `EnemyBrain` | ported |
-| Flocking | overlapping live, not-grabbed pairs pushed apart by 0.0005 per axis | none | missing, UNI-T23 |
+| Flocking | overlapping live, not-grabbed pairs pushed apart by 0.0005 per axis, each pair visited twice a frame (so 0.001); range test commented out, `flockRange` unused | `EnemyBrain.FlockPush`, 0.06 u/s | ported, UNI-T23, UNI-T35 |
 | Animation | 7 frames (`Shadow\enemy1..7`), 0.1 s per frame | no art | partial, UNI-T19 |
 | AI states `Cautious`, `Align`, `Retreat`, `Wander`, `Limbo`, `Death` | `Cautious` and `Align` are coded but never selected; the rest are empty or just sink | none | dead |
 

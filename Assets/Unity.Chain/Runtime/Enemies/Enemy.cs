@@ -34,9 +34,9 @@ namespace MindAttic.Chain
         [SerializeField] private float recoverSpeed = 0.05f;
 
         [Header("Flocking")]
-        [Tooltip("Engine.vb flockSpd: speed (units/s, per axis) at which overlapping live, non-grabbed enemies push each other apart. 0 turns separation off.")]
+        [Tooltip("Engine.vb flockSpd 0.0005/frame, converted at 60 fps and for the original's double visit of each pair (0.06): speed (units/s, per axis, per overlapping neighbour) at which overlapping live, non-grabbed enemies push each other apart. 0 turns separation off.")]
         [Min(0f)]
-        [SerializeField] private float flockSpeed = 1.5f;
+        [SerializeField] private float flockSpeed = EnemyBrain.DefaultFlockSpeed;
 
         [Header("Death")]
         [Tooltip("Seconds after death before the GameObject is destroyed (play mode).")]
