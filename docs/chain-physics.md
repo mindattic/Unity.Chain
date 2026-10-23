@@ -156,4 +156,13 @@ in Unity world units / pixels-per-unit rather than copied literally.
   not committed (UNI-T17); URP installed but its global settings and pipeline asset missing
   (UNI-T18); no art imported (UNI-T19); no audio clips (UNI-T20); no enemy spawner (UNI-T21);
   heart pickup not ported (UNI-T22); enemy flocking separation not ported (UNI-T23); game over
-  fade and auto-reset differ (UNI-T24).
+  fade and auto-reset differ, documented as a deliberate deviation below (UNI-T24).
+
+## Game over (deliberate deviation, UNI-T24)
+
+The original VB.NET `Engine.vb` `GameOver` fades the ambient light down 5 per frame and then
+resets on its own (enemies, HP, score). The port does not: on game over it freezes time and shows
+the GAME OVER banner, and `GameSession` restarts only on a click once `restartDelay` unscaled
+seconds have passed (`GameSession.CanRestart`). This is kept on purpose: an explicit restart
+gives the player time to read the final score, and the port has no ambient-light fade to drive.
+The reset itself matches the original (HP, score and enemies are reinitialised).
