@@ -12,7 +12,7 @@ namespace MindAttic.Chain.Core
     /// <item><b>The files</b> hold the original's own figures, named and valued exactly as its source has them, in
     /// its own units (screen space, per frame): <see cref="Chain"/>, <see cref="Angel"/>, <see cref="Enemies"/>,
     /// <see cref="Item"/>, <see cref="Game"/>, <see cref="Lighting"/>, <see cref="Camera"/>, <see cref="Audio"/>,
-    /// <see cref="Input"/>, <see cref="Hud"/>.
+    /// <see cref="Input"/>, <see cref="Hud"/>, <see cref="Area"/>.
     /// A figure the original never had (a circle radius where it tested rectangles, the camera rig's follow) sits in
     /// that file's <c>port</c> object, in world units and seconds, and is never mapped.</item>
     /// <item><b>The port's values</b> (<see cref="Player"/>, <see cref="World"/>, <see cref="Heart"/>,
@@ -36,11 +36,12 @@ namespace MindAttic.Chain.Core
         public const string AudioFile = "audio.json";
         public const string InputFile = "input.json";
         public const string HudFile = "hud.json";
+        public const string AreaFile = "area.json";
 
         /// <summary>Every data file the registry reads.</summary>
         public static readonly string[] Files =
         {
-            SpaceFile, ChainFile, AngelFile, EnemiesFile, ItemFile, GameFile, LightingFile, CameraFile, AudioFile, InputFile, HudFile,
+            SpaceFile, ChainFile, AngelFile, EnemiesFile, ItemFile, GameFile, LightingFile, CameraFile, AudioFile, InputFile, HudFile, AreaFile,
         };
 
         private GameSettings()
@@ -60,6 +61,9 @@ namespace MindAttic.Chain.Core
 
         /// <summary>hud.json: the HUD's layout, colours and FPS counter, in the original window's pixels (UNI-T50).</summary>
         public HudData Hud { get; private set; }
+
+        /// <summary>area.json: Background.vb's quad, the area pictures and B/N, Cube.vb's brick room (UNI-T40).</summary>
+        public AreaData Area { get; private set; }
 
         /// <summary>The original-to-port mapping (space.json).</summary>
         public OriginalSpace Mapping { get; private set; }
@@ -95,6 +99,9 @@ namespace MindAttic.Chain.Core
         /// <summary>Zone.vb's hit box overlay (hud.json's <c>zone</c>) in world units (<see cref="HitZones"/>, UNI-T56).</summary>
         public HitZones.Settings Zones { get; private set; }
 
+        /// <summary>The backdrop quad and the brick room in world units (area.json, <see cref="Core.Backdrop"/>, UNI-T40).</summary>
+        public Backdrop.Settings Backdrop { get; private set; }
+
         /// <summary>
         /// Reads and validates every data file from <paramref name="source"/>, then maps them to the port. Throws a
         /// <see cref="SettingsException"/> listing every problem (a missing file, bad JSON with its line, a missing or
@@ -121,6 +128,7 @@ namespace MindAttic.Chain.Core
                 Audio = Read(source, AudioFile, errors, AudioData.Read),
                 Input = Read(source, InputFile, errors, InputData.Read),
                 Hud = Read(source, HudFile, errors, HudData.Read),
+                Area = Read(source, AreaFile, errors, AreaData.Read),
             };
 
             if (errors.Count > 0)
@@ -326,6 +334,7 @@ namespace MindAttic.Chain.Core
                 deadZone: Input.JoyOutsideDeadZone / Input.JoyRange,
                 stickSpeed: Input.Port.StickSpeed);
             Zones = HitZones.Settings.From(Hud.Zone, m);
+            Backdrop = Core.Backdrop.Settings.From(Area, m);
         }
     }
 

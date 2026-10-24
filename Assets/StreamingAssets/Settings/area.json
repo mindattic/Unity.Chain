@@ -1,0 +1,25 @@
+{
+  "_source": "Background.vb, Textures.vb, Cube.vb, Form1.vb (UNI-T40). loadBackground builds one setupVertex quad bgWidth (1.2) across from its left edge and bgHeight (0.415) above and below its centre line; renderBackground draws it at Matrix.Translation(-0.56, 0, 0) with texBackground, which loadTextures sets to areaBeach (gfx/area/beach.png); Form1.vb's B sets it to areaBeach and N to areaUtopia (gfx/area/utopia.png), and no Reset touches it. Every area is loaded at 512 x 512, so the whole picture is stretched over the quad. Screen units, y up (space.json maps them). Before it, renderCube draws Cube.vb's unit cube scaled 67 x 55 x 38 around the camera with texCube1 (gfx/brick.jpg): the room the background stands in.",
+  "bgWidth": 1.2,
+  "bgHeight": 0.415,
+  "bgOffset": [-0.56, 0],
+  "texBackground": "beach",
+  "keyB": "beach",
+  "keyN": "utopia",
+  "areas": {
+    "_about": "Every picture of gfx/area, by name, as the file Assets/Unity.Chain/Art/Background holds it. beach and utopia are the two Textures.vb loads; the rest sit in the folder unused (512.JPG imported lowercased as 512.jpg; the Copy of landscape.jpg files are duplicates and not imported).",
+    "beach": "beach.png",
+    "utopia": "utopia.png",
+    "landscape": "landscape.jpg",
+    "landscape2": "landscape2.jpg",
+    "01": "01.png",
+    "02": "02.png",
+    "512": "512.jpg"
+  },
+  "cube": {
+    "_about": "Cube.vb: matCube1 = Matrix.Scaling(67, 55, 38) on a unit cube centred on the origin, texCube1 = gfx/brick.jpg (as Assets/Unity.Chain/Art/Room holds it) stretched once over each face.",
+    "size": [67, 55],
+    "depth": 38,
+    "texture": "brick.jpg"
+  }
+}

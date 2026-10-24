@@ -145,6 +145,25 @@ namespace MindAttic.Chain
         /// <summary>The point the camera looks at now, world units: the framed centre plus the shake and the debug camera's target.</summary>
         public Vector2 LookPoint => _hasFramed ? _lookPoint : (Vector2)transform.position;
 
+        /// <summary>
+        /// Where Camera.vb's eye is now, world units: x and y the look point less the debug camera's slant, z its eye z
+        /// (below 0, in front of the play plane), as the view last took it. The brick room's far wall is projected from here
+        /// (<see cref="AreaBackdrop"/>).
+        /// </summary>
+        public Vector3 Eye
+        {
+            get
+            {
+                if (!_hasShown)
+                {
+                    TakeView();
+                }
+
+                var eye = LookPoint - (_shownTarget - _shownEye);
+                return new Vector3(eye.x, eye.y, _shownEyeZ);
+            }
+        }
+
         /// <summary>0: Root.vb's <c>shakeScreen</c>, the view jumps or is put back, at once. Returns the new offset.</summary>
         public Vector2 ShakeScreen()
         {

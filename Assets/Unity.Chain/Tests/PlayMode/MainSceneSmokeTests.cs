@@ -72,6 +72,20 @@ namespace MindAttic.Chain.Tests
             Assert.AreEqual(session, hud.Session, "GameHud is not wired to the GameSession.");
             Assert.AreEqual(grapple, hud.Grapple, "GameHud is not wired to the GrappleController.");
 
+            // UNI-T40: Background.vb's quad on the beach, Cube.vb's brick room behind it, every gfx/area picture wired.
+            var backdrop = Object.FindAnyObjectByType<AreaBackdrop>();
+            Assert.IsNotNull(backdrop, "AreaBackdrop missing from Main scene.");
+            Assert.AreEqual(rig, backdrop.Rig, "AreaBackdrop is not wired to the CameraRig.");
+            Assert.AreEqual("beach", backdrop.Current, "Textures.vb: texBackground = areaBeach at the start.");
+            Assert.IsNotNull(backdrop.Backdrop, "AreaBackdrop has no quad to draw the area on.");
+            Assert.AreEqual(backdrop.SpriteFor("beach"), backdrop.Backdrop.sprite, "The backdrop does not show beach.png.");
+            Assert.IsNotNull(backdrop.Room, "AreaBackdrop has no brick room.");
+            Assert.IsNotNull(backdrop.Room.sprite, "The brick room has no brick.jpg.");
+            foreach (var name in session.Settings.Area.Areas)
+            {
+                Assert.IsNotNull(backdrop.SpriteFor(name), $"area.json's {name} has no picture wired.");
+            }
+
             var line = chain.GetComponent<LineRenderer>();
             Assert.IsNotNull(line, "Chain has no LineRenderer.");
             Assert.IsNotNull(line.sharedMaterial, "Chain's LineRenderer has no material.");

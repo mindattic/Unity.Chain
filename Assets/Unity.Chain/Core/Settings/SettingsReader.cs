@@ -176,6 +176,47 @@ namespace MindAttic.Chain.Core
             return default;
         }
 
+        /// <summary>A non-empty string ("beach.png").</summary>
+        public string Text(string key)
+        {
+            var value = Take(key, JsonKind.String, "a string");
+            if (value == null)
+            {
+                return string.Empty;
+            }
+
+            if (string.IsNullOrWhiteSpace(value.Text))
+            {
+                Fail(key, value, "must not be empty");
+                return string.Empty;
+            }
+
+            return value.Text;
+        }
+
+        /// <summary>
+        /// The keys of this object that are not notes, in file order, for an object whose keys are names chosen by the
+        /// data (area.json's <c>areas</c>). Read each one with <see cref="Text"/> or <see cref="Section"/>.
+        /// </summary>
+        public IReadOnlyList<string> Names()
+        {
+            var names = new List<string>();
+            if (_object == null)
+            {
+                return names;
+            }
+
+            foreach (var member in _object.Members)
+            {
+                if (!member.Key.StartsWith("_", StringComparison.Ordinal))
+                {
+                    names.Add(member.Key);
+                }
+            }
+
+            return names;
+        }
+
         /// <summary>A cross-field check: records <paramref name="message"/> against <paramref name="key"/> when <paramref name="ok"/> is false.</summary>
         public void Check(bool ok, string key, string message)
         {

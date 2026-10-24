@@ -38,6 +38,8 @@ In development, rebuilding the original to full parity. On main and tested:
 - every input from one Input System action asset built in code, with keyboard, mouse and gamepad bindings; a
   gamepad's left stick steers like the mouse and J switches it off and on (`Input/ChainControls`, `Input/SeatInput`,
   `Core/Input/SteerInput`, `input.json`)
+- Background.vb's backdrop and Cube.vb's brick room behind it: the beach from the start, B and N showing the beach
+  and utopia, every gfx/area picture listed by name in `area.json` (`Level/AreaBackdrop`, `Core/Level/Backdrop`)
 - the scenes and the Windows player generated in code (`Editor/SceneBuilder`, `Editor/PlayerBuilder`)
 - Form1.vb Startup's loading picture: the player opens on the Splash scene, one of `load640_1..12` chosen at
   random over the whole window until Main has loaded (`UI/SplashScreen`, `Core/Hud/LoadingScreen`, `hud.json` `loading`)
@@ -113,11 +115,12 @@ The engine-free rules are tested by `Tests/Core.Tests` (`dotnet test Tests/Core.
 | F4 | | frame rate on / off |
 | F12 | | windowed / fullscreen |
 | E | | hit boxes (Zone.vb's overlay) on / off; on from the start |
+| B / N | | beach / utopia background |
 
 The bindings live in one `InputActionAsset` built in code (`Runtime/Input/ChainControls`); the stick's speed and
 dead zone are in `input.json`.
 
-The original's other keys (live spring, drag and gravity tuning, game speed, gem skins, backgrounds,
+The original's other keys (live spring, drag and gravity tuning, game speed, gem skins,
 debug views, the script console) are listed with their tickets in
 [docs/RECONSTRUCTION.md §3.5](docs/RECONSTRUCTION.md).
 

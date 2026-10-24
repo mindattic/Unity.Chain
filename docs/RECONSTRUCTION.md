@@ -140,7 +140,7 @@ Every binding of the original, with its state:
 | R | `Reset` | ported (Reset action sends `ResetGame`, gamepad Back, UNI-T34), restoring everything `Reset` does through the one `GameWorld.Reset` (UNI-T48) |
 | 0 | `shakeScreen(0.02)` | ported (UNI-T49; the Debug map's ShakeScreen, `CameraRig.ShakeScreen`); the draws are really random (BIBLE D19) |
 | L | lighting toggle | ported (`SceneLight`, the Debug map's ToggleLighting); off is unlit rather than frozen (BIBLE D16) |
-| B / N | beach / utopia background (a second `Case Keys.B` for the background toggle is unreachable) | missing, UNI-T40 |
+| B / N | beach / utopia background (a second `Case Keys.B` for the background toggle is unreachable) | ported (UNI-T40; the Debug map's AreaB and AreaN, read paused too, show `area.json`'s `keyB` and `keyN` through `AreaSelection`; no reset touches it); the unreachable toggle flips a flag nothing reads and is not ported (BIBLE D15) |
 | E | zone (hit box) overlay, default on | ported (UNI-T56; the Debug map's ToggleZones flips `ViewOptions.Zones`, drawn by `HitZoneOverlay`; no reset touches it) |
 | F1, F2, F3 | wireframe, textures, culling (D3D render states) | ported (UNI-T55 the keys and flags: the Debug map's ToggleWireframe, ToggleTextures, ToggleCulling flip `GameHud.Options`, a Core `ViewOptions`, shown in the menu, put back by every reset; UNI-T56 the drawing: `ViewRenderFeature` on the 2D renderer redraws the scene wireframe, untextured or culling back faces, BIBLE V14, D24, D25) |
 | F4 | FPS counter (`bDrawFPS`, on at the start and in every `Reset`) | ported (UNI-T50; the Debug map's ToggleFps, `GameHud.ToggleFps`); off hides it and a frame counts once (BIBLE D20, D21) |
@@ -176,8 +176,8 @@ Every binding of the original, with its state:
 | Ambient + material tint | `AmbientColor` (white) and an r/g/b material colour set each frame | ported: `LightingState` tint times `GameState.Ambient`, on a URP 2D global light (`SceneLight`) |
 | Day cycle | Day, Dusk, Night, Morning with `dayLength` 1e10 s, so it never advances in play | ported (`LightingState`) at a 1440 s day (BIBLE D6) |
 | Camera | perspective 45 degrees, z -1, 4:3, rebuilt each unpaused frame from `cam` and `target` | orthographic fit; the perspective kept as data (`camera.json`, `CameraRig.Perspective`), `cam`/`target` as `DebugCamera` on top of the fit | deliberate deviation (BIBLE V1); debug camera ported, UNI-T57 |
-| Background | 2.4 x 0.83 quad at x -0.56, `beach.png` default | missing, UNI-T40 |
-| Brick room | `Cube.vb` cube 67x55x38 around the camera, textured `brick.jpg`; hidden behind the background | missing, UNI-T40 |
+| Background | `setupVertex` quad 1.2 (`bgWidth`) across from its left edge by 0.83 (`bgHeight` 0.415 either side), translated to x -0.56 (so x -0.56..0.64), `texBackground` stretched over it (every area loaded at 512 x 512), `beach.png` from the start; drawn paused too | ported (UNI-T40): `AreaBackdrop` stretches the current area over `area.json`'s quad (`Backdrop.Quad`, mapped by `space.json`), whatever the picture's size |
+| Brick room | `Cube.vb` cube 67x55x38 around the camera (eye z -1), textured `brick.jpg`, drawn before the background, so its far wall shows wherever the background does not reach | ported (UNI-T40): its far wall as the eye sees it, projected on the play plane (`Backdrop.FarWall`, BIBLE V24), behind the backdrop; the camera clears white as `oneFrameRender` does |
 | Screen shake | alternates a random offset and a restore | ported (UNI-T49): `ScreenShake` offsets the rig's framing right and down by two draws of 0..0.02 screen each, the next press restores; the original's draws were always 0 (BIBLE D19) |
 | Terrain lines (`Terrains`) | loader dereferences an unset `DataRow`; never called, and `bTerrain` starts False with no key | dead code, not ported (UNI-T56, BIBLE §7) |
 | Zones (`Zone.vb`) | `loadZone`: `maxZone` 5, six line-strip boxes Left 0, Right 0.05, Top 0, Bottom -0.05, drawn with `texZone` (`gfx/gui/event.png`, 2x2 of 0, 128, 255); `renderZone`: while `bZone` (default True, E) moves box n to `Enemy(n).X + enemySize / 2, Enemy(n).Y` and box 0 to `rectMace.Left, rectMace.Top`; never called by `oneFrameRender` | ported (UNI-T56): `HitZones` (Core) boxes every enemy and each following mace, `HitZoneOverlay` draws them as `LineRenderer` strips from `hud.json`'s `zone`; the uncalled overlay, the six-box limit and the lost enemy 0 are fixed (BIBLE D23) |
@@ -206,7 +206,7 @@ no caller. Missing, UNI-T60, UNI-T61.
 | `gfx\chain` | `link`, `aqua`, `emerald`, `teardrop`, `tablet`, `pearl`; `mace\mace`, `mace2`, `magnet` | link, U skins, mace/grapple; magnet loaded not used | UNI-T19, UNI-T41, UNI-T43 |
 | `gfx\enemy` | `Shadow\enemy1-7` (`enemy.PNG` duplicates 1) | 7-frame loop | UNI-T19 |
 | `gfx\item` | `heart` | pickup | UNI-T19, UNI-T22 |
-| `gfx\area` | `beach`, `utopia` used; `01`, `02`, `512`, `landscape`, `landscape2` unused; `brick.jpg` | background, brick room | UNI-T40 |
+| `gfx\area` | `beach`, `utopia` used; `01`, `02`, `512`, `landscape`, `landscape2` unused (the `Copy of landscape.jpg` files are duplicates); `brick.jpg` | background, brick room | ported (UNI-T19 imported the area art, UNI-T40 `brick.jpg` under `Art/Room`); every picture listed by name in `area.json`'s `areas`, only beach and utopia shown |
 | `gfx\gui` | `status_box`, `menu.jpg` used; `load640_1-12` (loading); `ap_bar`, `event` (its 0, 128, 255 is the zones' colour, `hud.json` `zone`), `terrain`, `talkbox`, `load.PNG`, `menu.PNG` unused | HUD, menu, loading | UNI-T50, UNI-T55, UNI-T56, UNI-T58 |
 | `gfx\cursor` | 9 cursors loaded, none drawn | unused | dead |
 | `sfx` | 17 WAV, `music.wma` | see 3.8 | UNI-T20 |

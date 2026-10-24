@@ -22,7 +22,8 @@ namespace MindAttic.Chain
     /// ToggleCulling (F3) and ConfigureVideo (F12), and ToggleZones (Form1.vb's E, Zone.vb's hit boxes, flipped by
     /// <see cref="GameHud"/> and drawn by <see cref="HitZoneOverlay"/>), and, read while held by <see cref="CameraRig"/>,
     /// Input.vb's camera keys (UNI-T57): CameraForward and CameraBackward (numpad plus and Enter), CameraLeft and
-    /// CameraRight (numpad 4 and 6), CameraUp and CameraDown (numpad 8 and 2), Isometric and Deisometric (X and Z).
+    /// CameraRight (numpad 4 and 6), CameraUp and CameraDown (numpad 8 and 2), Isometric and Deisometric (X and Z), and
+    /// AreaB and AreaN (Form1.vb's B and N, the backdrop's beach and utopia, read by <see cref="AreaBackdrop"/>).
     /// Later debug keys join this map.</item>
     /// </list>
     /// Input.vb's and Form1.vb's keys keep their bindings, as the original has them.
@@ -104,6 +105,10 @@ namespace MindAttic.Chain
         public InputAction Isometric => Debug["Isometric"];
         /// <summary>Input.vb's Z: <c>deisometric</c>, by -0.25.</summary>
         public InputAction Deisometric => Debug["Deisometric"];
+        /// <summary>Form1.vb's B: <c>texBackground = areaBeach</c> (area.json's keyB).</summary>
+        public InputAction AreaB => Debug["AreaB"];
+        /// <summary>Form1.vb's N: <c>texBackground = areaUtopia</c> (area.json's keyN).</summary>
+        public InputAction AreaN => Debug["AreaN"];
 
         /// <summary>A new asset with the game's two maps and every binding.</summary>
         public static InputActionAsset BuildAsset()
@@ -157,6 +162,9 @@ namespace MindAttic.Chain
             Button(debug, "CameraDown", "<Keyboard>/numpad2");
             Button(debug, "Isometric", "<Keyboard>/x");
             Button(debug, "Deisometric", "<Keyboard>/z");
+            // Form1.vb's B and N (UNI-T40): the backdrop's area. Its second B case (bBackground) is unreachable, not ported.
+            Button(debug, "AreaB", "<Keyboard>/b");
+            Button(debug, "AreaN", "<Keyboard>/n");
 
             return asset;
         }

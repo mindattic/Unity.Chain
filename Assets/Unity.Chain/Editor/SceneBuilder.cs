@@ -43,10 +43,10 @@ namespace MindAttic.Chain.EditorTools
 
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
-            CreateBackground();
             var levelBounds = CreateLevelBounds();
             var angel = CreateAngel(levelBounds);
             var rig = CreateCamera(levelBounds);
+            CreateBackground(rig);
             var (chain, grapple) = CreateChain();
             angel.Chain = chain;
             var session = CreateGameSession(angel, levelBounds);
@@ -145,6 +145,9 @@ namespace MindAttic.Chain.EditorTools
             var go = new GameObject("Main Camera") { tag = "MainCamera" };
             var camera = go.AddComponent<Camera>();
             camera.orthographic = true;
+            // Engine.vb's oneFrameRender clears the target to white (255, 255, 255, 255) before renderCube.
+            camera.clearFlags = CameraClearFlags.SolidColor;
+            camera.backgroundColor = Color.white;
             go.transform.position = new Vector3(0f, 0f, -10f);
             go.AddComponent<AudioListener>();
 
@@ -234,25 +237,54 @@ namespace MindAttic.Chain.EditorTools
             spawner.Frames = LoadSprites("Assets/Unity.Chain/Art/Enemies/", "enemy", 1, 7);
         }
 
-        private const string BackgroundSpritePath = "Assets/Unity.Chain/Art/Background/beach.png";
+        private const string AreaArtPath = "Assets/Unity.Chain/Art/Background/";
+        private const string RoomArtPath = "Assets/Unity.Chain/Art/Room/";
 
-        private static void CreateBackground()
+        private static void CreateBackground(CameraRig rig)
         {
-            // Background.vb: a bgWidth (1.2) x 2*bgHeight (0.83) quad translated to x -0.56, left
-            // edge on X and vertically centred (Root.vb's setupVertex), beach.png by default
-            // (UNI-T19). Those are the original's own screen units, so OriginalSpace.ArenaLengthScale
-            // maps them into this port's world units exactly like every other original figure
-            // (GameSettings' m.Length calls) -- the DefaultArena is 16 x 9, not 1 x 1. The sprite
-            // imports as a 1x1 unit square (ArtImportSettings), stretched here to that quad. The B/N
-            // toggle, the brick-room fallback and the rest of the area list are UNI-T40's: this is
-            // only the static backdrop so the scene is no longer empty behind it.
-            const float scale = OriginalSpace.ArenaLengthScale;
+            // Background.vb and Cube.vb (UNI-T40): renderBackground's quad with the current area and, behind it,
+            // renderCube's brick room. AreaBackdrop sizes both from area.json at run time; every gfx/area picture is
+            // wired under its area.json name (only beach and utopia are ever shown, by B and N, as in the original).
+            var area = SettingsStore.Current.Area;
             var go = new GameObject("Background");
-            var renderer = go.AddComponent<SpriteRenderer>();
-            renderer.sprite = AssetDatabase.LoadAssetAtPath<Sprite>(BackgroundSpritePath);
-            renderer.sortingOrder = -100;
-            go.transform.position = new Vector3(-0.56f * scale, 0f, 1f);
-            go.transform.localScale = new Vector3(1.2f * scale, 0.83f * scale, 1f);
+            var backdrop = go.AddComponent<AreaBackdrop>();
+            backdrop.Rig = rig;
+
+            var quadGo = new GameObject("Area");
+            quadGo.transform.SetParent(go.transform, false);
+            quadGo.transform.localPosition = new Vector3(0f, 0f, 1f);
+            var quad = quadGo.AddComponent<SpriteRenderer>();
+            quad.sortingOrder = AreaBackdrop.BackdropSortingOrder;
+
+            var roomGo = new GameObject("BrickRoom");
+            roomGo.transform.SetParent(go.transform, false);
+            roomGo.transform.localPosition = new Vector3(0f, 0f, 2f);
+            var room = roomGo.AddComponent<SpriteRenderer>();
+            room.sortingOrder = AreaBackdrop.RoomSortingOrder;
+            room.sprite = LoadSprite(RoomArtPath + area.CubeTexture);
+
+            var art = new AreaBackdrop.AreaArt[area.Areas.Count];
+            for (var i = 0; i < art.Length; i++)
+            {
+                var name = area.Areas[i];
+                art[i] = new AreaBackdrop.AreaArt(name, LoadSprite(AreaArtPath + area.File(name)));
+            }
+
+            backdrop.Areas = art;
+            backdrop.Backdrop = quad;
+            backdrop.Room = room;
+        }
+
+        /// <summary>Loads the sprite at <paramref name="path"/>, throwing if it is missing: area.json names only art UNI-T19 and UNI-T40 imported.</summary>
+        private static Sprite LoadSprite(string path)
+        {
+            var sprite = AssetDatabase.LoadAssetAtPath<Sprite>(path);
+            if (sprite == null)
+            {
+                throw new FileNotFoundException($"SceneBuilder: expected a sprite at '{path}' (area.json, UNI-T40).", path);
+            }
+
+            return sprite;
         }
 
         private static SceneLight CreateSceneLight(GameSession session)

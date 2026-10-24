@@ -17,10 +17,10 @@ namespace MindAttic.Chain.EditorTools
     /// on-screen size. Art/Chain/link.png is left-edge, Repeat-wrapped sprite metadata that nothing
     /// reads: only its raw texture is used (tiled on the chain's LineRenderer,
     /// SceneBuilder.CreateChain), so its own pivot/alignment is moot. Art/Background/*.png is also
-    /// left-edge: SceneBuilder.CreateBackground stretches the 1-unit sprite non-uniformly to
-    /// Background.vb's quad (bgWidth x 2*bgHeight, mapped by OriginalSpace.ArenaLengthScale like every
-    /// other original screen-unit figure -- UNI-T40 owns the rest: the B/N toggle, the brick-room
-    /// fallback, the data-driven area list). Assets outside those folders (Art/Icon,
+    /// left-edge, as Root.vb's setupVertex quad is: AreaBackdrop stretches whichever area is shown over
+    /// Background.vb's quad (area.json's bgWidth x 2 bgHeight, UNI-T40), whatever the picture's own pixel
+    /// size, and Art/Room/brick.jpg (Cube.vb's texCube1) is centred and stretched over the brick room's
+    /// far wall the same way. Assets outside those folders (Art/Icon,
     /// Art/Items/heart.png already hand-tuned by UNI-T44) are left untouched.
     /// </summary>
     public sealed class ArtImportSettings : AssetPostprocessor
@@ -29,6 +29,9 @@ namespace MindAttic.Chain.EditorTools
         private const string EnemiesFolder = "Assets/Unity.Chain/Art/Enemies/";
         private const string ChainFolder = "Assets/Unity.Chain/Art/Chain/";
         private const string BackgroundFolder = "Assets/Unity.Chain/Art/Background/";
+
+        /// <summary>Cube.vb's texCube1, gfx/brick.jpg (UNI-T40): centred, AreaBackdrop stretches it over the room's far wall.</summary>
+        private const string RoomFolder = "Assets/Unity.Chain/Art/Room/";
 
         /// <summary>Form1.vb Startup's loading pictures (UNI-T58), 640 x 480 each, drawn stretched over the window.</summary>
         private const string LoadingFolder = "Assets/Unity.Chain/Resources/UI/Load/";
@@ -68,6 +71,10 @@ namespace MindAttic.Chain.EditorTools
             else if (path.StartsWith(BackgroundFolder))
             {
                 centered = false;
+            }
+            else if (path.StartsWith(RoomFolder))
+            {
+                centered = true;
             }
             else
             {

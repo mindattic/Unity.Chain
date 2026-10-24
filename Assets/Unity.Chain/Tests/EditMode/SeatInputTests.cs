@@ -52,7 +52,12 @@ namespace MindAttic.Chain.Tests
                     },
                     controls.Player.actions.Select(a => a.name).ToArray());
                 CollectionAssert.AreEquivalent(
-                    new[] { "ToggleLighting", "ShakeScreen", "ToggleFps", "ToggleMenu", "ToggleWireframe", "ToggleTextures", "ToggleCulling", "ConfigureVideo", "ToggleZones" },
+                    new[]
+                    {
+                        "ToggleLighting", "ShakeScreen", "ToggleFps", "ToggleMenu", "ToggleWireframe", "ToggleTextures", "ToggleCulling", "ConfigureVideo", "ToggleZones",
+                        "CameraForward", "CameraBackward", "CameraLeft", "CameraRight", "CameraUp", "CameraDown", "Isometric", "Deisometric",
+                        "AreaB", "AreaN",
+                    },
                     controls.Debug.actions.Select(a => a.name).ToArray());
             }
         }
@@ -71,6 +76,8 @@ namespace MindAttic.Chain.Tests
                 CollectionAssert.Contains(Paths(c.Reset), "<Keyboard>/r");
                 CollectionAssert.Contains(Paths(c.ToggleJoystick), "<Keyboard>/j");
                 CollectionAssert.Contains(Paths(c.ToggleLighting), "<Keyboard>/l");
+                CollectionAssert.AreEqual(new[] { "<Keyboard>/b" }, Paths(c.AreaB), "Form1.vb: texBackground = areaBeach");
+                CollectionAssert.AreEqual(new[] { "<Keyboard>/n" }, Paths(c.AreaN), "Form1.vb: texBackground = areaUtopia");
                 CollectionAssert.Contains(Paths(c.ResistanceUp), "<Keyboard>/insert", "Form1.vb changeResistance(0.001)");
                 CollectionAssert.Contains(Paths(c.ResistanceDown), "<Keyboard>/delete", "Form1.vb changeResistance(-0.001)");
                 CollectionAssert.Contains(Paths(c.GravityDown), "<Keyboard>/home", "Form1.vb changeGravity(-0.00001)");
