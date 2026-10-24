@@ -62,7 +62,8 @@ A module is read in full and recorded in `RECONSTRUCTION.md` before its rebuild 
 
 ### {#UNI-LAW-3} Core is pure C#
 
-The rules live in an engine-free Core assembly (`noEngineReferences`, no `UnityEngine`) tested with `dotnet test`.
+The rules live in an engine-free Core assembly (
+oEngineReferences`, no `UnityEngine`) tested with `dotnet test`.
 State changes only through commands, which produce events; presentation reads state and plays events and never
 mutates the game.
 
@@ -122,9 +123,10 @@ Unity.
 | `Unity.Chain.Editor` | `Assets/Unity.Chain/Editor/` | `SceneBuilder` (generates `Main.unity` and the build settings), `RenderPipelineBuilder` (the URP 2D pipeline asset and renderer, assigned in GraphicsSettings and every quality level), `PlayerBuilder` (Windows player) | in place |
 | `Unity.Chain.EditMode.Tests` | `Assets/Unity.Chain/Tests/EditMode/` | NUnit tests of the rules and components | in place; the component tests stay here, the pure rule tests now live in `Tests/Core.Tests` (`dotnet test`) |
 | `Unity.Chain.PlayMode.Tests` | `Assets/Unity.Chain/Tests/PlayMode/` | `MainSceneSmokeTests` | in place |
-| `Unity.Chain.Core` | `Assets/Unity.Chain/Core/` | `noEngineReferences`: `World/` (GameWorld, GameCommand, GameEvent, PlayerId, EnemyId, PlayerEntity, EnemyEntity, Sweep), `Maths/` (Vec2, Rect2, Calc), `Chain/` (ChainSimulation, ChainFollow), `Player/` (AngelFlight), `Enemies/` (EnemyBrain), `Grapple/` (Grapple, IGrappleTarget, GrappleState), `Items/` (HeartFloat), `Game/` (GameState), `Level/` (CameraFraming, PlayArea), `Lighting/` (LightingState), `Input/` (SteerInput: the stick as mouse counts, the J toggle), `Audio/` (SwingSoundTrigger, ClipPicker), `Settings/` (GameSettings, the registry and its data records; OriginalSpace, the one mapping; ISettingsSource; SettingsReader, the validation; Json) | Its rules are tested by `Tests/Core.Tests` with `dotnet test` |
+| `Unity.Chain.Core` | `Assets/Unity.Chain/Core/` | 
+oEngineReferences`: `World/` (GameWorld, GameCommand, GameEvent, PlayerId, EnemyId, PlayerEntity, EnemyEntity, Sweep), `Maths/` (Vec2, Rect2, Calc), `Chain/` (ChainSimulation, ChainFollow), `Player/` (AngelFlight), `Enemies/` (EnemyBrain), `Grapple/` (Grapple, IGrappleTarget, GrappleState), `Items/` (HeartFloat), `Game/` (GameState), `Level/` (CameraFraming, PlayArea), `Lighting/` (LightingState), `Input/` (SteerInput: the stick as mouse counts, the J toggle), `Audio/` (SwingSoundTrigger, ClipPicker), `Settings/` (GameSettings, the registry and its data records; OriginalSpace, the one mapping; ISettingsSource and TuningOverrideSource; SettingsReader, the validation; Json; PlayerPreferences and IPreferencesStore, the player's own options) | Its rules are tested by `Tests/Core.Tests` with `dotnet test` |
 
-The URP 2D pipeline is committed (`Assets/Unity.Chain/Rendering`, built by `Editor/RenderPipelineBuilder`, UNI-T18); Unity.Shared settings in UNI-T36, the
+The URP 2D pipeline is committed (`Assets/Unity.Chain/Rendering`, built by `Editor/RenderPipelineBuilder`, UNI-T18); the player's own options are a Unity.Shared profile (UNI-T36, §6); the
 UI Toolkit HUD in UNI-T37 and the multiplayer kit in UNI-T26.
 
 ### 5.3 Commands, events and the one authority
@@ -204,8 +206,18 @@ Still in code, for later tickets: the game-over fade step and floor (`GameState`
 (UNI-T51), game speed (UNI-T52), asset lists (UNI-T19, UNI-T20), the HUD layout (UNI-T50) and the arena size
 (`LevelBounds`, UNI-T66).
 
-Player options (resolution, window mode, volumes, mutes) replace the registry with a Unity.Shared profile
-(planned, UNI-T36, UNI-T59).
+**Player options live in the player's profile** (UNI-T36): the shared MindAttic profile's settings.json (the
+Unity.Shared package, `Profiles.Current.Settings`), read and written through Core's `IPreferencesStore` (Runtime's
+`ProfilePreferencesStore`; `PlayerProfile` holds the loaded `PlayerPreferences`, `PlayerProfile.Save()` keeps them).
+Its `common` block holds the music and sound-effect volume and mute and reduce motion, shared with every MindAttic game;
+Chain's `game` block holds `resolution` (`{"width", "height"}`), `windowMode` (`windowed`, `borderless`,
+`fullscreen`, `maximized`, put into effect before the first scene in a build by `DisplayPreferences`) and `tuning`,
+keys per data file laid over the stock files by `TuningOverrideSource` (`{"chain.json": {"springK": 0.3}}`) and
+validated like them; overrides that fail are logged and the stock figures used. `MusicPlayer` and `ChainAudio` play at
+the profile's volumes and mutes and have none of their own. The original's volumes (`audio.json`: music 0 dB, sound
+effects -10 dB) are the stock ones: a profile this game has not given them to (`game.stockVolumes` unset) takes them
+in place of the shared package's defaults, and the profile's own figures win from then on. The options screen is
+UNI-T59.
 
 ## 7. Fixed defects {#UNI-§7}
 

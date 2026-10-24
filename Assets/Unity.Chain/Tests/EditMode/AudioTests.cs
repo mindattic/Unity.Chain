@@ -29,6 +29,7 @@ namespace MindAttic.Chain.Tests
         {
             _rig.Dispose();
             _played.Clear();
+            PlayerProfile.Store = new MemoryPreferencesStore(); // Muted is the profile's
         }
 
         private AudioClip Clip(string name) => _rig.Track(AudioClip.Create(name, 4410, 1, 44100, false));
@@ -171,6 +172,8 @@ namespace MindAttic.Chain.Tests
             {
                 Object.DestroyImmediate(_go);
             }
+
+            PlayerProfile.Store = new MemoryPreferencesStore(); // Volume and Muted are the profile's
         }
 
         [Test]

@@ -187,7 +187,7 @@ DirectSound `SecondaryBuffer`s are loaded for `sword_swing_1..7`, `sword_hit_1..
 (`rndMusicPos`, at init and on `Reset`). `playSFX` is **never called**, and `bSound` and `bMusic` both default to
 `False`, so the shipped game is silent. Volumes: music 0, sfx -1000, ambient -1500 (unused). The rebuild already
 plays swing, hit, death, catch and throw sounds and loops music (more than the original), with no clips shipped:
-UNI-T20. `defend` and `footstep` are unused in both. Volumes and mutes move to the shared profile: UNI-T36, UNI-T59.
+UNI-T20. `defend` and `footstep` are unused in both. Volumes and mutes are the shared profile's since UNI-T36, with these as the stock ones; the options screen is UNI-T59.
 
 ### 3.9 Script language (`Script.vb`)
 
@@ -233,7 +233,7 @@ Checked against `AGENTS.md` (the owner's rebuild standard) and the reference rep
 | Data-driven content | Done: JSON data files in `StreamingAssets/Settings` holding the original's figures, validated on load and read by Core's `GameSettings` through `ISettingsSource`, one mapping (`space.json`) to the port's units (BIBLE §6) | UNI-T33 |
 | Input System | Done: one `InputActionAsset` built in code (`ChainControls`), keyboard, mouse and gamepad bindings, read per seat by `SeatInput` into that seat's commands; nothing polls `Keyboard.current` or `Mouse.current` | UNI-T34 |
 | URP | Done: a URP pipeline with the 2D renderer (`Assets/Unity.Chain/Rendering`, built by `Editor/RenderPipelineBuilder`) is assigned in GraphicsSettings and every quality level beside the committed global settings and volume profile; a headless import leaves them unchanged | UNI-T18 |
-| Unity.Shared profiles and settings | Package not referenced; no profile, volumes are per-component fields | UNI-T36 |
+| Unity.Shared profiles and settings | Done: `com.mindattic.unity.shared` referenced; volumes, mutes and reduce motion in the profile's common block, resolution, window mode and tuning overrides in its game block, through Core's `IPreferencesStore`; music and SFX play at the profile's volumes (BIBLE §6) | UNI-T36 |
 | UI | `GameHud` is IMGUI (`OnGUI`), not UI Toolkit or the shared components | UNI-T37 |
 | Project settings | 1600x900 resizable, no icon, no cursor policy, `applicationIdentifier` empty | UNI-T38 |
 | Build, test and deploy scripts | None (`build.bat`, `test.bat`, `deploy.bat` exist in the reference repos) | UNI-T39 |

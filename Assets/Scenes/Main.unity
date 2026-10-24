@@ -712,7 +712,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Unity.Chain.Runtime::MindAttic.Chain.ChainAudio
   chain: {fileID: 1629464913}
   sfxSource: {fileID: 1629464916}
-  muted: 0
   swingClips: []
   impactClips: []
   deathClips: []
@@ -1111,7 +1110,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Unity.Chain.Runtime::MindAttic.Chain.MusicPlayer
   music: {fileID: 0}
-  muted: 0
   playOnStart: 1
 --- !u!82 &1843267647
 AudioSource:

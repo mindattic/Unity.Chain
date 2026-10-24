@@ -42,8 +42,6 @@ namespace MindAttic.Chain
         [Tooltip("Plays the one-shots. Defaults to an AudioSource on this object (added if missing).")]
         [SerializeField] private AudioSource sfxSource;
 
-        [SerializeField] private bool muted;
-
         [Header("Swing")]
         [SerializeField] private AudioClip[] swingClips = Array.Empty<AudioClip>();
 
@@ -55,11 +53,10 @@ namespace MindAttic.Chain
         [SerializeField] private AudioClip[] catchClips = Array.Empty<AudioClip>();
         [SerializeField] private AudioClip[] throwClips = Array.Empty<AudioClip>();
 
-        // audio.json: Sound.vb's sfxVolume as a gain and the port's swing figures, read on first use; the
-        // properties override them at run time. maceIndex is used only when the chain has no MaceController.
+        // audio.json's swing figures, read on first use; the properties override them at run time. maceIndex is used
+        // only when the chain has no MaceController. The volume and mute are the player profile's (PlayerProfile).
         private bool _tuned;
         private int maceIndex;
-        private float volume;
         private float swingSpeed;
         private float swingRearmSpeed;
         private float swingCooldown;
@@ -97,16 +94,26 @@ namespace MindAttic.Chain
             set => sfxSource = value;
         }
 
+        /// <summary>The profile's sound-effect volume (0-1, stock Sound.vb's -10 dB); setting it changes the profile's for the run (<see cref="PlayerProfile.Save"/> keeps it).</summary>
         public float Volume
         {
-            get => Tuned().volume;
-            set => Tuned().volume = Mathf.Clamp01(value);
+            get => PlayerProfile.Preferences.SfxVolume;
+            set
+            {
+                PlayerProfile.Preferences.SfxVolume = value;
+                PlayerProfile.NotifyChanged();
+            }
         }
 
+        /// <summary>The profile's sound-effect mute.</summary>
         public bool Muted
         {
-            get => muted;
-            set => muted = value;
+            get => PlayerProfile.Preferences.MuteSfx;
+            set
+            {
+                PlayerProfile.Preferences.MuteSfx = value;
+                PlayerProfile.NotifyChanged();
+            }
         }
 
         public float SwingSpeed
@@ -161,7 +168,7 @@ namespace MindAttic.Chain
             return new SwingSoundTrigger(swingSpeed, swingRearmSpeed, swingCooldown, swingRepeatInterval);
         }
 
-        /// <summary>Reads audio.json's figures the first time they are needed.</summary>
+        /// <summary>Reads audio.json's swing figures the first time they are needed.</summary>
         private ChainAudio Tuned()
         {
             if (!_tuned)
@@ -169,7 +176,6 @@ namespace MindAttic.Chain
                 var settings = SettingsStore.Current;
                 var audio = settings.AudioTuning;
                 maceIndex = settings.Player.MaceIndex;
-                volume = audio.SfxVolume;
                 swingSpeed = audio.Swing.SwingSpeed;
                 swingRearmSpeed = audio.Swing.SwingRearmSpeed;
                 swingCooldown = audio.Swing.SwingCooldown;
@@ -220,7 +226,7 @@ namespace MindAttic.Chain
             var picker = _pickers[(int)sound] ?? (_pickers[(int)sound] = new ClipPicker());
             var index = picker.Next(clips != null ? clips.Length : 0);
             var clip = index >= 0 ? clips[index] : null;
-            var finalVolume = muted ? 0f : Mathf.Clamp01(relativeVolume) * Tuned().volume;
+            var finalVolume = Mathf.Clamp01(relativeVolume) * PlayerProfile.Preferences.SfxGain;
 
             if (clip != null && finalVolume > 0f && sfxSource != null && Application.isPlaying)
             {

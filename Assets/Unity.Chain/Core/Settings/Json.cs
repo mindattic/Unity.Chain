@@ -116,6 +116,127 @@ namespace MindAttic.Chain.Core
             return value;
         }
 
+        /// <summary>
+        /// <paramref name="overlay"/> laid over <paramref name="baseValue"/>: where both are objects, each member of
+        /// the overlay replaces (or, for two objects, is merged into) the base's member of that name and a member the
+        /// base lacks is added at the end; anything else is replaced by the overlay outright. Neither input changes.
+        /// </summary>
+        public static JsonValue Merge(JsonValue baseValue, JsonValue overlay)
+        {
+            if (overlay == null)
+            {
+                return baseValue;
+            }
+
+            if (baseValue == null || baseValue.Kind != JsonKind.Object || overlay.Kind != JsonKind.Object)
+            {
+                return overlay;
+            }
+
+            var members = new List<KeyValuePair<string, JsonValue>>(baseValue.Members);
+            foreach (var patch in overlay.Members)
+            {
+                var index = members.FindIndex(m => m.Key == patch.Key);
+                if (index < 0)
+                {
+                    members.Add(patch);
+                }
+                else
+                {
+                    members[index] = new KeyValuePair<string, JsonValue>(patch.Key, Merge(members[index].Value, patch.Value));
+                }
+            }
+
+            return JsonValue.Object(members, baseValue.Line);
+        }
+
+        /// <summary>The value as indented JSON text that <see cref="Parse"/> reads back to the same value.</summary>
+        public static string Write(JsonValue value)
+        {
+            if (value == null)
+            {
+                throw new ArgumentNullException(nameof(value));
+            }
+
+            var builder = new StringBuilder();
+            Write(value, builder, 0);
+            return builder.ToString();
+        }
+
+        private static void Write(JsonValue value, StringBuilder builder, int depth)
+        {
+            switch (value.Kind)
+            {
+                case JsonKind.Null: builder.Append("null"); break;
+                case JsonKind.Bool: builder.Append(value.Bool ? "true" : "false"); break;
+                case JsonKind.Number: builder.Append(value.Number.ToString("R", CultureInfo.InvariantCulture)); break;
+                case JsonKind.String: WriteString(value.Text, builder); break;
+                case JsonKind.Array:
+                    if (value.Items.Count == 0)
+                    {
+                        builder.Append("[]");
+                        break;
+                    }
+
+                    builder.Append('[');
+                    for (var i = 0; i < value.Items.Count; i++)
+                    {
+                        builder.Append(i == 0 ? "\n" : ",\n").Append(' ', (depth + 1) * 2);
+                        Write(value.Items[i], builder, depth + 1);
+                    }
+
+                    builder.Append('\n').Append(' ', depth * 2).Append(']');
+                    break;
+                case JsonKind.Object:
+                    if (value.Members.Count == 0)
+                    {
+                        builder.Append("{}");
+                        break;
+                    }
+
+                    builder.Append('{');
+                    for (var i = 0; i < value.Members.Count; i++)
+                    {
+                        builder.Append(i == 0 ? "\n" : ",\n").Append(' ', (depth + 1) * 2);
+                        WriteString(value.Members[i].Key, builder);
+                        builder.Append(": ");
+                        Write(value.Members[i].Value, builder, depth + 1);
+                    }
+
+                    builder.Append('\n').Append(' ', depth * 2).Append('}');
+                    break;
+            }
+        }
+
+        private static void WriteString(string text, StringBuilder builder)
+        {
+            builder.Append('"');
+            foreach (var c in text)
+            {
+                switch (c)
+                {
+                    case '"': builder.Append("\\\""); break;
+                    case '\\': builder.Append("\\\\"); break;
+                    case '\n': builder.Append("\\n"); break;
+                    case '\r': builder.Append("\\r"); break;
+                    case '\t': builder.Append("\\t"); break;
+                    default:
+                        if (c < ' ')
+                        {
+                            builder.Append("\\u").Append(((int)c).ToString("x4", CultureInfo.InvariantCulture));
+                        }
+                        else
+                        {
+                            builder.Append(c);
+                        }
+
+                        break;
+                }
+            }
+
+            builder.Append('"');
+        }
+
         private sealed class Parser
         {
             private readonly string _text;

@@ -125,7 +125,13 @@ namespace MindAttic.Chain.Core
             {
                 text = source.Read(file);
             }
-            catch (Exception e) when (!(e is SettingsException))
+            catch (SettingsException e)
+            {
+                // A source that checks what it serves (TuningOverrideSource) names its own problems.
+                errors.AddRange(e.Errors);
+                return default;
+            }
+            catch (Exception e)
             {
                 errors.Add($"{file}: could not be read ({e.Message})");
                 return default;

@@ -6,20 +6,20 @@ namespace MindAttic.Chain
     /// Background music (Sound.vb's <c>playMusic</c>): one looping track on its own 2D
     /// <see cref="AudioSource"/>, started on play, optionally from a random point in the track
     /// (Sound.vb's <c>rndMusicPos</c>) so every run does not open on the same bar. Volume and
-    /// mute are separate from <see cref="ChainAudio"/>'s SFX volume, as bMusic/bSound were. The volume
-    /// and the random start are audio.json's (Sound.vb's musicVolume and rndMusicPos), overridable at run time.
+    /// mute are the player profile's music volume and mute (<see cref="PlayerProfile"/>:
+    /// <c>Profiles.Current.Settings.Common</c>, stock Sound.vb's full musicVolume), separate from
+    /// <see cref="ChainAudio"/>'s sound-effect ones as bMusic/bSound were, and follow them when they change.
+    /// The random start is audio.json's rndMusicPos, overridable at run time.
     /// </summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(AudioSource))]
     public sealed class MusicPlayer : MonoBehaviour
     {
         [SerializeField] private AudioClip music;
-        [SerializeField] private bool muted;
         [SerializeField] private bool playOnStart = true;
 
-        // audio.json, read on first use; the properties override it at run time.
+        // audio.json, read on first use; the property overrides it at run time.
         private bool _tuned;
-        private float volume;
         private bool randomStartPosition;
 
         private AudioSource _source;
@@ -46,22 +46,26 @@ namespace MindAttic.Chain
             }
         }
 
+        /// <summary>The profile's music volume (0-1); setting it changes the profile's for the run (<see cref="PlayerProfile.Save"/> keeps it).</summary>
         public float Volume
         {
-            get => Tuned().volume;
+            get => PlayerProfile.Preferences.MusicVolume;
             set
             {
-                Tuned().volume = Mathf.Clamp01(value);
+                PlayerProfile.Preferences.MusicVolume = value;
+                PlayerProfile.NotifyChanged();
                 Apply();
             }
         }
 
+        /// <summary>The profile's music mute.</summary>
         public bool Muted
         {
-            get => muted;
+            get => PlayerProfile.Preferences.MuteMusic;
             set
             {
-                muted = value;
+                PlayerProfile.Preferences.MuteMusic = value;
+                PlayerProfile.NotifyChanged();
                 Apply();
             }
         }
@@ -82,9 +86,7 @@ namespace MindAttic.Chain
         {
             if (!_tuned)
             {
-                var audio = SettingsStore.Current.AudioTuning;
-                volume = audio.MusicVolume;
-                randomStartPosition = audio.RandomMusicStart;
+                randomStartPosition = SettingsStore.Current.AudioTuning.RandomMusicStart;
                 _tuned = true;
             }
 
@@ -105,8 +107,9 @@ namespace MindAttic.Chain
             source.loop = true;
             source.playOnAwake = false;
             source.spatialBlend = 0f;
-            source.volume = Tuned().volume;
-            source.mute = muted;
+            var preferences = PlayerProfile.Preferences;
+            source.volume = preferences.MusicVolume;
+            source.mute = preferences.MuteMusic;
         }
 
         /// <summary>
@@ -145,6 +148,10 @@ namespace MindAttic.Chain
         }
 
         private void Awake() => Apply();
+
+        private void OnEnable() => PlayerProfile.Changed += Apply;
+
+        private void OnDisable() => PlayerProfile.Changed -= Apply;
 
         private void Start()
         {
