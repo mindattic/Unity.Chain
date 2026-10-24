@@ -98,6 +98,20 @@ namespace MindAttic.Chain.Core
     }
 
     /// <summary>
+    /// The mace skin debug key (UNI-T43; the original has none): the player's mace puts on the next
+    /// <see cref="MaceMode"/>, spike ball to magnet and back. Only the picture changes; the hit, catch and throw stay
+    /// the same. Works paused, as the other skin key, U, does.
+    /// </summary>
+    public sealed class ToggleMaceMode : GameCommand
+    {
+        public ToggleMaceMode(PlayerId player) : base(player)
+        {
+        }
+
+        public override string ToString() => $"ToggleMaceMode {Player}";
+    }
+
+    /// <summary>
     /// Form1.vb's live-tuning keys for the player's chain: move <see cref="Knob"/> by <see cref="Steps"/> of its
     /// step (chain.json's <c>tuning</c>), held to its limits (<see cref="ChainTuning"/>). Insert/Delete are
     /// resistance +1/-1, Home/End gravity -1/+1, PageUp/PageDown spring +1/-1. Works paused too, as Form1.vb's

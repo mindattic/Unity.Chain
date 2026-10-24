@@ -8,7 +8,7 @@ namespace MindAttic.Chain
     /// what was pressed into the seat's commands, every one carrying the angel's player id: the mouse delta plus
     /// the gamepad stick (<see cref="SteerInput"/>, input.json) as <see cref="SteerAngel"/>, Pause as
     /// <see cref="TogglePause"/>, the grapple button as <see cref="ArmGrapple"/> / <see cref="ReleaseGrapple"/>,
-    /// <c>[</c> and <c>]</c> as <see cref="ChangeChainLength"/>, F as <see cref="ToggleFollow"/>, U as <see cref="SkinLinks"/>, Insert/Delete,
+    /// <c>[</c> and <c>]</c> as <see cref="ChangeChainLength"/>, F as <see cref="ToggleFollow"/>, U as <see cref="SkinLinks"/>, M as <see cref="ToggleMaceMode"/>, Insert/Delete,
     /// Home/End and PageUp/PageDown as <see cref="TuneChain"/> (resistance, gravity, spring), Minus and Equals held
     /// as <see cref="ChangeGameSpeed"/>, R as <see cref="ResetGame"/> and Escape as <see cref="QuitGame"/>. J turns the stick off and on (Form1.vb's joystick toggle), which is this seat's
     /// own input and no command. It never changes the world itself: it calls the seat's components, which submit.
@@ -28,6 +28,8 @@ namespace MindAttic.Chain
             public bool ToggleFollow;
             /// <summary>U (Form1.vb's gem link skins).</summary>
             public bool SkinLinks;
+            /// <summary>M (the rebuild's mace skin debug key).</summary>
+            public bool ToggleMaceMode;
             public bool Pause;
             /// <summary>Escape (Form1.vb quits).</summary>
             public bool Quit;
@@ -90,6 +92,7 @@ namespace MindAttic.Chain
                 ChainLonger = c.ChainLonger.WasPressedThisFrame(),
                 ToggleFollow = c.ToggleFollow.WasPressedThisFrame(),
                 SkinLinks = c.SkinLinks.WasPressedThisFrame(),
+                ToggleMaceMode = c.ToggleMaceMode.WasPressedThisFrame(),
                 Pause = c.Pause.WasPressedThisFrame(),
                 Quit = c.Quit.WasPressedThisFrame(),
                 Reset = c.Reset.WasPressedThisFrame(),
@@ -147,6 +150,11 @@ namespace MindAttic.Chain
                     if (frame.ChainLonger)
                     {
                         mace.Lengthen();
+                    }
+
+                    if (frame.ToggleMaceMode)
+                    {
+                        mace.ToggleMode();
                     }
                 }
 

@@ -49,6 +49,15 @@
       "pearl": "pearl.png"
     }
   },
+  "maceSkins": {
+    "_source": "Chain.vb declares theMaceMode (SpikeBall, Magnet) and maceMode = SpikeBall, but nothing reads or sets it; Textures.vb loads gfx/chain/mace's mace (texMace) and mace2 (texMaceGrapple) at 32 x 32, and magnet.PNG only ships with the project (Chain.vbproj), so the magnet could never be seen (BIBLE D4). The port makes it a skin (UNI-T43): mode is the one every mace starts in, the Player map's ToggleMaceMode (M, a debug key the original lacks) steps to the next; no reset touches it, and the hit, catch and throw are the same whatever the mace wears.",
+    "mode": "SpikeBall",
+    "files": {
+      "_about": "Each mode's picture, as Assets/Unity.Chain/Art/Chain holds it (lowercased .png).",
+      "SpikeBall": "mace.png",
+      "Magnet": "magnet.png"
+    }
+  },
   "port": {
     "_about": "Not in the original; world units and seconds, never mapped.",
     "keepInArena": true,

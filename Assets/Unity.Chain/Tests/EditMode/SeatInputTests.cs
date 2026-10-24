@@ -46,7 +46,7 @@ namespace MindAttic.Chain.Tests
                 CollectionAssert.AreEquivalent(
                     new[]
                     {
-                        "Steer", "SteerStick", "Grapple", "ChainShorter", "ChainLonger", "ToggleFollow", "SkinLinks", "Pause", "Quit", "Reset", "ToggleJoystick",
+                        "Steer", "SteerStick", "Grapple", "ChainShorter", "ChainLonger", "ToggleFollow", "SkinLinks", "ToggleMaceMode", "Pause", "Quit", "Reset", "ToggleJoystick",
                         "ResistanceUp", "ResistanceDown", "GravityDown", "GravityUp", "SpringUp", "SpringDown",
                         "GameSpeedDown", "GameSpeedUp",
                     },
@@ -73,6 +73,7 @@ namespace MindAttic.Chain.Tests
                 CollectionAssert.Contains(Paths(c.ChainLonger), "<Keyboard>/rightBracket", "Input.vb keyChainPlus");
                 CollectionAssert.Contains(Paths(c.ToggleFollow), "<Keyboard>/f");
                 CollectionAssert.AreEqual(new[] { "<Keyboard>/u" }, Paths(c.SkinLinks), "Form1.vb: Case Keys.U");
+                CollectionAssert.AreEqual(new[] { "<Keyboard>/m" }, Paths(c.ToggleMaceMode), "the rebuild's mace skin debug key");
                 CollectionAssert.Contains(Paths(c.Pause), "<Keyboard>/pause");
                 CollectionAssert.Contains(Paths(c.Reset), "<Keyboard>/r");
                 CollectionAssert.Contains(Paths(c.ToggleJoystick), "<Keyboard>/j");
@@ -190,6 +191,20 @@ namespace MindAttic.Chain.Tests
             Assert.IsTrue(_rig.Player.HasGemSkins);
             Assert.AreEqual("aqua", _rig.Player.LinkSkin(1));
             Assert.That(_events.OfType<LinksSkinned>().Single().Player, Is.EqualTo(_rig.Id));
+        }
+
+        [Test]
+        public void M_PutsTheMagnetOnThisSeatsMace_AndBack()
+        {
+            _input.Dispatch(new SeatInput.Frame { ToggleMaceMode = true }, 0f);
+
+            Assert.AreEqual(MaceMode.Magnet, _rig.Player.MaceMode);
+            var changed = _events.OfType<MaceModeChanged>().Single();
+            Assert.That(changed.Player, Is.EqualTo(_rig.Id));
+            Assert.AreEqual(MaceMode.Magnet, changed.Mode);
+
+            _input.Dispatch(new SeatInput.Frame { ToggleMaceMode = true }, 0f);
+            Assert.AreEqual(MaceMode.SpikeBall, _rig.Player.MaceMode);
         }
 
         [Test]

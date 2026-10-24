@@ -1,3 +1,5 @@
+using System;
+
 namespace MindAttic.Chain.Core
 {
     /// <summary>
@@ -23,6 +25,8 @@ namespace MindAttic.Chain.Core
         public ChainTuning Tuning;
         /// <summary>What each link is drawn with: Textures.vb's link and Form1.vb's U gems (chain.json's <c>skins</c>).</summary>
         public LinkSkins Skins;
+        /// <summary>The skin the mace starts in (Chain.vb's <c>maceMode</c>, chain.json's <c>maceSkins.mode</c>, UNI-T43).</summary>
+        public MaceMode MaceMode;
 
         /// <summary>The mace's link (Chain.vb's Mace: 6, adjustable 1-12).</summary>
         public int MaceIndex;
@@ -54,6 +58,7 @@ namespace MindAttic.Chain.Core
             Following = ChainFollow.StartsFollowing,
             Tuning = ChainTuning.Default,
             Skins = LinkSkins.Plain,
+            MaceMode = MaceMode.SpikeBall,
             MaceIndex = 6,
             MinMaceIndex = 1,
             MaxMaceIndex = 12,
@@ -87,6 +92,7 @@ namespace MindAttic.Chain.Core
             Id = id;
             _setup = Sanitize(setup);
             _maceIndex = _setup.MaceIndex;
+            MaceMode = _setup.MaceMode;
             Restart();
         }
 
@@ -135,6 +141,17 @@ namespace MindAttic.Chain.Core
 
             return _setup.Skins.Skin(link, HasGemSkins);
         }
+
+        /// <summary>
+        /// What the mace is drawn as (Chain.vb's <c>maceMode</c>): the setup's mode at the start, then whatever the
+        /// <see cref="ToggleMaceMode"/> debug key last chose. No reset or retune changes it (Root.vb's Reset never
+        /// touches <c>maceMode</c>), and nothing in the rules reads it: the hit, catch and throw are the same whatever
+        /// the mace wears.
+        /// </summary>
+        public MaceMode MaceMode { get; private set; }
+
+        /// <summary>The debug key: the mace puts on the next skin (<see cref="MaceModes.Next"/>). Returns the new one.</summary>
+        internal MaceMode NextMaceMode() => MaceMode = MaceModes.Next(MaceMode);
 
         /// <summary>Form1.vb's U: puts the gems on. Returns false if they were already on.</summary>
         internal bool PutOnGems()
@@ -203,7 +220,7 @@ namespace MindAttic.Chain.Core
 
         /// <summary>
         /// Back to the start (a reset): angel home, chain collapsed on the hand, grapple idle. The chain
-        /// length, the follow flag and the gem skins are kept (Root.vb's Reset touches none of them).
+        /// length, the follow flag, the gem skins and the mace's skin are kept (Root.vb's Reset touches none of them).
         /// </summary>
         internal void Restart()
         {
@@ -246,6 +263,7 @@ namespace MindAttic.Chain.Core
             setup.ContactRadius = Calc.Max(0f, setup.ContactRadius);
             setup.WallBounce = Calc.Clamp01(setup.WallBounce);
             setup.Skins = setup.Skins ?? LinkSkins.Plain;
+            setup.MaceMode = Enum.IsDefined(typeof(MaceMode), setup.MaceMode) ? setup.MaceMode : MaceMode.SpikeBall;
             return setup;
         }
     }

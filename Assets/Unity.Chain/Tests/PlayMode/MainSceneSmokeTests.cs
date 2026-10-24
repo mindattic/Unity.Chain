@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Reflection;
+using MindAttic.Chain.Core;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -93,6 +94,18 @@ namespace MindAttic.Chain.Tests
             {
                 Assert.IsNotNull(skins.SpriteFor(name), $"chain.json's {name} skin has no picture wired.");
             }
+
+            // UNI-T43: Chain.vb's theMaceMode as a skin, every mode's picture wired, the visual starting in chain.json's mode.
+            var maceSkins = chain.GetComponent<MaceController>();
+            foreach (var mode in MaceModes.All)
+            {
+                Assert.IsNotNull(maceSkins.SpriteFor(mode), $"chain.json's {mode} mace skin has no picture wired.");
+            }
+
+            Assert.AreSame(
+                maceSkins.SpriteFor(session.Settings.Chain.MaceSkins.Mode),
+                maceSkins.MaceVisual.GetComponent<SpriteRenderer>().sprite,
+                "the mace starts in chain.json's maceSkins.mode");
 
             var line = chain.GetComponent<LineRenderer>();
             Assert.IsNotNull(line, "Chain has no LineRenderer.");

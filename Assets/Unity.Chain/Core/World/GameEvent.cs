@@ -172,6 +172,22 @@ namespace MindAttic.Chain.Core
         public override string ToString() => $"LinksSkinned {Player}";
     }
 
+    /// <summary>The player's mace put on another skin (<see cref="PlayerEntity.MaceMode"/>, the <see cref="ToggleMaceMode"/> debug key).</summary>
+    public sealed class MaceModeChanged : GameEvent
+    {
+        public MaceModeChanged(PlayerId player, MaceMode mode)
+        {
+            Player = player;
+            Mode = mode;
+        }
+
+        public PlayerId Player { get; }
+
+        public MaceMode Mode { get; }
+
+        public override string ToString() => $"MaceModeChanged {Player} {Mode}";
+    }
+
     /// <summary>The player's chain started or stopped following the hand (the F key, <see cref="ChainFollow"/>).</summary>
     public sealed class FollowChanged : GameEvent
     {

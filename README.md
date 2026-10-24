@@ -105,6 +105,7 @@ The engine-free rules are tested by `Tests/Core.Tests` (`dotnet test Tests/Core.
 | `[` / `]` | left / right shoulder | shorten / lengthen the chain |
 | F | Y | chain follows the hand / hangs slack |
 | U | | gem links: links 1-5 become aqua, emerald, teardrop, tablet, pearl (no key takes them off) |
+| M | | debug: the mace's skin, spike ball / magnet (the original declared the magnet but never reached it; `chain.json` `maceSkins.mode` picks the starting one) |
 | Pause or P | Start | pause / resume |
 | Escape | | quit |
 | R | Back (Select) | start over |

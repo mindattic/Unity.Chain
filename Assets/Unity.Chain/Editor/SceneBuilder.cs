@@ -197,6 +197,18 @@ namespace MindAttic.Chain.EditorTools
             maceRenderer.sortingOrder = 10; // drawn over the chain line and the angel
             SetPrivateField(mace, "maceVisual", maceVisualGo.transform);
 
+            // UNI-T43: Chain.vb's theMaceMode as a skin, every mode's picture wired from chain.json's maceSkins.
+            var maceSkinData = SettingsStore.Current.Chain.MaceSkins;
+            var maceSkins = new MaceController.SkinArt[MaceModes.All.Count];
+            for (var i = 0; i < maceSkins.Length; i++)
+            {
+                var mode = MaceModes.All[i];
+                maceSkins[i] = new MaceController.SkinArt(mode, LoadSprite(ChainArtPath + maceSkinData.File(mode)));
+            }
+
+            mace.Skins = maceSkins;
+            maceRenderer.sprite = mace.SpriteFor(maceSkinData.Mode) ?? maceRenderer.sprite;
+
             // Form1.vb's U (UNI-T41): the links wearing a gem are drawn over the line, every gfx/chain link picture
             // wired under its chain.json name.
             var skinData = SettingsStore.Current.Chain.Skins;

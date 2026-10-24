@@ -1,3 +1,4 @@
+using System;
 using MindAttic.Chain.Core;
 using UnityEngine;
 
@@ -14,7 +15,10 @@ namespace MindAttic.Chain
     /// time; overrides go to the world when the player is seated or retuned. The world does
     /// the hitting (Engine.vb checkMaceImpact, on a swept circle). The sprite offset is a
     /// render-only transform, never a position mutation (see docs/chain-physics.md for why
-    /// Chain.vb's per-frame offset is not ported).
+    /// Chain.vb's per-frame offset is not ported). The visual wears the player's mace skin (UNI-T43,
+    /// <see cref="PlayerEntity.MaceMode"/>): the spike ball, or the magnet Chain.vb declared but never reached,
+    /// chosen by chain.json's <c>maceSkins.mode</c> and flipped by the seat's ToggleMaceMode debug key
+    /// (<see cref="ToggleMode"/>). Only the picture changes; the world hits and grapples the same either way.
     /// </summary>
     [DisallowMultipleComponent]
     [DefaultExecutionOrder(100)] // after ChainController, so the visual tracks this frame's drawn chain
@@ -24,6 +28,23 @@ namespace MindAttic.Chain
         [Header("Rendering")]
         [Tooltip("The spiked-ball sprite (or any transform) drawn at the mace link.")]
         [SerializeField] private Transform maceVisual;
+
+        [Tooltip("Each mace skin's picture, by mode (chain.json's maceSkins.files).")]
+        [SerializeField] private SkinArt[] skins = Array.Empty<SkinArt>();
+
+        /// <summary>One mace skin's picture, under its <see cref="MaceMode"/>.</summary>
+        [Serializable]
+        public struct SkinArt
+        {
+            public SkinArt(MaceMode mode, Sprite sprite)
+            {
+                Mode = mode;
+                Sprite = sprite;
+            }
+
+            public MaceMode Mode;
+            public Sprite Sprite;
+        }
 
         // Run-time overrides of chain.json (null: the data file's figure).
         private float? _maceMass;
@@ -80,6 +101,30 @@ namespace MindAttic.Chain
             set => maceVisual = value;
         }
 
+        /// <summary>The mace skins' pictures, by mode.</summary>
+        public SkinArt[] Skins
+        {
+            get => skins;
+            set => skins = value ?? Array.Empty<SkinArt>();
+        }
+
+        /// <summary>What the mace wears: the world's once seated, else chain.json's starting skin.</summary>
+        public MaceMode Mode => Chain.Entity?.MaceMode ?? Data.MaceMode;
+
+        /// <summary>The picture of <paramref name="mode"/>, or null if none is wired.</summary>
+        public Sprite SpriteFor(MaceMode mode)
+        {
+            foreach (var art in skins)
+            {
+                if (art.Mode == mode)
+                {
+                    return art.Sprite;
+                }
+            }
+
+            return null;
+        }
+
         /// <summary>Mace size relative to the chain's line width while following (chain.json's maceScale, Chain.vb's 3.5x). Assumes the visual is one world unit across at scale 1.</summary>
         public float MaceScale
         {
@@ -120,6 +165,16 @@ namespace MindAttic.Chain
         public bool Lengthen() => Send(1);
 
         /// <summary>
+        /// The mace skin debug key: sends this player's <see cref="ToggleMaceMode"/>; the world puts the next skin on
+        /// (spike ball to magnet and back) and raises <see cref="MaceModeChanged"/>. Returns false before the player is seated.
+        /// </summary>
+        public bool ToggleMode()
+        {
+            var session = Chain.Session;
+            return session != null && session.Submit(new ToggleMaceMode(Chain.Player));
+        }
+
+        /// <summary>
         /// The visual's size relative to the chain's line width: <see cref="MaceScale"/> while the
         /// chain follows, one link's width when it does not (Chain.vb skips the 3.5x then).
         /// </summary>
@@ -131,7 +186,13 @@ namespace MindAttic.Chain
         /// </summary>
         public void RenderMace()
         {
-            if (maceVisual == null || Chain.Simulation == null)
+            if (maceVisual == null)
+            {
+                return;
+            }
+
+            ApplySkin();
+            if (Chain.Simulation == null)
             {
                 return;
             }
@@ -143,6 +204,16 @@ namespace MindAttic.Chain
             var line = Chain.GetComponent<LineRenderer>();
             var width = line != null ? line.widthMultiplier : 1f;
             maceVisual.localScale = Vector3.one * (width * CurrentScale);
+        }
+
+        /// <summary>Puts the current mode's picture on the visual's sprite renderer, when both are there.</summary>
+        private void ApplySkin()
+        {
+            var sprite = SpriteFor(Mode);
+            if (sprite != null && maceVisual.TryGetComponent<SpriteRenderer>(out var renderer) && renderer.sprite != sprite)
+            {
+                renderer.sprite = sprite;
+            }
         }
 
         private bool Send(int links)

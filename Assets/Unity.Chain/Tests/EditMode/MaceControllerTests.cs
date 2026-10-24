@@ -148,6 +148,45 @@ namespace MindAttic.Chain.Tests
         }
 
         [Test]
+        public void TheVisual_WearsThePlayersMaceSkin_SpikeBallThenMagnet()
+        {
+            var ball = MakeSprite("ball");
+            var magnet = MakeSprite("magnet");
+            var visual = _rig.Track(new GameObject("Mace"));
+            var renderer = visual.AddComponent<SpriteRenderer>();
+            _mace.MaceVisual = visual.transform;
+            _mace.Skins = new[] { new MaceController.SkinArt(MaceMode.SpikeBall, ball), new MaceController.SkinArt(MaceMode.Magnet, magnet) };
+            _rig.Chain.GetComponent<LineRenderer>().widthMultiplier = 0.1f;
+            _mace.MaceScale = 3.5f;
+            _rig.Step();
+            _rig.Chain.RenderChain(1f);
+
+            _mace.RenderMace();
+            Assert.AreEqual(MaceMode.SpikeBall, _mace.Mode, "chain.json's maceSkins.mode");
+            Assert.AreSame(ball, renderer.sprite);
+
+            Assert.IsTrue(_mace.ToggleMode());
+            Assert.AreEqual(MaceMode.Magnet, _rig.Player.MaceMode);
+            Assert.IsTrue(_events.Exists(e => e is MaceModeChanged changed && changed.Player == _rig.Id && changed.Mode == MaceMode.Magnet));
+            _mace.RenderMace();
+            Assert.AreSame(magnet, renderer.sprite);
+            Assert.AreEqual(0.35f, visual.transform.localScale.x, 1e-5f, "the magnet is drawn at the mace's 3.5x, as the ball is");
+            Assert.AreEqual(_rig.Chain.GetRenderedLinkPosition(6), visual.transform.position);
+
+            Assert.IsTrue(_mace.ToggleMode());
+            _mace.RenderMace();
+            Assert.AreSame(ball, renderer.sprite);
+        }
+
+        private Sprite MakeSprite(string name)
+        {
+            var texture = _rig.Track(new Texture2D(32, 32));
+            var sprite = _rig.Track(Sprite.Create(texture, new Rect(0f, 0f, 32f, 32f), new Vector2(0.5f, 0.5f), 32f));
+            sprite.name = name;
+            return sprite;
+        }
+
+        [Test]
         public void UnseatedMace_SendsNothing()
         {
             var go = _rig.Track(new GameObject("Loose"));
@@ -155,6 +194,7 @@ namespace MindAttic.Chain.Tests
             var loose = go.AddComponent<MaceController>();
 
             Assert.IsFalse(loose.Shorten());
+            Assert.IsFalse(loose.ToggleMode());
             Assert.AreEqual(6, loose.MaceIndex);
         }
     }

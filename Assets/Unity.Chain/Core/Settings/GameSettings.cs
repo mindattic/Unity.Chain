@@ -229,6 +229,7 @@ namespace MindAttic.Chain.Core
                 Following = chain.FollowMouse,
                 Tuning = chain.Tuning.ToPort(m),
                 Skins = chain.Skins.ToPort(),
+                MaceMode = chain.MaceSkins.Mode,
                 MaceIndex = chain.Mace,
                 MinMaceIndex = chain.MaceMin,
                 MaxMaceIndex = chain.MaceMax,
@@ -377,6 +378,9 @@ namespace MindAttic.Chain.Core
         /// <summary>Textures.vb's link pictures and Form1.vb's U gems (UNI-T41).</summary>
         public LinkSkinData Skins { get; private set; }
 
+        /// <summary>Chain.vb's <c>theMaceMode</c> as a skin: the starting mode and each mode's picture (UNI-T43).</summary>
+        public MaceSkinData MaceSkins { get; private set; }
+
         public ChainPort Port { get; private set; }
 
         internal static ChainData Read(SettingsReader r)
@@ -415,6 +419,10 @@ namespace MindAttic.Chain.Core
             var skins = r.Section("skins");
             data.Skins = LinkSkinData.Read(skins, data.MaxLinks);
             skins.Done();
+
+            var maceSkins = r.Section("maceSkins");
+            data.MaceSkins = MaceSkinData.Read(maceSkins);
+            maceSkins.Done();
 
             var port = r.Section("port");
             data.Port = new ChainPort(
