@@ -19,9 +19,9 @@
     "_about": "Not in the original; world units and seconds, never mapped.",
     "keepInArena": true,
     "wallBounce": 0.5,
-    "hitRadius": 0.25,
+    "hitRadius": 0.3,
     "damagePerSpeed": 0.05,
-    "catchRadius": 0.3,
+    "catchRadius": 0.35,
     "throwMultiplier": 1
   }
 }

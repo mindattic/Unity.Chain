@@ -42,6 +42,10 @@ namespace MindAttic.Chain.Tests
         private static MemorySettingsSource Patched(string file, Func<string, string> change) =>
             new MemorySettingsSource(Shipped).Set(file, change(Shipped.Read(file)));
 
+        /// <summary>The shipped files at another length scale (1 keeps the original's own figures).</summary>
+        private static GameSettings AtScale(float scale) =>
+            GameSettings.Load(Patched(GameSettings.SpaceFile, text => text.Replace("\"lengthScale\": 9", "\"lengthScale\": " + scale.ToString(System.Globalization.CultureInfo.InvariantCulture))));
+
         private static SettingsException LoadFails(ISettingsSource source) =>
             Assert.Throws<SettingsException>(() => GameSettings.Load(source));
 
@@ -153,11 +157,13 @@ namespace MindAttic.Chain.Tests
         // --- The mapping ------------------------------------------------------------------------
 
         [Test]
-        public void Space_IsOneToOneAtSixtyFramesUntilUniT66()
+        public void Space_IsTheScreenHeightToTheArenaHeightAtSixtyFrames()
         {
             var mapping = Load().Mapping;
 
-            Assert.AreEqual(1f, mapping.LengthScale);
+            Assert.AreEqual(9f, mapping.LengthScale, "screen height 1.0 is the 9 unit arena height");
+            Assert.AreEqual(OriginalSpace.ArenaLengthScale, mapping.LengthScale);
+            Assert.AreEqual(GameWorld.DefaultArena.Height, mapping.Length(1f), 1e-6f);
             Assert.AreEqual(60f, mapping.FramesPerSecond);
         }
 
@@ -177,7 +183,7 @@ namespace MindAttic.Chain.Tests
         [Test]
         public void Shipped_MapsToThePortsUnits()
         {
-            var settings = Load();
+            var settings = AtScale(1f);
             var player = settings.Player;
             var world = settings.World;
 
@@ -199,7 +205,8 @@ namespace MindAttic.Chain.Tests
             Assert.AreEqual(2f, world.Enemies.MassMax);
             Assert.AreEqual(1f, world.Enemies.Hp);
             Assert.AreEqual(0.36f, world.Enemies.Brain.SeekRate, 1e-6f);
-            Assert.AreEqual(EnemyBrain.DefaultFlockSpeed, world.Enemies.FlockSpeed, 1e-6f, "UNI-T35's 0.06");
+            Assert.AreEqual(EnemyBrain.DefaultFlockSpeed, Load().World.Enemies.FlockSpeed, 1e-5f, "UNI-T35's 0.06 x 9");
+            Assert.AreEqual(0.06f, world.Enemies.FlockSpeed, 1e-6f, "UNI-T35's 0.06 at scale 1");
             Assert.AreEqual(3.6f, world.Enemies.Brain.HurtDeceleration, 1e-4f, "resistSPD 0.001 a frame squared");
             Assert.AreEqual(0.06f, world.Enemies.Brain.RecoverSpeed, 1e-6f);
             Assert.AreEqual(2.16f, world.Enemies.CautiousSpeed, 1e-5f, "6 x seekSpd a frame");
@@ -211,7 +218,7 @@ namespace MindAttic.Chain.Tests
         [Test]
         public void Shipped_HeartIsHeartFloatsDefault()
         {
-            var heart = Load().Heart;
+            var heart = AtScale(1f).Heart;
             var expected = HeartFloat.Settings.Default;
 
             Assert.AreEqual(expected.ItemSize, heart.ItemSize, 1e-7f);
@@ -227,8 +234,7 @@ namespace MindAttic.Chain.Tests
         [Test]
         public void LengthScale_MovesEveryLengthTogether()
         {
-            var source = Patched(GameSettings.SpaceFile, text => text.Replace("\"lengthScale\": 1", "\"lengthScale\": 9"));
-            var settings = GameSettings.Load(source);
+            var settings = Load();
 
             Assert.AreEqual(0.018f, settings.Player.Chain.SegmentLength, 1e-6f);
             Assert.AreEqual(-81f, settings.Player.Chain.Gravity.Y, 1e-3f);
@@ -237,7 +243,17 @@ namespace MindAttic.Chain.Tests
             Assert.AreEqual(3.6f, settings.Heart.StartY, 1e-6f);
             Assert.AreEqual(0.54f, settings.World.Enemies.FlockSpeed, 1e-5f);
             Assert.AreEqual(0.36f, settings.World.Enemies.Brain.SeekRate, 1e-6f, "a rate, not a length");
-            Assert.AreEqual(0.25f, settings.Player.HitRadius, "port figures are never mapped");
+            Assert.AreEqual(AtScale(1f).Player.HitRadius, settings.Player.HitRadius, "port figures are never mapped");
+        }
+
+        [Test]
+        public void Shipped_ScaledToTheArena()
+        {
+            var settings = Load();
+
+            Assert.AreEqual(0.018f, settings.Player.Chain.SegmentLength, 1e-6f);
+            Assert.AreEqual(3.6f, settings.Heart.StartY, 1e-6f, "start 0.4 of the screen height");
+            Assert.AreEqual(0.36f, settings.World.Enemies.Brain.SeekRate, 1e-6f, "a rate, not a length");
         }
 
         [Test]

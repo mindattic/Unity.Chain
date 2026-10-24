@@ -123,9 +123,9 @@ JS original: both-neighbor pull.
 | `Mace` | 6 | index of the heavy end link |
 | `maceSize` | 0.075 | mace sprite scale factor (3.5x the link quad) |
 
-These numbers are tuned for the original's fixed small-NDC coordinate space. Since UNI-T33 they live, exactly
+These numbers are in the original's screen space (-0.5..0.5 is the screen height). Since UNI-T33 they live, exactly
 as above, in `Assets/StreamingAssets/Settings/chain.json`, and Core converts them to world units per second in one
-place (`OriginalSpace`, from `space.json`; 1:1 in length until UNI-T66 sets the mapping). See BIBLE §6.
+place (`OriginalSpace`, from `space.json`; length scale 9 since UNI-T66: screen height 1.0 is the 9-unit arena height, so on-screen speeds match the original). See BIBLE §6.
 
 ## Port plan (see tickets)
 

@@ -99,12 +99,12 @@ namespace MindAttic.Chain.Tests
         public void FlockSpeed_IsTheOriginalsPerFrameFigureAtSixtyFps()
         {
             // Engine.vb: flockSpd 0.0005 per frame, each overlapping pair visited twice per frame, 60 fps.
-            Assert.AreEqual(0.06f, EnemyBrain.DefaultFlockSpeed, 1e-6f);
+            Assert.AreEqual(0.54f, EnemyBrain.DefaultFlockSpeed, 1e-5f);
 
-            // One 1/60 s step moves an enemy 0.001 per axis per neighbour, the original's 2 x 0.0005 per frame.
+            // One 1/60 s step moves an enemy 0.009 per axis per neighbour, the original's 2 x 0.0005 screen units per frame x 9.
             var push = EnemyBrain.FlockPush(new Vec2(1f, 1f), Vec2.Zero, EnemyBrain.DefaultFlockSpeed, 1f / 60f);
-            Assert.AreEqual(0.001f, push.X, 1e-7f);
-            Assert.AreEqual(0.001f, push.Y, 1e-7f);
+            Assert.AreEqual(0.009f, push.X, 1e-6f);
+            Assert.AreEqual(0.009f, push.Y, 1e-6f);
         }
 
         [Test]

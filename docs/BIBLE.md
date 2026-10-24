@@ -177,8 +177,11 @@ Nothing tunes the game from the Inspector any more.
   `_` are notes.
 - **One mapping** turns them into the port's: `space.json` (`lengthScale`, `framesPerSecond`) read into
   `OriginalSpace`, which `GameSettings.Map` applies to each figure by kind (length, speed, acceleration, rate,
-  frames). It is the only place a figure changes units. `lengthScale` is 1 today, the 1:1 copy the port has always
-  made; UNI-T66 sets the real mapping there and every figure moves with it.
+  frames). It is the only place a figure changes units. `lengthScale` is 9 (UNI-T66): the original's screen height
+  (1.0) is the 9 world-unit height of the 16 x 9 arena, so every position, size, speed and acceleration is the
+  same fraction of the screen as in the original. The original ran 4:3 (Camera.vb, 640 x 480); x uses the same
+  scale, so the wider arena is simply more room at the sides. Port-only figures (radii, hand offset) were
+  re-checked against the scaled rectangles: hit 0.3, catch 0.35, enemy 0.3, angel contact 0.4, hand (0.3, 0).
 - **Validated on load**: every key must be present, of its type and in range, unknown keys are reported (a typo is
   not silently ignored), and cross-checks hold (`Mace` within `maceMin..maceMax`, `seekCap` no more than the
   enemies). One load reports every problem, each with its file, key and line (`SettingsException`); the game logs
@@ -242,12 +245,12 @@ Working behaviour of the original the rebuild does differently, and why. Status:
 | # | Original | Rebuild | Why | Status |
 |---|---|---|---|---|
 | V1 | 45 degree perspective camera at z -1, fixed 4:3 | orthographic `CameraRig` that fits the whole level on any aspect, or follows through a dead zone | 2D in Unity, any screen shape without stretching or showing past the arena | kept; perspective data and the debug camera, UNI-T57 |
-| V2 | Units are the camera's NDC-like plane (half-height 0.414) | world units: the data files hold the original's figures and one mapping (`space.json`, `OriginalSpace`) converts them; it is 1:1 today, so the chain, the angel's steering and hover and the enemies' recovery are the original's own figures in a 16 x 9 arena (UNI-T33; before it the chain and angel used guessed world-unit figures) | Unity physics, sprites and cameras work in world units | to settle: the mapping, UNI-T66 |
+| V2 | Units are the camera's NDC-like plane (half-height 0.414) | world units: the data files hold the original's figures and one mapping (`space.json`, `OriginalSpace`) converts them; it scales screen height 1.0 to the arena's 9 units (length scale 9, UNI-T66), so the chain, the angel, the enemies and the heart move at the original's on-screen speeds (UNI-T33; before it the chain and angel used guessed world-unit figures) | Unity physics, sprites and cameras work in world units | kept, UNI-T66 |
 | V3 | All 25 links simulate; only 0..`Mace` are drawn | only 0..`Mace` simulate; the rest park on the mace and pay out from it when lengthened | with both-neighbour pull (D7) an undrawn tail would drag the mace | kept, follows D7 |
 | V4 | Chain wall bounce commented out | links bounce off `LevelBounds` at 0.5 (`keepInLevel` turns it off) | *Elastic Trail* bounced; keeps the mace on screen | to settle, UNI-T45 |
 | V5 | Angel contact rectangle X..X+0.06 by Y+0.03..Y+0.15 | a circle (contact radius plus the enemy's radius), tested in Core | fits the sprite at any scale; runs outside Unity | kept |
-| V6 | Flocking pushes 0.0005 per axis per frame, and each overlapping pair is visited twice a frame (0.001 per neighbour) | 0.06 world units per second per neighbour (0.0005 x 2 x 60 fps, D9) | the original's figure at the fixed step; the commented-out `flockRange` test means any overlap pushes, as before | kept, UNI-T35 |
-| V7 | The heart is gone after a pickup until `Reset` | the same: consumed on touch, drawn again by `Reset` (the first guess had it respawn at the top) | matches `Item.vb` exactly (UNI-T44) in the original's own figures, taken 1:1 into world units as flocking is (V6): start (0, 0.4), wrap -0.5 to 0.5, so in the 16 x 9 arena it drifts in a one-unit band at the centre, whereas in the original -0.5 to 0.5 was the whole screen height. Whether the heart should instead be scaled to the arena is the owner's call | to settle: space mapping, owner |
+| V6 | Flocking pushes 0.0005 per axis per frame, and each overlapping pair is visited twice a frame (0.001 per neighbour) | 0.54 world units per second per neighbour (0.0005 x 2 x 60 fps x the length scale 9, D9) | the original's figure at the fixed step; the commented-out `flockRange` test means any overlap pushes, as before | kept, UNI-T35, scaled UNI-T66 |
+| V7 | The heart is gone after a pickup until `Reset` | the same: consumed on touch, drawn again by `Reset` (the first guess had it respawn at the top) | matches `Item.vb` exactly (UNI-T44) in the original's own figures, scaled by the one mapping (V2, length scale 9): start (0, 3.6), wrap 4.5 to -4.5, so it drifts the whole arena height as -0.5..0.5 was the whole screen in the original. `turnAround` survives `Reset` as in the original | kept, UNI-T66 |
 | V8 | Pause is the Pause key; Escape quits | P or Escape pause | interim keys before the input pass | to settle, UNI-T54 |
 | V9 | `- PAUSE -` and HUD as plain D3D text | IMGUI `GameHud` | interim | temporary, UNI-T37, UNI-T50 |
 | V10 | Swing whoosh, hit, death; no catch or throw sounds | adds catch and throw sounds; the swing fires on mace speed relative to the hand | flying with a trailing mace is not a swing; catch and throw needed feedback | to settle with the clips, UNI-T20 |

@@ -27,7 +27,7 @@ namespace MindAttic.Chain.Core
     /// </summary>
     public sealed class EnemyBrain
     {
-        /// <summary>Enemy.vb flockSpd: the original's push, world units per axis per frame (the port's units are the original's, as for seekSpd 0.006 to 0.36).</summary>
+        /// <summary>Enemy.vb flockSpd: the original's push, screen units per axis per frame (x the arena length scale for world units).</summary>
         public const float OriginalFlockPerFrame = 0.0005f;
 
         /// <summary>The frame rate the original's per-frame figures are converted at (BIBLE D9).</summary>
@@ -39,8 +39,8 @@ namespace MindAttic.Chain.Core
         /// </summary>
         public const float OriginalFlockPairVisits = 2f;
 
-        /// <summary>Per-neighbour push speed (units/s per axis) equal to the original's: 0.0005 x 2 x 60 = 0.06.</summary>
-        public const float DefaultFlockSpeed = OriginalFlockPerFrame * OriginalFlockPairVisits * OriginalFrameRate;
+        /// <summary>Per-neighbour push speed (units/s per axis) equal to the original's: 0.0005 x 2 x 60 x 9 (the arena length scale) = 0.54.</summary>
+        public const float DefaultFlockSpeed = OriginalFlockPerFrame * OriginalFlockPairVisits * OriginalFrameRate * OriginalSpace.ArenaLengthScale;
 
         public struct Settings
         {
