@@ -204,14 +204,26 @@ namespace MindAttic.Chain.Core
         }
 
         /// <summary>
-        /// The colour the scene is lit with: the ambient level (0-1, the game-over fade) times the tint
-        /// while lighting is on, or the bare ambient while it is off.
+        /// Lights.vb's <c>AmbientColor</c> as a script sets it (<c>CHANGE LIGHT AMBIENT</c>, U.CHN-T61): white until then,
+        /// and white again each new round (Root.vb's Reset: <c>AmbientColor = Color.White</c>). The game-over fade, which
+        /// the original also wrote into it, is the ambient level <see cref="LightColour"/> takes.
+        /// </summary>
+        public Rgb24 Ambient { get; private set; } = Rgb24.White;
+
+        /// <summary>Script.vb's <c>CHANGE LIGHT AMBIENT</c>: the ambient colour the scene is lit with from now on.</summary>
+        public void SetAmbient(Rgb24 colour) => Ambient = colour;
+
+        /// <summary>
+        /// The colour the scene is lit with: the ambient level (0-1, the game-over fade) times the ambient colour
+        /// (<see cref="Ambient"/>, white unless a script set it) times the tint while lighting is on, or the bare
+        /// ambient while it is off.
         /// </summary>
         public Rgb LightColour(float ambientLevel)
         {
-            var ambient = Calc.Clamp01(ambientLevel);
+            var level = Calc.Clamp01(ambientLevel);
             var tint = Enabled ? Tint : Rgb.White;
-            return new Rgb(tint.R * ambient, tint.G * ambient, tint.B * ambient);
+            var ambient = Ambient.ToRgb();
+            return new Rgb(tint.R * ambient.R * level, tint.G * ambient.G * level, tint.B * ambient.B * level);
         }
 
         /// <summary>L: lighting on or off (Form1.vb <c>bLighting = Not bLighting</c>). Returns the new state.</summary>
@@ -245,11 +257,15 @@ namespace MindAttic.Chain.Core
         }
 
         /// <summary>
-        /// A new round (Root.vb's <c>Reset</c>): lighting back on. The time of day carries on, as the
-        /// original's Reset left <c>dayPeriod</c> and the tint alone; its <c>b = True</c> line (a stray
-        /// that set blue to 255 mid-cycle) is not ported (D16).
+        /// A new round (Root.vb's <c>Reset</c>): lighting back on and the ambient colour white again. The time
+        /// of day carries on, as the original's Reset left <c>dayPeriod</c> and the tint alone; its <c>b = True</c>
+        /// line (a stray that set blue to 255 mid-cycle) is not ported (D16).
         /// </summary>
-        public void NewRound() => Enabled = true;
+        public void NewRound()
+        {
+            Enabled = true;
+            Ambient = Rgb24.White;
+        }
 
         private void MoveTo(DayPeriod period)
         {

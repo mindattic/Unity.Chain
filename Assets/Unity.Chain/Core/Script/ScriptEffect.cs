@@ -83,7 +83,7 @@ namespace MindAttic.Chain.Core
 
     /// <summary>
     /// A change a script asks of the game. The runner only reports these; presentation (the scripter console,
-    /// UNI-T61) applies each to the camera rig, the scene light and the HUD, as the rest of the game plays events.
+    /// U.CHN-T61) applies each to the camera rig, the scene light and the HUD, as the rest of the game plays events.
     /// </summary>
     public abstract class ScriptEffect
     {

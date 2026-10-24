@@ -24,8 +24,9 @@ namespace MindAttic.Chain
     /// <see cref="GameHud"/> and drawn by <see cref="HitZoneOverlay"/>), and, read while held by <see cref="CameraRig"/>,
     /// Input.vb's camera keys (UNI-T57): CameraForward and CameraBackward (numpad plus and Enter), CameraLeft and
     /// CameraRight (numpad 4 and 6), CameraUp and CameraDown (numpad 8 and 2), Isometric and Deisometric (X and Z), and
-    /// AreaB and AreaN (Form1.vb's B and N, the backdrop's beach and utopia, read by <see cref="AreaBackdrop"/>).
-    /// Later debug keys join this map.</item>
+    /// AreaB and AreaN (Form1.vb's B and N, the backdrop's beach and utopia, read by <see cref="AreaBackdrop"/>), and
+    /// ToggleScripter (Form1.vb's grave key, read by <see cref="ScripterConsole"/>, which reads the keyboard itself while
+    /// it is open, U.CHN-T61). Later debug keys join this map.</item>
     /// </list>
     /// Input.vb's and Form1.vb's keys keep their bindings, as the original has them.
     /// </summary>
@@ -114,6 +115,8 @@ namespace MindAttic.Chain
         public InputAction AreaB => Debug["AreaB"];
         /// <summary>Form1.vb's N: <c>texBackground = areaUtopia</c> (area.json's keyN).</summary>
         public InputAction AreaN => Debug["AreaN"];
+        /// <summary>Form1.vb's <c>Keys.Oemtilde</c>: <c>bScripter = True</c>, the scripter console opens (U.CHN-T61).</summary>
+        public InputAction ToggleScripter => Debug["ToggleScripter"];
 
         /// <summary>A new asset with the game's two maps and every binding.</summary>
         public static InputActionAsset BuildAsset()
@@ -174,6 +177,8 @@ namespace MindAttic.Chain
             // Form1.vb's B and N (UNI-T40): the backdrop's area. Its second B case (bBackground) is unreachable, not ported.
             Button(debug, "AreaB", "<Keyboard>/b");
             Button(debug, "AreaN", "<Keyboard>/n");
+            // Form1.vb's grave key (U.CHN-T61): the scripter console.
+            Button(debug, "ToggleScripter", "<Keyboard>/backquote");
 
             return asset;
         }

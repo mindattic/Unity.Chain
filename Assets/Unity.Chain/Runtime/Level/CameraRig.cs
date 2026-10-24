@@ -459,9 +459,16 @@ namespace MindAttic.Chain
                 return;
             }
 
-            if (_controls.ShakeScreen.WasPressedThisFrame())
+            // Form1.vb's 0 is a normal key (held back while the scripter is open); the camera keys are Input.vb's
+            // getKeyboard (held back while it is open or a script runs, U.CHN-T61).
+            if (!GameSession.KeysSuspended(session) && _controls.ShakeScreen.WasPressedThisFrame())
             {
                 ShakeScreen();
+            }
+
+            if (GameSession.PlaySuspended(session))
+            {
+                return;
             }
 
             // Input.vb polls the camera keys every frame, paused or not: real seconds held. LateUpdate shows the move.

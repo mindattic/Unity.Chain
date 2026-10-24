@@ -208,7 +208,8 @@ namespace MindAttic.Chain
         // Form1.vb's key handler runs paused too, and renderBackground draws then, so B and N are read in real time.
         private void Update()
         {
-            if (_controls == null)
+            // Form1.vb's B and N are normal keys: they type into the scripter while that is open (U.CHN-T61).
+            if (_controls == null || (rig != null && GameSession.KeysSuspended(rig.Session)))
             {
                 return;
             }

@@ -130,6 +130,9 @@ namespace MindAttic.Chain.Core
         /// <summary>frmConfig.vb's settings screen (F12 and the menu's Configure Video, UNI-T59).</summary>
         public ConfigScreenData Config { get; private set; }
 
+        /// <summary>Script.vb's showScripter: the scripter console's line (the grave key, U.CHN-T61).</summary>
+        public HudScripter Scripter { get; private set; }
+
         public HudPort Port { get; private set; }
 
         internal static HudData Read(SettingsReader r)
@@ -158,6 +161,7 @@ namespace MindAttic.Chain.Core
             data.Zone = HudZone.Read(r);
             data.Loading = LoadingScreen.Read(r);
             data.Config = ConfigScreenData.Read(r);
+            data.Scripter = HudScripter.Read(r);
 
             var port = r.Section("port");
             data.Port = new HudPort(
@@ -293,6 +297,44 @@ namespace MindAttic.Chain.Core
             port.Done();
             r.Done();
             return zone;
+        }
+    }
+
+    /// <summary>
+    /// hud.json's <c>scripter</c>: Script.vb's showScripter, which writes the console's line in fontMenu (Arial 10 bold)
+    /// at (50, iHeight - 50) in <c>scriptColor</c> (opaque, starting <c>Color.FromArgb(0, 0, 255)</c>), its I-beam flipping
+    /// once more than <c>beamSeconds</c> (0.5) have passed.
+    /// </summary>
+    public readonly struct HudScripter
+    {
+        public HudScripter(HudTextStyle style, float beamSeconds)
+        {
+            Style = style;
+            BeamSeconds = beamSeconds;
+        }
+
+        /// <summary>Where the line sits and its font; its colour is the starting <c>scriptColor</c>.</summary>
+        public HudTextStyle Style { get; }
+
+        /// <summary>How long the I-beam stays on or off, seconds.</summary>
+        public float BeamSeconds { get; }
+
+        /// <summary>The starting script colour, as the runner holds it.</summary>
+        public Rgb24 Colour => new Rgb24(Style.Colour.R, Style.Colour.G, Style.Colour.B);
+
+        internal static HudScripter Read(SettingsReader parent)
+        {
+            var r = parent.Section("scripter");
+            var scripter = new HudScripter(
+                new HudTextStyle(
+                    r.Choice<HudAnchor>("anchor"),
+                    r.Pair("position"),
+                    r.Colour("colour"),
+                    r.Positive("fontSize"),
+                    r.Flag("bold")),
+                r.Positive("beamSeconds"));
+            r.Done();
+            return scripter;
         }
     }
 

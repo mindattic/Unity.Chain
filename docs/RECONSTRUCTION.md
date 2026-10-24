@@ -147,11 +147,11 @@ Every binding of the original, with its state:
 | F4 | FPS counter (`bDrawFPS`, on at the start and in every `Reset`) | ported (UNI-T50; the Debug map's ToggleFps, `GameHud.ToggleFps`); off hides it and a frame counts once (BIBLE D20, D21) |
 | Tab | menu panel (`bMenu`, drawn only while not paused; `Reset` closes it) | ported (UNI-T55; the Debug map's ToggleMenu, `GameHud.ToggleMenu`; see 3.6) |
 | Pause | pause | ported (Pause action: Pause, P as an extra, gamepad Start -> `TogglePause` -> `PauseChanged`; BIBLE V8, UNI-T54) |
-| Esc | quit (`bRunning = False`, `Finalize`, the form closes; works paused) | ported (Quit action: Escape -> Core `QuitGame` -> `QuitRequested`; `GameSession` ends the application, or stops play mode in the Editor; UNI-T54). Escape closing the scripter is UNI-T61's |
+| Esc | quit (`bRunning = False`, `Finalize`, the form closes; works paused) | ported (Quit action: Escape -> Core `QuitGame` -> `QuitRequested`; `GameSession` ends the application, or stops play mode in the Editor; UNI-T54). Escape closes the scripter while it is open instead (U.CHN-T61) |
 | F12 | toggle fullscreen and restart the engine (config) | ported (UNI-T55, UNI-T59): the Debug map's ConfigureVideo opens frmConfig's settings screen, whose Submit applies the window mode in place, no restart (BIBLE V21, D27) |
 | J | joystick toggle; the joystick code reads axes and buttons and binds nothing | fixed: the gamepad drives the actions, its stick steers like the mouse, J switches the stick (BIBLE D14, UNI-T34) |
 | Numpad + Enter / 4 6 / 8 2, X, Z | debug camera | ported, UNI-T57: the Debug map's CameraForward/Backward/Left/Right/Up/Down, Isometric, Deisometric, read held by `CameraRig` into a Core `DebugCamera` (BIBLE V1, D26; the anchor move is dead, V22) |
-| ` (grave) | scripter console | missing, UNI-T61 (the language it runs is ported, UNI-T60) |
+| ` (grave) | scripter console (`bScripter`): typed letters echo, C C / C H / C P / C S / C T shortcuts, Back, Delete, Insert recalls `lastScript`, Enter runs and remembers, Escape/F11/grave close; `getInput` skipped while open or `bScriptRunning` | ported (U.CHN-T61): the Debug map's ToggleScripter opens a Core `Scripter`, which `ScripterConsole` types into from the keyboard while open and draws on the HUD (hud.json `scripter`) in the script colour; Enter runs the line through `ScriptRunner` and `ScriptEffects` puts it into the `CameraRig`'s `DebugCamera` and the `SceneLight`'s `LightingState` (ambient colour included); the session's `InputGate` holds OnKeyDown's keys back while open and getInput's while open or a script runs. Stray keys no longer type their names and the line is drawn (BIBLE D33) |
 | Arrow keys, `btnAttack`..`btnDashRight` | declared; no effect | dead |
 
 ### 3.6 Game rules, HUD and clock (`Engine.vb`, `Gui.vb`, `Root.vb`)
@@ -174,7 +174,7 @@ Every binding of the original, with its state:
 
 | Behaviour | Original | Status / ticket |
 |---|---|---|
-| Ambient + material tint | `AmbientColor` (white) and an r/g/b material colour set each frame | ported: `LightingState` tint times `GameState.Ambient`, on a URP 2D global light (`SceneLight`) |
+| Ambient + material tint | `AmbientColor` (white) and an r/g/b material colour set each frame | ported: `LightingState` tint times `GameState.Ambient`, on a URP 2D global light (`SceneLight`); a script's `CHANGE LIGHT AMBIENT` colour (`LightingState.Ambient`, white again on every reset as Root.vb's Reset sets it) multiplies in (U.CHN-T61) |
 | Day cycle | Day, Dusk, Night, Morning with `dayLength` 1e10 s, so it never advances in play | ported (`LightingState`) at a 1440 s day (BIBLE D6) |
 | Camera | perspective 45 degrees, z -1, 4:3, rebuilt each unpaused frame from `cam` and `target` | orthographic fit; the perspective kept as data (`camera.json`, `CameraRig.Perspective`), `cam`/`target` as `DebugCamera` on top of the fit | deliberate deviation (BIBLE V1); debug camera ported, UNI-T57 |
 | Background | `setupVertex` quad 1.2 (`bgWidth`) across from its left edge by 0.83 (`bgHeight` 0.415 either side), translated to x -0.56 (so x -0.56..0.64), `texBackground` stretched over it (every area loaded at 512 x 512), `beach.png` from the start; drawn paused too | ported (UNI-T40): `AreaBackdrop` stretches the current area over `area.json`'s quad (`Backdrop.Quad`, mapped by `space.json`), whatever the picture's size |
@@ -204,7 +204,7 @@ no caller. Ported as Core (UNI-T60): `ScriptLine` splits and checks a line as `d
 `bScriptRunning`, throttles each script by its increment, and ignores invalid lines. The HERO/ENEMY handlers are the
 original's empty stubs, except `HERO AI STOP` (clears `bScriptRunning`); `Make` is not ported (nothing calls it).
 Fixed: LIGHT was never accepted (BIBLE D29), the arithmetic (D30), short lines and non-numbers (D31), RUN HEAVEN's
-second line (D32). The console that types and runs them is UNI-T61.
+second line (D32). The console that types and runs them is `Scripter` and `ScripterConsole` (U.CHN-T61, section 3.5's grave key).
 
 ### 3.10 Assets
 

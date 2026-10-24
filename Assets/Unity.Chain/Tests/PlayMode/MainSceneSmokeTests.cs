@@ -74,6 +74,15 @@ namespace MindAttic.Chain.Tests
             Assert.AreEqual(session, hud.Session, "GameHud is not wired to the GameSession.");
             Assert.AreEqual(grapple, hud.Grapple, "GameHud is not wired to the GrappleController.");
 
+            // U.CHN-T61: Form1.vb's scripter, drawn on the HUD and wired to what its scripts change.
+            var scripter = Object.FindAnyObjectByType<ScripterConsole>();
+            Assert.IsNotNull(scripter, "ScripterConsole missing from Main scene.");
+            Assert.AreEqual(session, scripter.Session, "ScripterConsole is not wired to the GameSession.");
+            Assert.AreEqual(hud, scripter.Hud, "ScripterConsole is not wired to the GameHud.");
+            Assert.AreEqual(rig, scripter.Rig, "ScripterConsole is not wired to the CameraRig.");
+            Assert.IsNotNull(scripter.SceneLight, "ScripterConsole is not wired to the SceneLight.");
+            Assert.IsFalse(scripter.IsOpen, "bScripter starts False.");
+
             // UNI-T40: Background.vb's quad on the beach, Cube.vb's brick room behind it, every gfx/area picture wired.
             var backdrop = Object.FindAnyObjectByType<AreaBackdrop>();
             Assert.IsNotNull(backdrop, "AreaBackdrop missing from Main scene.");

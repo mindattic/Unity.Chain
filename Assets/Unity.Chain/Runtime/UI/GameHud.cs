@@ -507,6 +507,12 @@ namespace MindAttic.Chain
             }
 
             // Form1.vb's OnKeyDown. Escape is the seat's own Quit (SeatInput), so the menu's ESC line needs nothing here.
+            // While the scripter is open these keys type into it instead (bScripter, U.CHN-T61).
+            if (GameSession.KeysSuspended(session))
+            {
+                return;
+            }
+
             if (_controls.ToggleMenu.WasPressedThisFrame()) { ToggleMenu(); }
             if (_controls.ToggleWireframe.WasPressedThisFrame()) { Act(MenuEntry.Wireframe); }
             if (_controls.ToggleTextures.WasPressedThisFrame()) { Act(MenuEntry.Textures); }
@@ -720,8 +726,18 @@ namespace MindAttic.Chain
             }
         }
 
-        /// <summary>A label placed and coloured from hud.json (<see cref="HudTextStyle"/>), in panel pixels.</summary>
         private Label AddLabel(VisualElement parent, string name, HudTextStyle style)
+        {
+            var label = CreateLabel(name, style);
+            parent.Add(label);
+            return label;
+        }
+
+        /// <summary>
+        /// A label placed and coloured from hud.json (<see cref="HudTextStyle"/>), in panel pixels, as the HUD's own text
+        /// is: for a later panel (the scripter's line) to add with <see cref="AddPanel"/>. It lets clicks through.
+        /// </summary>
+        public Label CreateLabel(string name, HudTextStyle style)
         {
             var scale = Scale;
             var fontSize = style.FontPixels * scale;
@@ -775,7 +791,6 @@ namespace MindAttic.Chain
                 };
             }
 
-            parent.Add(label);
             return label;
         }
 

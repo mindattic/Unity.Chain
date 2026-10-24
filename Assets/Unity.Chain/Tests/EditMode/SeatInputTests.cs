@@ -56,7 +56,7 @@ namespace MindAttic.Chain.Tests
                     {
                         "ToggleLighting", "ShakeScreen", "ToggleFps", "ToggleMenu", "ToggleWireframe", "ToggleTextures", "ToggleCulling", "ConfigureVideo", "ToggleZones",
                         "CameraForward", "CameraBackward", "CameraLeft", "CameraRight", "CameraUp", "CameraDown", "Isometric", "Deisometric",
-                        "AreaB", "AreaN",
+                        "AreaB", "AreaN", "ToggleScripter",
                     },
                     controls.Debug.actions.Select(a => a.name).ToArray());
             }

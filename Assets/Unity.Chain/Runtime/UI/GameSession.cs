@@ -85,6 +85,19 @@ namespace MindAttic.Chain
             set => _settings = value;
         }
 
+        /// <summary>
+        /// What this screen's scripter holds back (U.CHN-T61): Form1.vb's normal keys while it is open, Input.vb's
+        /// getInput while it is open or a script runs. Every input reader asks it before acting; the
+        /// <see cref="ScripterConsole"/> sets it. It is the local screen's, not the world's, and changes nothing in the game.
+        /// </summary>
+        public InputGate InputGate { get; } = new InputGate();
+
+        /// <summary>Whether <paramref name="session"/>'s gate holds Form1.vb's normal keys back (false without a session).</summary>
+        public static bool KeysSuspended(GameSession session) => session != null && session.InputGate.KeysSuspended;
+
+        /// <summary>Whether <paramref name="session"/>'s gate holds Input.vb's getInput back (false without a session).</summary>
+        public static bool PlaySuspended(GameSession session) => session != null && session.InputGate.PlaySuspended;
+
         /// <summary>HP, score, pause and game over, for the HUD.</summary>
         public GameState State => World.State;
 

@@ -54,6 +54,7 @@ namespace MindAttic.Chain.EditorTools
             rig.Session = session;
             var sceneLight = CreateSceneLight(session);
             var hud = CreateGameHud(session, grapple, sceneLight);
+            CreateScripterConsole(session, hud, sceneLight, rig);
             CreateHitZoneOverlay(session, hud);
             CreateEnemySpawner(session);
             CreateHeart(session);
@@ -333,6 +334,16 @@ namespace MindAttic.Chain.EditorTools
             hud.Grapple = grapple;
             hud.SceneLight = sceneLight;
             return hud;
+        }
+
+        private static void CreateScripterConsole(GameSession session, GameHud hud, SceneLight sceneLight, CameraRig rig)
+        {
+            // Form1.vb's scripter mode and Script.vb's showScripter (U.CHN-T61): its line is drawn on the HUD.
+            var console = hud.gameObject.AddComponent<ScripterConsole>();
+            console.Session = session;
+            console.Hud = hud;
+            console.SceneLight = sceneLight;
+            console.Rig = rig;
         }
 
         private static void CreateHitZoneOverlay(GameSession session, GameHud hud)

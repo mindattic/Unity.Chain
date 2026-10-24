@@ -192,7 +192,8 @@ namespace MindAttic.Chain
 
         private void Update()
         {
-            if (_controls != null && _controls.ToggleLighting.WasPressedThisFrame())
+            // Form1.vb's L, a normal key: it types into the scripter while that is open (U.CHN-T61).
+            if (_controls != null && !GameSession.KeysSuspended(session) && _controls.ToggleLighting.WasPressedThisFrame())
             {
                 ToggleLighting();
             }

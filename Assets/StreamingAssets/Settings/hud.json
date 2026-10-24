@@ -48,6 +48,15 @@
       "resolution": "640 x 480"
     }
   },
+  "scripter": {
+    "_source": "Script.vb showScripter (U.CHN-T61), drawn while bScripter and not paused (oneFrameRender): Write('/ > ' & theScript & '|' or 'backslash > ' & theScript & ' ', fontMenu, 50, iHeight - 50, 255, scriptColor.R, scriptColor.G, scriptColor.B), so 50, 448 - 50 in fontMenu (Arial 10 bold); scriptColor starts Color.FromArgb(0, 0, 255); IBeam flips once Time.Clock passes lastBeamCheck + 0.5.",
+    "anchor": "TopLeft",
+    "position": [50, 398],
+    "colour": [255, 0, 0, 255],
+    "fontSize": 10,
+    "bold": true,
+    "beamSeconds": 0.5
+  },
   "zone": {
     "_source": "Zone.vb loadZone/renderZone (UNI-T56), Textures.vb texZone (gfx/gui/event.png, a 2 x 2 of 0, 128, 255), Root.vb bZone = True, Form1.vb's E (bZone = Not bZone). Screen units, y up (space.json maps them). loadZone's box runs left..right and bottom..top from its corner; renderZone moves one to each enemy, its corner at Enemy(n).X + enemySize / 2, Enemy(n).Y (the enemy quad's centre: enemyCorner, from the centre), and one to the mace, its corner at rectMace.Left, rectMace.Top (link(Mace).X + 0.01, link(Mace).Y + maceSize / 2; the 3.5 x linkSize mace quad's centre is link(Mace).X + 0.04375, so maceCorner is [0.01 - 0.04375, 0.075 / 2] from the centre). Root.vb's Reset never touches bZone.",
     "bZone": true,

@@ -11,7 +11,9 @@ namespace MindAttic.Chain
     /// <c>[</c> and <c>]</c> as <see cref="ChangeChainLength"/>, F as <see cref="ToggleFollow"/>, U as <see cref="SkinLinks"/>, M as <see cref="ToggleMaceMode"/>, Insert/Delete,
     /// Home/End and PageUp/PageDown as <see cref="TuneChain"/> (resistance, gravity, spring), Minus and Equals held
     /// as <see cref="ChangeGameSpeed"/>, R as <see cref="ResetGame"/> and Escape as <see cref="QuitGame"/>. J turns the stick off and on (Form1.vb's joystick toggle), which is this seat's
-    /// own input and no command. It never changes the world itself: it calls the seat's components, which submit.
+    /// own input and no command. While the session's <see cref="InputGate"/> holds input back (the scripter is open, or a
+    /// script runs, U.CHN-T61) the held parts go unread (<see cref="Suspend"/>). It never changes the world itself: it calls
+    /// the seat's components, which submit.
     /// Sits beside the <see cref="AngelController"/>, which requires it.
     /// </summary>
     [DisallowMultipleComponent]
@@ -122,6 +124,9 @@ namespace MindAttic.Chain
                 return;
             }
 
+            var playSuspended = GameSession.PlaySuspended(angel.Session);
+            frame = Suspend(frame, GameSession.KeysSuspended(angel.Session), playSuspended);
+
             if (frame.ToggleJoystick)
             {
                 ToggleJoystick();
@@ -134,7 +139,8 @@ namespace MindAttic.Chain
             if (chain != null)
             {
                 var grapple = chain.GetComponent<GrappleController>();
-                if (grapple != null)
+                // getMouse is skipped while input is held back: the button stays as it last read.
+                if (grapple != null && !playSuspended)
                 {
                     grapple.SetButtonHeld(frame.GrappleHeld);
                 }
@@ -191,6 +197,39 @@ namespace MindAttic.Chain
             {
                 angel.Session.Submit(new QuitGame(angel.Seat));
             }
+        }
+
+        /// <summary>
+        /// <paramref name="frame"/> with what the scripter holds back left out (U.CHN-T61). <paramref name="keys"/> (Root.vb's
+        /// <c>bScripter</c>) drops Form1.vb's OnKeyDown keys: Pause, Escape, R, J, F, U, M and the live-tuning keys.
+        /// <paramref name="play"/> (<c>bScripter</c> or <c>bScriptRunning</c>) drops Input.vb's getInput: the mouse and the stick,
+        /// <c>[</c> and <c>]</c>, Minus and Equals (the grapple button is then left as it was, see <see cref="Dispatch"/>).
+        /// </summary>
+        public static Frame Suspend(Frame frame, bool keys, bool play)
+        {
+            if (keys)
+            {
+                frame.Pause = false;
+                frame.Quit = false;
+                frame.Reset = false;
+                frame.ToggleJoystick = false;
+                frame.ToggleFollow = false;
+                frame.SkinLinks = false;
+                frame.ToggleMaceMode = false;
+                frame.ResistanceUp = frame.ResistanceDown = false;
+                frame.GravityUp = frame.GravityDown = false;
+                frame.SpringUp = frame.SpringDown = false;
+            }
+
+            if (play)
+            {
+                frame.MouseDelta = Vector2.zero;
+                frame.Stick = Vector2.zero;
+                frame.ChainShorter = frame.ChainLonger = false;
+                frame.GameSpeedDown = frame.GameSpeedUp = false;
+            }
+
+            return frame;
         }
 
         private static void Tune(ChainController chain, ChainKnob knob, bool up, bool down)

@@ -133,6 +133,24 @@ namespace MindAttic.Chain.Core
             Target += delta;
         }
 
+        /// <summary>
+        /// Script.vb's <c>CHANGE CAMERA X n</c> (<paramref name="axis"/> X) or <c>Y n</c>: eye and target both set to
+        /// <paramref name="value"/> on that axis (<c>cam.X = Parameter</c>, <c>target.X = Parameter</c>), world units.
+        /// </summary>
+        public void Place(ScriptAxis axis, float value)
+        {
+            if (axis == ScriptAxis.X)
+            {
+                Eye = new Vec2(value, Eye.Y);
+                Target = new Vec2(value, Target.Y);
+            }
+            else
+            {
+                Eye = new Vec2(Eye.X, value);
+                Target = new Vec2(Target.X, value);
+            }
+        }
+
         /// <summary><c>shakeScreen</c>'s restore: the target back under the eye, so the view looks straight again.</summary>
         public void LookStraight() => Target = Eye;
 
