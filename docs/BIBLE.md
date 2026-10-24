@@ -107,7 +107,8 @@ ticket closes.
  │   ChainSimulation, AngelFlight, EnemyBrain, flocking, heart, GameState, clock,      │
  │   script language, settings registry, data loading and validation                   │
  └────────────────────────────────────────────────────────────────────────────────────┘
- Unity.Chain.Editor  → Runtime, Core   (SceneBuilder, PlayerBuilder, data tools)
+ Unity.Chain.Online  → Runtime, Core, Unity.Multiplayer (+ .UI)   (ChainPlayer, ChainWorldSync, ChainOnline, ChainBot)
+ Unity.Chain.Editor  → Online, Runtime, Core, Unity.Multiplayer.Editor   (SceneBuilder, OnlineBuilder, PlayerBuilder)
  Tests/Core.Tests    → Core            (NUnit, dotnet test, outside Unity)
  Unity.Chain.EditMode/PlayMode.Tests → Runtime, Core (Unity Test Framework, adapters and the scene)
 ```
@@ -120,14 +121,16 @@ Unity.
 | Assembly | Folder | Contents | Status |
 |---|---|---|---|
 | `Unity.Chain.Runtime` | `Assets/Unity.Chain/Runtime/` | Presentation and input: `UI/GameSession` (the one authority: holds and steps the `GameWorld`, seats players, takes their commands, raises the world's events), `Input/ChainControls` (the one InputActionAsset, built in code: keyboard, mouse and gamepad bindings), `Input/SeatInput` (a seat's actions as its commands), `Player/AngelController` (the steer and pause as commands; draws the angel), `Chain/` (ChainController draws the chain, MaceController sends the `[`/`]` commands and draws the mace), `Grapple/GrappleController` (the grapple button as commands), `Enemies/` (Enemy views, EnemySpawner making them from events), `Items/` (HeartPickup), `Lighting/` (SceneLight), `Level/` (LevelBounds, CameraRig), `UI/` (GameHud, HudText, ConfigScreen, ScripterConsole: Form1.vb's scripter on the HUD, setting the session's `InputGate`), `Audio/` (ChainAudio plays the world's events), `Adapters/CoreConvert` (the one place Vector2/Rect become Core's Vec2/Rect2), `Settings/SettingsStore` (loads the registry from StreamingAssets) | References Core one way; holds no rule that Core could own, and changes the world only by commands |
-| `Unity.Chain.Editor` | `Assets/Unity.Chain/Editor/` | `SceneBuilder` (generates `Splash.unity`, `Main.unity` and the build settings, Splash first), `RenderPipelineBuilder` (the URP 2D pipeline asset and renderer, assigned in GraphicsSettings and every quality level), `PlayerBuilder` (Windows player) | in place |
+| `Unity.Chain.Online` | `Assets/Unity.Chain/Online/` | Online play on the Unity.Multiplayer kit (U.CHN-T26, §5.4): `ChainPlayer` (the Player Prefab's NetEntity carrying its seat; the seat's commands to the authority), `ChainWorldSync` (the authority's `WorldSnapshot`s to every peer, keyed `chain:world`), `ChainOnline` (the kit's front end beside local play), `ChainAuthority` (which `GameSession` a peer's game is), `ChainBot` (the `[NetBotDriver]`) | in place: the seats, commands and snapshots; a client drawing the snapshots is the next step |
+| `Unity.Chain.Online.Tests` | `Assets/Unity.Chain/Tests/Online/` | PlayMode tests on the kit's `NetSessionTest` and `NetBotTest` | in place |
+| `Unity.Chain.Editor` | `Assets/Unity.Chain/Editor/` | `OnlineBuilder` (the network prefabs and their list, the kit's Add Front End on Main, `ChainOnline`), `SceneBuilder` (generates `Splash.unity`, `Main.unity` and the build settings, Splash first), `RenderPipelineBuilder` (the URP 2D pipeline asset and renderer, assigned in GraphicsSettings and every quality level), `PlayerBuilder` (Windows player) | in place |
 | `Unity.Chain.EditMode.Tests` | `Assets/Unity.Chain/Tests/EditMode/` | NUnit tests of the rules and components | in place; the component tests stay here, the pure rule tests now live in `Tests/Core.Tests` (`dotnet test`) |
 | `Unity.Chain.PlayMode.Tests` | `Assets/Unity.Chain/Tests/PlayMode/` | `MainSceneSmokeTests` | in place |
 | `Unity.Chain.Core` | `Assets/Unity.Chain/Core/` | 
 oEngineReferences`: `World/` (GameWorld, GameCommand, GameEvent, PlayerId, EnemyId, PlayerEntity, EnemyEntity, Sweep), `Maths/` (Vec2, Rect2, Calc), `Chain/` (ChainSimulation, ChainFollow), `Player/` (AngelFlight), `Enemies/` (EnemyBrain), `Grapple/` (Grapple, IGrappleTarget, GrappleState), `Items/` (HeartFloat), `Game/` (GameState), `Level/` (CameraFraming, PlayArea, ScreenShake), `Lighting/` (LightingState), `Script/` (ScriptLine, ScriptRunner, ScriptEffect: Script.vb's language; Scripter, the console's key handling; ScriptEffects, putting a script's effects into the camera and the light), `Input/` (SteerInput: the stick as mouse counts, the J toggle; InputGate, what the scripter holds back), `Audio/` (SwingSoundTrigger, ClipPicker), `Settings/` (GameSettings, the registry and its data records; OriginalSpace, the one mapping; ISettingsSource and TuningOverrideSource; SettingsReader, the validation; Json; PlayerPreferences and IPreferencesStore, the player's own options) | Its rules are tested by `Tests/Core.Tests` with `dotnet test` |
 
 The URP 2D pipeline is committed (`Assets/Unity.Chain/Rendering`, built by `Editor/RenderPipelineBuilder`, UNI-T18); the player's own options are a Unity.Shared profile (UNI-T36, §6); the
-UI Toolkit HUD in UNI-T37 and the multiplayer kit in UNI-T26.
+UI Toolkit HUD in UNI-T37 and the multiplayer kit in U.CHN-T26 (§5.4).
 
 ### 5.3 Commands, events and the one authority
 
@@ -162,6 +165,44 @@ their `AngelFlight`, `ChainSimulation`, mace link and `Grapple`) and every enemy
 Where the world departs from the earlier component wiring: pausing now freezes the angel too (Engine.vb renders and
 moves the angel only while not paused; the port had kept flying it), and a finished game resets the world in place
 instead of reloading the scene (V15).
+
+### 5.4 Online: the Unity.Multiplayer kit (U.CHN-T26)
+
+The game is built on the shared kit (Unity.Multiplayer, MindAttic Components for its menus, Unity.Shared for the
+player's name and colour; `Packages/manifest.json`, NGO under `testables`, `MINDATTIC_NGO_TESTABLE` committed in
+`ProjectSettings.asset`). Its one rule is the game's own (§5.3): one authority holds the state, players send what they
+want to happen.
+
+- **Local play is unchanged.** Main opens straight into play as before; the NetworkManager's `NetBootstrap` never
+  starts a session by itself (`autoStart` off, `serveWhenHeadless` off, so batch-mode runs play locally), the kit's
+  menus stay hidden, `GameSession` applies its own commands and Escape quits (V8).
+- **The front end beside it.** O (V26) opens the kit's `NetFrontEnd`: Host, Join by IP, Join by code, Settings (the
+  player's name and colour), Play alone (back to local play) and Quit. Host shows the lobby with the join code (or the
+  LAN address when no code service is set up) and the roster; Start begins. While a session runs, Escape opens the
+  kit's in-game menu (Resume, Invite, Settings, Leave or End game) instead of quitting (`GameSession.HoldsQuit`). While
+  a menu is open the game's input is held back (`InputGate.SetMenuOpen`), the cursor is free, and on the main menu
+  outside a session the local game is paused, as behind the config screen (V21).
+- **Players carry their seat.** Every connection gets a `ChainPlayer` (NetEntity, the Player Prefab). The server gives
+  it the connection's seat from the roster (`[Synced] Seat`, stable across a reconnect), and the seat is its
+  `PlayerId`: the host's own seat is the scene's angel; any other seat the authority adds to its world
+  (`GameSession.AddRemotePlayer`, tuned as its own angel) and takes out when the player is gone
+  (`RemoveRemotePlayer`). A dedicated server (`-mode server`) seats its first player on the scene's angel.
+- **Commands into the server.** On a client, `ChainPlayer` sets its screen's `GameSession.Forward`: every command the
+  input readers make (the same `SeatInput`, `AngelController`, grapple, mace and HUD code as local play) goes to the
+  server as `CommandCodec` bytes (`[ToServer] Send`) instead of changing the client's world, which is no longer
+  stepped. The server decodes them as the sender's seat, whatever id the bytes name, refuses anything malformed, and
+  submits them to its `GameSession`. `QuitGame` is never sent.
+- **State back for presentation.** The server writes each seat's angel and mace to `ChainPlayer` (`[Synced]`), drawn
+  as a marker in the player's roster colour where the peer has no angel of its own for that seat, and
+  `ChainWorldSync` (spawned by key, `chain:world`, when a server's session starts) sends the whole world 20 times a
+  second as a Core `WorldSnapshot` (HP, score, pause, game over, every seat's angel, chain and mace, the enemies and
+  the hearts), which every peer keeps as `Latest`. Drawing a client's whole scene from the snapshot (its enemy, chain
+  and HUD views reading `Latest` instead of the stale local world) is the next ticket.
+- **Bots and tests.** `ChainBot` is the game's `[NetBotDriver]` (`-bot A`): it waits for its seat, steers and swings
+  with the same commands, and passes once the authority has moved its angel. `Tests/Online` runs on the kit's
+  `NetSessionTest` (a host and a client: seats, forwarding as the sender's seat, refused bytes, snapshots, leaving) and
+  `NetBotTest` (a dedicated server and two bots joining by code). The wire formats are `dotnet test`ed
+  (`NetWireTests`).
 
 ## 6. Data files {#UNI-§6}
 
@@ -306,6 +347,7 @@ Working behaviour of the original the rebuild does differently, and why. Status:
 | V24 | `renderCube` draws Cube.vb's 67 x 55 x 38 brick cube around the eye (z -1), so through the 45 degree perspective the far wall (z 19) fills everything the backdrop quad does not cover | the room is its far wall as that eye sees it, projected onto the play plane: a `brick.jpg` sprite a twentieth of 67 x 55 screen units (distance to the plane over distance to the wall, 1 / 20), centred at 0.95 of the eye's offset, placed every frame from the rig's eye (`Backdrop.FarWall`, `AreaBackdrop`, `area.json` `cube`), so it drifts behind the backdrop at the perspective's parallax when the debug camera moves; behind it the camera clears white, as `oneFrameRender` does. The side walls, floor and ceiling are not drawn | the rig draws orthographically (V1), where a real cube shows only its far face, at full size; the projection is what the original showed. The side walls only come into the original's view after strafing more than 20 screen units | kept (UNI-T40) |
 | V25 | Form1.vb's U sets `link(1)`..`link(5).texture` to the gems whatever `Mace` is, so with the mace on link 1-5 (`[` from 6) U overwrites the mace's own `texMace` with a gem, drawn at the mace's 3.5x; and `[`/`]` set `link(Mace).texture = texMace` on the new mace link without giving the old one its texture back, so a link the mace leaves keeps the ball picture | U puts links 1-5 into aqua, emerald, teardrop, tablet and pearl (`chain.json` `skins.keyU`), the rest keep link; each gem stays on its link index, but the mace's link is always drawn as the mace and a link the mace moves off shows its own skin again (`PlayerEntity.LinkSkin`, `LinkSkinView`). U works paused, as Form1.vb's key handler does; no reset, retune or second U takes the gems off (`SkinLinks` -> `LinksSkinned`, the Player map's SkinLinks). Each gem is drawn one link wide (the chain line's width) on the drawn link over the line, later links over earlier ones, as `renderChain` draws 0..`Mace` in order | the mace is drawn and tested apart from the links (`MaceController`); the ticket keeps it the mace, and a link keeping a stale mace picture was never a skin | kept (UNI-T41) |
 | V21 | F12 (the menu's "F12 - Configure Video") sets `toggleScreen` and ends the loop; Startup then flips `isFullscreen`, saves it to the registry (`saveOptions`) and builds a new `Engine`, so the screen mode changes and the whole game starts over | F12 and the menu's Video line open frmConfig.vb's screen (D27; `ConfigScreen`, `GameHud.ToggleConfig`); its Submit saves the window mode, resolution and volumes to the profile, as `saveOptions` and `btnSubmit_Click` saved to the registry and video.cfg, and puts them into effect at once (`DisplayPreferences.Apply`, the volumes through `PlayerProfile.Changed`) where frmConfig said "Settings will not take effect UNTIL next restart"; the round goes on. While the screen is open the world is paused and the cursor freed to work its controls, then both are put back; F12 again or its close box closes it keeping nothing. The Resolution list is enabled only in fullscreen as in frmConfig, but a Unity window takes the chosen size too (the original's windowed engine kept its form's own) | the restart only rebuilt the D3D device for the new mode; Unity switches in place. A form over a running game cannot be worked with the mouse that steers it, so it pauses | kept (UNI-T55, UNI-T59) |
+| V26 | Single player only; O is unbound | O opens the Unity.Multiplayer kit's online menu (Host, Join by IP, Join by code, Settings, Play alone, Quit) over a paused local game; online, Escape opens the kit's in-game menu instead of quitting (§5.4). With the menu never opened the game plays exactly as before | the rebuild is online-ready on the shared kit (AGENTS.md rule 9); a key no original key uses keeps every original binding as it was | kept (U.CHN-T26) |
 
 ### Keeping these tables current
 

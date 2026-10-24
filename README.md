@@ -41,6 +41,10 @@ In development, rebuilding the original to full parity. On main and tested:
 - Background.vb's backdrop and Cube.vb's brick room behind it: the beach from the start, B and N showing the beach
   and utopia, every gfx/area picture listed by name in `area.json` (`Level/AreaBackdrop`, `Core/Level/Backdrop`)
 - the scenes and the Windows player generated in code (`Editor/SceneBuilder`, `Editor/PlayerBuilder`)
+- online play on the shared Unity.Multiplayer kit, beside local play: O opens the kit's menu (Host, Join by IP, Join
+  by code with a lobby, Settings, Play alone); every connection is a `ChainPlayer` carrying its seat, a client's
+  commands go to the host's `GameSession` instead of its own world, and the host sends its world back as snapshots
+  (`Online/`, `Core/Net/`, docs/BIBLE.md §5.4). Drawing a client's whole scene from those snapshots comes next
 - Form1.vb Startup's loading picture: the player opens on the Splash scene, one of `load640_1..12` chosen at
   random over the whole window until Main has loaded (`UI/SplashScreen`, `Core/Hud/LoadingScreen`, `hud.json` `loading`)
 

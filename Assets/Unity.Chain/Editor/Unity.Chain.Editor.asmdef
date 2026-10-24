@@ -4,6 +4,12 @@
     "references": [
         "Unity.Chain.Runtime",
         "Unity.Chain.Core",
+        "Unity.Chain.Online",
+        "Unity.Multiplayer",
+        "Unity.Multiplayer.Core",
+        "Unity.Multiplayer.Editor",
+        "Unity.Multiplayer.UI",
+        "Unity.Netcode.Runtime",
         "Unity.RenderPipelines.Core.Runtime",
         "Unity.RenderPipelines.Universal.Runtime",
         "Unity.RenderPipelines.Universal.2D.Runtime"

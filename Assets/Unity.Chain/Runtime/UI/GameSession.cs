@@ -14,8 +14,9 @@ namespace MindAttic.Chain
     ///
     /// Players are seated with <see cref="Join"/>: each seat is a <see cref="PlayerId"/> with its own
     /// angel and chain components, which hold that id and send commands with it. There is no
-    /// current-player singleton; a networked player's NetEntity would carry its seat's commands here
-    /// the same way (UNI-T26). The scene's hearts are put in the world (<see cref="AddHeart"/>), which
+    /// current-player singleton; online, a networked player's NetEntity (Online's <c>ChainPlayer</c>, U.CHN-T26)
+    /// carries its seat's commands here the same way, and a client's own session forwards its commands to it
+    /// (<see cref="Forward"/>) instead of changing its own world. The scene's hearts are put in the world (<see cref="AddHeart"/>), which
     /// moves, checks and resets them; the session freezes time while the world is paused, and ends the
     /// application when a player quits.
     /// </summary>
@@ -131,9 +132,41 @@ namespace MindAttic.Chain
             }
         }
 
-        /// <summary>Sends a player's command to the world and plays what it produced. Returns false if it changed nothing.</summary>
+        /// <summary>
+        /// Online as a client (U.CHN-T26): where this screen's commands go instead of its own world, the networked player
+        /// that carries them to the one authority (the host or the dedicated server). Null, as in local play, applies
+        /// them here. While it is set this session's own world is not stepped: the authority's is the game.
+        /// <see cref="QuitGame"/> is never forwarded.
+        /// </summary>
+        public Func<GameCommand, bool> Forward { get; set; }
+
+        /// <summary>Whether this screen's commands go to a remote authority (<see cref="Forward"/> is set).</summary>
+        public bool IsRemote => Forward != null;
+
+        /// <summary>
+        /// While an online session runs (U.CHN-T26), Escape opens the Unity.Multiplayer kit's in-game menu, whose Leave or
+        /// End game ends the session, so Form1.vb's Escape (<see cref="QuitGame"/>) does not end the application.
+        /// False in local play, where Escape quits exactly as before.
+        /// </summary>
+        public bool HoldsQuit { get; set; }
+
+        /// <summary>
+        /// Sends a player's command to the world and plays what it produced. Returns false if it changed nothing. Online as
+        /// a client (<see cref="Forward"/>) it goes to the authority instead, and true means it was sent.
+        /// </summary>
         public bool Submit(GameCommand command)
         {
+            if (command is QuitGame && HoldsQuit)
+            {
+                return false;
+            }
+
+            var forward = Forward;
+            if (forward != null && !(command is QuitGame))
+            {
+                return forward(command);
+            }
+
             var applied = World.Submit(command);
             Flush();
             return applied;
@@ -144,6 +177,54 @@ namespace MindAttic.Chain
         {
             World.Step(deltaTime);
             Flush();
+        }
+
+        /// <summary>
+        /// The authority seats an online player who has no angel on this screen (U.CHN-T26): the world gets a player
+        /// <paramref name="id"/> tuned exactly as the first seated angel is (the data files' figures when there is none).
+        /// Returns the world's player; one already seated as <paramref name="id"/> is returned as it is.
+        /// </summary>
+        public PlayerEntity AddRemotePlayer(PlayerId id)
+        {
+            var existing = World.FindPlayer(id);
+            if (existing != null)
+            {
+                return existing;
+            }
+
+            PlayerSetup setup;
+            if (_seats.Count > 0 && _seats[0].Angel != null)
+            {
+                setup = BuildSetup(_seats[0].Angel, _seats[0].Chain);
+            }
+            else
+            {
+                setup = Settings.Player;
+                setup.ContactRadius = ContactRadius;
+            }
+
+            var player = World.AddPlayer(id, setup);
+            Flush();
+            return player;
+        }
+
+        /// <summary>
+        /// Takes an online player added by <see cref="AddRemotePlayer"/> out of the world (they left). A seat with an
+        /// angel on this screen is never removed this way. Returns false if there was no such remote player.
+        /// </summary>
+        public bool RemoveRemotePlayer(PlayerId id)
+        {
+            foreach (var seat in _seats)
+            {
+                if (seat.Id == id)
+                {
+                    return false;
+                }
+            }
+
+            var removed = _world != null && _world.RemovePlayer(id);
+            Flush();
+            return removed;
         }
 
         /// <summary>
@@ -347,7 +428,14 @@ namespace MindAttic.Chain
 
         private void Start() => Restart();
 
-        private void FixedUpdate() => Step(Time.fixedDeltaTime);
+        private void FixedUpdate()
+        {
+            // Online as a client the authority's world is the game; this screen's own is left as it was.
+            if (!IsRemote)
+            {
+                Step(Time.fixedDeltaTime);
+            }
+        }
 
         private void OnDisable() => ReleaseTimeScale();
 

@@ -1,0 +1,24 @@
+{
+    "name": "Unity.Chain.Online",
+    "rootNamespace": "MindAttic.Chain.Online",
+    "references": [
+        "Unity.Chain.Core",
+        "Unity.Chain.Runtime",
+        "Unity.Multiplayer",
+        "Unity.Multiplayer.Core",
+        "Unity.Multiplayer.UI",
+        "MindAttic.Components.Unity",
+        "MindAttic.Components.Unity.Core",
+        "Unity.Netcode.Runtime",
+        "Unity.InputSystem"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

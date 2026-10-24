@@ -4,6 +4,9 @@
     "references": [
         "Unity.Chain.Runtime",
         "Unity.Chain.Core",
+        "Unity.Chain.Online",
+        "Unity.Multiplayer",
+        "Unity.Multiplayer.UI",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],

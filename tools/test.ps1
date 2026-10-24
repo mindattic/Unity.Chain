@@ -51,19 +51,20 @@ if (-not $SkipEditMode) {
     Write-Host '  EditMode tests (Unity batch mode)...' -ForegroundColor Cyan
     $editResults = Join-Path $root 'TestResults-EditMode.xml'
     Remove-Item -LiteralPath $editResults -ErrorAction SilentlyContinue
-    & "$PSScriptRoot/unity.ps1" -Log test-editmode -Extra "-runTests -testPlatform EditMode -testResults $editResults"
+    & "$PSScriptRoot/unity.ps1" -Log test-editmode -Extra "-runTests -testPlatform EditMode -assemblyNames Unity.Chain.EditMode.Tests -testResults $editResults"
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     Confirm-TestResults -Path $editResults
 }
 
 if (-not $SkipPlayMode) {
-    # The PlayMode assembly holds only MainSceneSmokeTests today; -testPlatform PlayMode with no
-    # -assemblyNames filter always includes it, so a future PlayMode addition is covered for free.
+    # The game's two PlayMode assemblies: MainSceneSmokeTests and the splash, and the online tests on the
+    # Unity.Multiplayer kit (U.CHN-T26). -assemblyNames is needed since NGO is listed under "testables" (the kit's
+    # test fixtures need it), which would otherwise run NGO's own suites too; a new game test assembly joins the list.
     # Confirm-TestResults below is what actually proves it ran, not just this comment.
     Write-Host '  PlayMode tests (Unity batch mode, includes MainSceneSmokeTests)...' -ForegroundColor Cyan
     $playResults = Join-Path $root 'TestResults-PlayMode.xml'
     Remove-Item -LiteralPath $playResults -ErrorAction SilentlyContinue
-    & "$PSScriptRoot/unity.ps1" -Log test-playmode -Extra "-runTests -testPlatform PlayMode -testResults $playResults"
+    & "$PSScriptRoot/unity.ps1" -Log test-playmode -Extra "-runTests -testPlatform PlayMode -assemblyNames Unity.Chain.PlayMode.Tests;Unity.Chain.Online.Tests -testResults $playResults"
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     Confirm-TestResults -Path $playResults -MustContain 'MainSceneSmokeTests'
 }

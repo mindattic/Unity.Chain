@@ -26,7 +26,8 @@ namespace MindAttic.Chain
     /// CameraRight (numpad 4 and 6), CameraUp and CameraDown (numpad 8 and 2), Isometric and Deisometric (X and Z), and
     /// AreaB and AreaN (Form1.vb's B and N, the backdrop's beach and utopia, read by <see cref="AreaBackdrop"/>), and
     /// ToggleScripter (Form1.vb's grave key, read by <see cref="ScripterConsole"/>, which reads the keyboard itself while
-    /// it is open, U.CHN-T61). Later debug keys join this map.</item>
+    /// it is open, U.CHN-T61), and OnlineMenu (O, the rebuild's: the Unity.Multiplayer kit's Host / Join menu, read by
+    /// Online's ChainOnline, U.CHN-T26). Later debug keys join this map.</item>
     /// </list>
     /// Input.vb's and Form1.vb's keys keep their bindings, as the original has them.
     /// </summary>
@@ -117,6 +118,8 @@ namespace MindAttic.Chain
         public InputAction AreaN => Debug["AreaN"];
         /// <summary>Form1.vb's <c>Keys.Oemtilde</c>: <c>bScripter = True</c>, the scripter console opens (U.CHN-T61).</summary>
         public InputAction ToggleScripter => Debug["ToggleScripter"];
+        /// <summary>O, the rebuild's (the original had no online play): opens and closes the Unity.Multiplayer kit's online menu (U.CHN-T26).</summary>
+        public InputAction OnlineMenu => Debug["OnlineMenu"];
 
         /// <summary>A new asset with the game's two maps and every binding.</summary>
         public static InputActionAsset BuildAsset()
@@ -179,6 +182,8 @@ namespace MindAttic.Chain
             Button(debug, "AreaN", "<Keyboard>/n");
             // Form1.vb's grave key (U.CHN-T61): the scripter console.
             Button(debug, "ToggleScripter", "<Keyboard>/backquote");
+            // The rebuild's: the original had no online play (U.CHN-T26).
+            Button(debug, "OnlineMenu", "<Keyboard>/o");
 
             return asset;
         }

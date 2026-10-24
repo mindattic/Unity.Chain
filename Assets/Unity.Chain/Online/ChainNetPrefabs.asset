@@ -1,0 +1,17 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7f4ab9c75004aa04db6c6c4d315ef588, type: 3}
+  m_Name: ChainNetPrefabs
+  m_EditorClassIdentifier: Unity.Multiplayer::Unity.Multiplayer.NetPrefabList
+  prefabs:
+  - {fileID: 1978559535833738306, guid: b11ceba600f8c5e47b685413bc2271dc, type: 3}
+  - {fileID: 3772229796090531750, guid: 80e45cc349ea7764cab7069fd892d759, type: 3}

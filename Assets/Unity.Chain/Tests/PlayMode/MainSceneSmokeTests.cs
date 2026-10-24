@@ -83,6 +83,23 @@ namespace MindAttic.Chain.Tests
             Assert.IsNotNull(scripter.SceneLight, "ScripterConsole is not wired to the SceneLight.");
             Assert.IsFalse(scripter.IsOpen, "bScripter starts False.");
 
+            // U.CHN-T26: the Unity.Multiplayer kit beside local play. The scene is networked (a NetBootstrap and the
+            // kit's front end), but it opens in local play exactly as before: no session, the menus hidden, the
+            // session applying its own commands, Escape still quitting, and a headless run never serving by itself.
+            var online = Object.FindAnyObjectByType<MindAttic.Chain.Online.ChainOnline>();
+            Assert.IsNotNull(online, "ChainOnline missing from Main scene.");
+            Assert.AreEqual(session, online.Game, "ChainOnline is not wired to the GameSession.");
+            Assert.IsNotNull(online.FrontEnd, "ChainOnline is not wired to the kit's NetFrontEnd.");
+            Assert.IsNotNull(online.WorldSyncPrefab, "ChainOnline has no ChainWorldSync prefab to serve.");
+            var bootstrap = Object.FindAnyObjectByType<Unity.Multiplayer.NetBootstrap>();
+            Assert.IsNotNull(bootstrap, "NetBootstrap missing from Main scene.");
+            Assert.IsFalse(bootstrap.Session.IsActive, "local play starts no network session.");
+            Assert.IsFalse(online.FrontEnd.MenusVisible, "the online menus stay hidden until O opens them.");
+            Assert.IsFalse(online.InSession);
+            Assert.IsFalse(session.IsRemote, "local play applies its own commands.");
+            Assert.IsFalse(session.HoldsQuit, "Escape quits local play as before.");
+            Assert.IsFalse(session.InputGate.MenuOpen, "no menu holds the game's input back.");
+
             // UNI-T40: Background.vb's quad on the beach, Cube.vb's brick room behind it, every gfx/area picture wired.
             var backdrop = Object.FindAnyObjectByType<AreaBackdrop>();
             Assert.IsNotNull(backdrop, "AreaBackdrop missing from Main scene.");

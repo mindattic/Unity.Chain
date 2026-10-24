@@ -60,6 +60,8 @@ namespace MindAttic.Chain.EditorTools
             CreateHeart(session);
             CreateMusicPlayer(session);
             CreateWindowAspectLock();
+            // U.CHN-T26: the Unity.Multiplayer kit's NetworkManager, bootstrap and front end, beside local play.
+            OnlineBuilder.Create(scene, session);
 
             Directory.CreateDirectory(Path.GetDirectoryName(ScenePath) !);
             EditorSceneManager.SaveScene(scene, ScenePath);
@@ -304,7 +306,7 @@ namespace MindAttic.Chain.EditorTools
         }
 
         /// <summary>Loads the sprite at <paramref name="path"/>, throwing if it is missing: area.json and chain.json's skins name only art UNI-T19, UNI-T40 and UNI-T41 imported.</summary>
-        private static Sprite LoadSprite(string path)
+        internal static Sprite LoadSprite(string path)
         {
             var sprite = AssetDatabase.LoadAssetAtPath<Sprite>(path);
             if (sprite == null)
@@ -429,7 +431,7 @@ namespace MindAttic.Chain.EditorTools
             EditorBuildSettings.scenes = updated.ToArray();
         }
 
-        private static void SetPrivateField(Object target, string fieldName, Object value)
+        internal static void SetPrivateField(Object target, string fieldName, Object value)
         {
             var serialized = new SerializedObject(target);
             var property = serialized.FindProperty(fieldName);
