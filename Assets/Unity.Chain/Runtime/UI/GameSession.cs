@@ -16,7 +16,8 @@ namespace MindAttic.Chain
     /// angel and chain components, which hold that id and send commands with it. There is no
     /// current-player singleton; online, a networked player's NetEntity (Online's <c>ChainPlayer</c>, U.CHN-T26)
     /// carries its seat's commands here the same way, and a client's own session forwards its commands to it
-    /// (<see cref="Forward"/>) instead of changing its own world. The scene's hearts are put in the world (<see cref="AddHeart"/>), which
+    /// (<see cref="Forward"/>) instead of changing its own world, and its views draw the authority's world as it arrives
+    /// (<see cref="Shown"/>, U.CHN-T73). The scene's hearts are put in the world (<see cref="AddHeart"/>), which
     /// moves, checks and resets them; the session freezes time while the world is paused, and ends the
     /// application when a player quits.
     /// </summary>
@@ -142,6 +143,55 @@ namespace MindAttic.Chain
 
         /// <summary>Whether this screen's commands go to a remote authority (<see cref="Forward"/> is set).</summary>
         public bool IsRemote => Forward != null;
+
+        private WorldSnapshot _shown;
+
+        /// <summary>
+        /// Online as a client (U.CHN-T73): the remote authority's world as it last arrived (Online's <c>ChainWorldSync</c>),
+        /// which this screen's views draw in place of its own frozen world: the angel, chain and mace show
+        /// <see cref="ShownSeat"/>'s entry, the enemies and hearts the authority's, and the HUD its HP, score, clock,
+        /// pause and game over. Null in local play, on the authority, and before the first snapshot. Only ever read:
+        /// nothing changes a world with it. It is dropped as soon as the screen stops forwarding (<see cref="IsRemote"/>).
+        /// </summary>
+        public WorldSnapshot Shown => IsRemote ? _shown : null;
+
+        /// <summary>The seat this screen plays as in <see cref="Shown"/>: the one its own angel, chain and mace draw.</summary>
+        public PlayerId ShownSeat { get; private set; }
+
+        /// <summary>
+        /// Draws <paramref name="snapshot"/> (the remote authority's newest world) on this screen, with this screen's own
+        /// angel showing <paramref name="seat"/>. Called every frame by the client's networked player; changes no world.
+        /// </summary>
+        public void ShowAuthority(WorldSnapshot snapshot, PlayerId seat)
+        {
+            _shown = snapshot;
+            ShownSeat = seat;
+        }
+
+        /// <summary>Back to drawing this screen's own world (the client left, or its player went away).</summary>
+        public void StopShowingAuthority() => _shown = null;
+
+        /// <summary>This screen's own seat's angel, chain and mace as the remote authority has them; false when not shown.</summary>
+        public bool TryGetShownPlayer(out WorldSnapshot.Player player)
+        {
+            var shown = Shown;
+            if (shown != null)
+            {
+                return shown.TryGetPlayer(ShownSeat, out player);
+            }
+
+            player = default;
+            return false;
+        }
+
+        /// <summary>Whether the game this screen shows is paused: the remote authority's (<see cref="Shown"/>), else this world's.</summary>
+        public bool ShowsPaused => Shown?.IsPaused ?? State.IsPaused;
+
+        /// <summary>Whether the game this screen shows is over: the remote authority's, else this world's.</summary>
+        public bool ShowsGameOver => Shown?.IsGameOver ?? State.IsGameOver;
+
+        /// <summary>The shown game's ambient light, 0-1 (the game-over fade): the remote authority's, else this world's.</summary>
+        public float ShownAmbientLevel => Shown != null ? Shown.Ambient / (float)GameState.FullAmbient : State.AmbientLevel;
 
         /// <summary>
         /// While an online session runs (U.CHN-T26), Escape opens the Unity.Multiplayer kit's in-game menu, whose Leave or

@@ -9,6 +9,8 @@ namespace MindAttic.Chain
     /// once picked up until the world resets (Root.vb's Reset). The heart itself lives in the
     /// <see cref="GameWorld"/>, which moves it, checks the touch, heals and resets it; this only reads it.
     /// It joins its session's world when play starts (or when the session adds it, <see cref="GameSession.AddHeart"/>).
+    /// Online as a client it draws the remote authority's heart in the same place in the world's list instead
+    /// (<see cref="GameSession.Shown"/>, U.CHN-T73): every screen builds its hearts from the same scene, in the same order.
     /// </summary>
     [DisallowMultipleComponent]
     [DefaultExecutionOrder(-200)] // joins the world before GameSession's Start resets it
@@ -55,11 +57,30 @@ namespace MindAttic.Chain
         public void Refresh()
         {
             var rules = Rules;
-            transform.position = new Vector3(rules.X, rules.Y, transform.position.z);
+            float x = rules.X, y = rules.Y;
+            var pickedUp = rules.PickedUp;
+            var shown = IsInWorld && session != null ? session.Shown : null;
+            if (shown != null)
+            {
+                var index = IndexInWorld();
+                if (index >= 0 && index < shown.Hearts.Count)
+                {
+                    var heart = shown.Hearts[index];
+                    x = heart.X;
+                    y = heart.Y;
+                    pickedUp = heart.PickedUp;
+                }
+                else
+                {
+                    pickedUp = true; // the authority has no such heart
+                }
+            }
+
+            transform.position = new Vector3(x, y, transform.position.z);
             var sprite = Renderer;
             if (sprite != null)
             {
-                sprite.enabled = !rules.PickedUp;
+                sprite.enabled = !pickedUp;
 
                 // Drawn itemSize wide, whatever the sprite's import size.
                 var width = sprite.sprite != null ? sprite.sprite.bounds.size.x : 0f;
@@ -68,6 +89,20 @@ namespace MindAttic.Chain
                     transform.localScale = Vector3.one * (rules.Config.ItemSize / width);
                 }
             }
+        }
+
+        private int IndexInWorld()
+        {
+            var hearts = session.World.Hearts;
+            for (var i = 0; i < hearts.Count; i++)
+            {
+                if (hearts[i] == _heart)
+                {
+                    return i;
+                }
+            }
+
+            return -1;
         }
 
         private void Awake()

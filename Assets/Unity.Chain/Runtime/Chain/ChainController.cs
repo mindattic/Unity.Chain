@@ -10,7 +10,9 @@ namespace MindAttic.Chain
     /// figures at run time (live tuning, tests), which the world takes when the player is seated, and each
     /// frame writes the live links into a world-space <see cref="LineRenderer"/>, interpolating between
     /// the last two physics steps so the chain stays smooth when the render rate and the fixed timestep
-    /// differ. Seating it also binds the mace, grapple and audio components beside it.
+    /// differ. Seating it also binds the mace, grapple and audio components beside it. Online as a client it draws
+    /// the remote authority's chain for this screen's seat instead (<see cref="GameSession.Shown"/>, U.CHN-T73): the
+    /// links from the hand to the mace as the newest snapshot has them.
     /// </summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(LineRenderer))]
@@ -54,7 +56,9 @@ namespace MindAttic.Chain
         public int LinkCount => _linkCount ?? Data.LinkCount;
 
         /// <summary>How many links (anchor included) are live: the mace's link + 1.</summary>
-        public int ActiveLinkCount => Simulation != null ? Simulation.ActiveLinkCount : LinkCount;
+        public int ActiveLinkCount => TryGetShown(out var shown)
+            ? (shown.Links != null ? shown.Links.Length : 0)
+            : Simulation != null ? Simulation.ActiveLinkCount : LinkCount;
 
         public bool KeepInLevel
         {
@@ -107,7 +111,24 @@ namespace MindAttic.Chain
         /// springs at zero so the chain falls under gravity and the mace neither hits nor catches
         /// (see <see cref="ChainFollow"/>). The world's flag once seated, else the starting one.
         /// </summary>
-        public bool IsFollowing => Simulation != null ? Simulation.IsFollowing : Data.Following;
+        public bool IsFollowing => TryGetShown(out var shown)
+            ? shown.IsFollowing
+            : Simulation != null ? Simulation.IsFollowing : Data.Following;
+
+        /// <summary>Whether this chain is drawn from the remote authority's snapshot (online as a client, U.CHN-T73).</summary>
+        public bool IsShowingAuthority => Session != null && Session.Shown != null;
+
+        /// <summary>This chain's player as the remote authority last sent it; false in local play or when the snapshot lacks the seat.</summary>
+        public bool TryGetShown(out WorldSnapshot.Player shown)
+        {
+            if (IsShowingAuthority)
+            {
+                return Session.TryGetShownPlayer(out shown);
+            }
+
+            shown = default;
+            return false;
+        }
 
         /// <summary>
         /// The F key: sends this chain's player a <see cref="Core.ToggleFollow"/> command; the world
@@ -267,6 +288,12 @@ namespace MindAttic.Chain
         /// </summary>
         public void RenderChain(float blend)
         {
+            if (IsShowingAuthority)
+            {
+                RenderShown();
+                return;
+            }
+
             var simulation = Simulation;
             if (simulation == null)
             {
@@ -296,6 +323,40 @@ namespace MindAttic.Chain
             }
 
             for (var i = 0; i < visible; i++)
+            {
+                line.SetPosition(i, _renderPositions[i]);
+            }
+        }
+
+        /// <summary>Draws the remote authority's links for this screen's seat (hidden while the snapshot lacks it).</summary>
+        private void RenderShown()
+        {
+            var line = Line;
+            line.useWorldSpace = true;
+            if (!TryGetShown(out var shown) || shown.Links == null)
+            {
+                line.positionCount = 0;
+                return;
+            }
+
+            var links = shown.Links;
+            if (_renderPositions.Length < links.Length)
+            {
+                System.Array.Resize(ref _renderPositions, links.Length);
+            }
+
+            var z = transform.position.z;
+            for (var i = 0; i < links.Length; i++)
+            {
+                _renderPositions[i] = new Vector3(links[i].X, links[i].Y, z);
+            }
+
+            if (line.positionCount != links.Length)
+            {
+                line.positionCount = links.Length;
+            }
+
+            for (var i = 0; i < links.Length; i++)
             {
                 line.SetPosition(i, _renderPositions[i]);
             }

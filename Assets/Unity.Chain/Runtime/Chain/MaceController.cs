@@ -21,7 +21,8 @@ namespace MindAttic.Chain
     /// (<see cref="ToggleMode"/>). While the grapple is armed it instead wears Input.vb's grapple picture
     /// (<see cref="GrappleSprite"/>, chain.json's <c>maceSkins.files.grapple</c>, Textures.vb's
     /// <c>texMaceGrapple</c>/mace2.png, U.CHN-T72), over whichever mode is current, reverting to that mode's
-    /// picture on release. Only the picture changes; the world hits and grapples the same either way.
+    /// picture on release. Only the picture changes; the world hits and grapples the same either way. Online as a
+    /// client the mace link, skin and grapple are the remote authority's for this screen's seat (U.CHN-T73).
     /// </summary>
     [DisallowMultipleComponent]
     [DefaultExecutionOrder(100)] // after ChainController, so the visual tracks this frame's drawn chain
@@ -69,7 +70,9 @@ namespace MindAttic.Chain
         public int MinIndex => Chain.Entity?.MinMaceIndex ?? Mathf.Clamp(Data.MinMaceIndex, 1, MaxIndex);
 
         /// <summary>The mace link: the world's once seated, else chain.json's starting link.</summary>
-        public int MaceIndex => Chain.Entity?.MaceIndex ?? Mathf.Clamp(Data.MaceIndex, MinIndex, MaxIndex);
+        public int MaceIndex => Chain.TryGetShown(out var shown) && shown.Links != null && shown.Links.Length > 0
+            ? shown.Links.Length - 1
+            : Chain.Entity?.MaceIndex ?? Mathf.Clamp(Data.MaceIndex, MinIndex, MaxIndex);
 
         public float MaceMass
         {
@@ -115,7 +118,7 @@ namespace MindAttic.Chain
         }
 
         /// <summary>What the mace wears: the world's once seated, else chain.json's starting skin.</summary>
-        public MaceMode Mode => Chain.Entity?.MaceMode ?? Data.MaceMode;
+        public MaceMode Mode => Chain.TryGetShown(out var shown) ? shown.MaceMode : Chain.Entity?.MaceMode ?? Data.MaceMode;
 
         /// <summary>Input.vb's grapple picture, shown over the current mode's skin while the grapple is armed.</summary>
         public Sprite GrappleSprite
@@ -128,7 +131,9 @@ namespace MindAttic.Chain
         /// Input.vb's left-mouse-down/up: true from grapple arm to release (armed or holding), whether or not a
         /// target is caught, regardless of this player's <see cref="MaceMode"/>. False before the player is seated.
         /// </summary>
-        public bool IsGrappleArmed => Chain.Entity?.Grapple.IsArmed ?? false;
+        public bool IsGrappleArmed => Chain.TryGetShown(out var shown)
+            ? shown.Grapple != GrappleState.Idle
+            : Chain.Entity?.Grapple.IsArmed ?? false;
 
         /// <summary>The picture of <paramref name="mode"/>, or null if none is wired.</summary>
         public Sprite SpriteFor(MaceMode mode)
@@ -211,7 +216,7 @@ namespace MindAttic.Chain
             }
 
             ApplySkin();
-            if (Chain.Simulation == null)
+            if (Chain.IsShowingAuthority ? !Chain.TryGetShown(out var shown) || shown.Links == null || shown.Links.Length == 0 : Chain.Simulation == null)
             {
                 return;
             }

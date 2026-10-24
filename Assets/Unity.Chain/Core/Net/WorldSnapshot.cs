@@ -8,12 +8,14 @@ namespace MindAttic.Chain.Core
     /// What presentation reads of the <see cref="GameWorld"/>, captured from the one authority and sent to every online
     /// peer (U.CHN-T26): the shared HP, score, pause and game over, each seated player's angel, chain and mace, the
     /// enemies and the hearts. It is plain data the authority makes from its world (<see cref="Capture"/>); a peer reads
-    /// it and never changes any world with it, so the authority stays the only thing that changes the game.
+    /// it and never changes any world with it, so the authority stays the only thing that changes the game. A joined
+    /// client's views draw the newest one in place of its own frozen world (U.CHN-T73, <c>GameSession.ShowAuthority</c>);
+    /// version 2 added what they need beyond version 1: the round clock and each enemy's radius.
     /// </summary>
     public sealed class WorldSnapshot
     {
         /// <summary>The wire version; bytes with any other first byte are refused.</summary>
-        public const byte Version = 1;
+        public const byte Version = 2;
 
         /// <summary>The most chain links a player's entry carries (the original's chain is 25 links).</summary>
         public const int MaxLinks = 64;
@@ -45,6 +47,9 @@ namespace MindAttic.Chain.Core
             public EnemyState State;
             public float Hp;
             public int Frame;
+
+            /// <summary>Its physics circle's radius, which its sprite is drawn the diameter of.</summary>
+            public float Radius;
         }
 
         public struct Heart
@@ -58,6 +63,9 @@ namespace MindAttic.Chain.Core
         public int Sequence;
 
         public float Time;
+
+        /// <summary>The HUD's round clock (<see cref="GameWorld.RoundTime"/>).</summary>
+        public float RoundTime;
         public float GameSpeed;
         public int Hp;
         public int MaxHp;
@@ -99,6 +107,7 @@ namespace MindAttic.Chain.Core
             {
                 Sequence = sequence,
                 Time = world.Time,
+                RoundTime = world.RoundTime,
                 GameSpeed = world.GameSpeed,
                 Hp = state.Hp,
                 MaxHp = state.MaxHp,
@@ -138,7 +147,7 @@ namespace MindAttic.Chain.Core
                     continue;
                 }
 
-                snapshot.Enemies.Add(new Enemy { Id = e.Id, Position = e.Position, State = e.State, Hp = e.Hp, Frame = e.Frame });
+                snapshot.Enemies.Add(new Enemy { Id = e.Id, Position = e.Position, State = e.State, Hp = e.Hp, Frame = e.Frame, Radius = e.Radius });
             }
 
             foreach (var h in world.Hearts)
@@ -158,6 +167,7 @@ namespace MindAttic.Chain.Core
                 w.Write(Version);
                 w.Write(Sequence);
                 w.Write(Time);
+                w.Write(RoundTime);
                 w.Write(GameSpeed);
                 w.Write(Hp);
                 w.Write(MaxHp);
@@ -193,6 +203,7 @@ namespace MindAttic.Chain.Core
                     w.Write((byte)e.State);
                     w.Write(e.Hp);
                     w.Write(e.Frame);
+                    w.Write(e.Radius);
                 }
 
                 w.Write(Hearts.Count);
@@ -224,6 +235,7 @@ namespace MindAttic.Chain.Core
                     {
                         Sequence = r.ReadInt32(),
                         Time = r.ReadSingle(),
+                        RoundTime = r.ReadSingle(),
                         GameSpeed = r.ReadSingle(),
                         Hp = r.ReadInt32(),
                         MaxHp = r.ReadInt32(),
@@ -272,6 +284,7 @@ namespace MindAttic.Chain.Core
                             State = (EnemyState)r.ReadByte(),
                             Hp = r.ReadSingle(),
                             Frame = r.ReadInt32(),
+                            Radius = r.ReadSingle(),
                         });
                     }
 

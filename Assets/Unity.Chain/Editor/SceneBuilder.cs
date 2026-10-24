@@ -392,7 +392,7 @@ namespace MindAttic.Chain.EditorTools
             go.AddComponent<WindowAspectLockBehaviour>();
         }
 
-        private static Material LoadOrCreateLineMaterial() =>
+        internal static Material LoadOrCreateLineMaterial() =>
             LoadOrCreateMaterial(LineMaterialPath, "ChainLine", "Universal Render Pipeline/Unlit");
 
         private static Material LoadOrCreateMaterial(string path, string name, string shaderName)

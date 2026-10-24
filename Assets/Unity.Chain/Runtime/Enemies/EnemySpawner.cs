@@ -12,7 +12,9 @@ namespace MindAttic.Chain
     /// world already rolled for it (<see cref="EnemyEntity.Frame"/>, from <c>EnemyBrain</c>'s own port
     /// of <c>loadEnemy</c>'s random start and <c>animateEnemy</c>'s 0.1 s loop), an
     /// <see cref="EnemyKilled"/> plays its death, and an <see cref="EnemyRemoved"/> (a reset clearing
-    /// the old flock) destroys it.
+    /// the old flock) destroys it. Online as a client (<see cref="GameSession.Shown"/>, U.CHN-T73) it shows the remote
+    /// authority's flock instead: every frame each enemy in the newest snapshot has a view, one gone from it is removed,
+    /// and this screen's own frozen flock is hidden until the screen plays locally again.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class EnemySpawner : MonoBehaviour
@@ -22,6 +24,10 @@ namespace MindAttic.Chain
         [SerializeField] private Sprite[] frames = new Sprite[0];
 
         private readonly Dictionary<EnemyId, Enemy> _views = new Dictionary<EnemyId, Enemy>();
+        private readonly Dictionary<EnemyId, Enemy> _shownViews = new Dictionary<EnemyId, Enemy>();
+        private readonly HashSet<EnemyId> _inSnapshot = new HashSet<EnemyId>();
+        private readonly List<EnemyId> _gone = new List<EnemyId>();
+        private bool _showing;
         private GameSession _subscribed;
 
         public GameSession Session
@@ -43,13 +49,16 @@ namespace MindAttic.Chain
             set => frames = value ?? new Sprite[0];
         }
 
-        /// <summary>Enemy views showing a live enemy.</summary>
+        /// <summary>Whether the views show a remote authority's flock (online as a client) rather than this world's.</summary>
+        public bool IsShowingAuthority => _showing;
+
+        /// <summary>Enemy views showing a live enemy (the remote authority's while it is shown).</summary>
         public int Alive
         {
             get
             {
                 var alive = 0;
-                foreach (var view in _views.Values)
+                foreach (var view in (_showing ? _shownViews : _views).Values)
                 {
                     if (view != null && view.IsAlive)
                     {
@@ -61,8 +70,83 @@ namespace MindAttic.Chain
             }
         }
 
-        /// <summary>The view showing <paramref name="id"/>, or null.</summary>
-        public Enemy ViewOf(EnemyId id) => _views.TryGetValue(id, out var view) ? view : null;
+        /// <summary>The view showing <paramref name="id"/> (the remote authority's enemy while it is shown), or null.</summary>
+        public Enemy ViewOf(EnemyId id) => (_showing ? _shownViews : _views).TryGetValue(id, out var view) ? view : null;
+
+        /// <summary>
+        /// Shows the session's remote authority's flock (<see cref="GameSession.Shown"/>) when there is one, and this world's
+        /// own again once there is not. Called every frame; public so tests can drive it.
+        /// </summary>
+        public void ShowAuthority()
+        {
+            var shown = session != null ? session.Shown : null;
+            if (shown == null)
+            {
+                if (_showing)
+                {
+                    StopShowing();
+                }
+
+                return;
+            }
+
+            if (!_showing)
+            {
+                _showing = true;
+                SetLocalViewsShown(false);
+            }
+
+            _inSnapshot.Clear();
+            foreach (var enemy in shown.Enemies)
+            {
+                _inSnapshot.Add(enemy.Id);
+                if (!_shownViews.TryGetValue(enemy.Id, out var view) || view == null)
+                {
+                    view = NewView("Enemy " + enemy.Id.Value + " (shown)");
+                    _shownViews[enemy.Id] = view;
+                }
+
+                view.Show(enemy);
+            }
+
+            _gone.Clear();
+            foreach (var id in _shownViews.Keys)
+            {
+                if (!_inSnapshot.Contains(id))
+                {
+                    _gone.Add(id);
+                }
+            }
+
+            foreach (var id in _gone)
+            {
+                DestroyView(_shownViews[id]);
+                _shownViews.Remove(id);
+            }
+        }
+
+        private void StopShowing()
+        {
+            foreach (var view in _shownViews.Values)
+            {
+                DestroyView(view);
+            }
+
+            _shownViews.Clear();
+            _showing = false;
+            SetLocalViewsShown(true);
+        }
+
+        private void SetLocalViewsShown(bool shown)
+        {
+            foreach (var view in _views.Values)
+            {
+                if (view != null)
+                {
+                    view.gameObject.SetActive(shown);
+                }
+            }
+        }
 
         /// <summary>Plays one world event. Hooked to <see cref="GameSession.EventRaised"/>; public so tests can drive it.</summary>
         public void Play(GameEvent gameEvent)
@@ -104,12 +188,20 @@ namespace MindAttic.Chain
                 return;
             }
 
-            _views[id] = CreateView(entity);
+            var view = NewView($"Enemy {entity.Id.Value}");
+            view.Bind(entity);
+            if (_showing)
+            {
+                // This screen's own world is not what is drawn while the remote authority's is shown.
+                view.gameObject.SetActive(false);
+            }
+
+            _views[id] = view;
         }
 
-        private Enemy CreateView(EnemyEntity entity)
+        private Enemy NewView(string name)
         {
-            var go = new GameObject($"Enemy {entity.Id.Value}");
+            var go = new GameObject(name);
             go.transform.SetParent(transform, false);
 
             var renderer = go.AddComponent<SpriteRenderer>();
@@ -129,7 +221,6 @@ namespace MindAttic.Chain
                 renderer.color = new Color(0.85f, 0.2f, 0.2f);
             }
 
-            view.Bind(entity);
             return view;
         }
 
@@ -220,5 +311,7 @@ namespace MindAttic.Chain
         private void OnEnable() => Subscribe();
 
         private void OnDisable() => Unsubscribe();
+
+        private void LateUpdate() => ShowAuthority();
     }
 }

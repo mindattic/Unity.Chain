@@ -121,7 +121,7 @@ Unity.
 | Assembly | Folder | Contents | Status |
 |---|---|---|---|
 | `Unity.Chain.Runtime` | `Assets/Unity.Chain/Runtime/` | Presentation and input: `UI/GameSession` (the one authority: holds and steps the `GameWorld`, seats players, takes their commands, raises the world's events), `Input/ChainControls` (the one InputActionAsset, built in code: keyboard, mouse and gamepad bindings), `Input/SeatInput` (a seat's actions as its commands), `Player/AngelController` (the steer and pause as commands; draws the angel), `Chain/` (ChainController draws the chain, MaceController sends the `[`/`]` commands and draws the mace), `Grapple/GrappleController` (the grapple button as commands), `Enemies/` (Enemy views, EnemySpawner making them from events), `Items/` (HeartPickup), `Lighting/` (SceneLight), `Level/` (LevelBounds, CameraRig), `UI/` (GameHud, HudText, ConfigScreen, ScripterConsole: Form1.vb's scripter on the HUD, setting the session's `InputGate`), `Audio/` (ChainAudio plays the world's events), `Adapters/CoreConvert` (the one place Vector2/Rect become Core's Vec2/Rect2), `Settings/SettingsStore` (loads the registry from StreamingAssets) | References Core one way; holds no rule that Core could own, and changes the world only by commands |
-| `Unity.Chain.Online` | `Assets/Unity.Chain/Online/` | Online play on the Unity.Multiplayer kit (U.CHN-T26, §5.4): `ChainPlayer` (the Player Prefab's NetEntity carrying its seat; the seat's commands to the authority), `ChainWorldSync` (the authority's `WorldSnapshot`s to every peer, keyed `chain:world`), `ChainOnline` (the kit's front end beside local play), `ChainAuthority` (which `GameSession` a peer's game is), `ChainBot` (the `[NetBotDriver]`) | in place: the seats, commands and snapshots; a client drawing the snapshots is the next step |
+| `Unity.Chain.Online` | `Assets/Unity.Chain/Online/` | Online play on the Unity.Multiplayer kit (U.CHN-T26, §5.4): `ChainPlayer` (the Player Prefab's NetEntity carrying its seat; the seat's commands to the authority), `ChainWorldSync` (the authority's `WorldSnapshot`s to every peer, keyed `chain:world`), `ChainOnline` (the kit's front end beside local play), `ChainAuthority` (which `GameSession` a peer's game is), `ChainBot` (the `[NetBotDriver]`) | in place: the seats, commands and snapshots, and a client drawing them (U.CHN-T73) |
 | `Unity.Chain.Online.Tests` | `Assets/Unity.Chain/Tests/Online/` | PlayMode tests on the kit's `NetSessionTest` and `NetBotTest` | in place |
 | `Unity.Chain.Editor` | `Assets/Unity.Chain/Editor/` | `OnlineBuilder` (the network prefabs and their list, the kit's Add Front End on Main, `ChainOnline`), `SceneBuilder` (generates `Splash.unity`, `Main.unity` and the build settings, Splash first), `RenderPipelineBuilder` (the URP 2D pipeline asset and renderer, assigned in GraphicsSettings and every quality level), `PlayerBuilder` (Windows player) | in place |
 | `Unity.Chain.EditMode.Tests` | `Assets/Unity.Chain/Tests/EditMode/` | NUnit tests of the rules and components | in place; the component tests stay here, the pure rule tests now live in `Tests/Core.Tests` (`dotnet test`) |
@@ -196,8 +196,18 @@ want to happen.
   as a marker in the player's roster colour where the peer has no angel of its own for that seat, and
   `ChainWorldSync` (spawned by key, `chain:world`, when a server's session starts) sends the whole world 20 times a
   second as a Core `WorldSnapshot` (HP, score, pause, game over, every seat's angel, chain and mace, the enemies and
-  the hearts), which every peer keeps as `Latest`. Drawing a client's whole scene from the snapshot (its enemy, chain
-  and HUD views reading `Latest` instead of the stale local world) is the next ticket.
+  the hearts, plus the round clock and each enemy's radius since wire version 2), which every peer keeps as `Latest`.
+- **A client draws the authority's game (U.CHN-T73).** Every frame the owning client's `ChainPlayer` hands `Latest` to
+  its screen's `GameSession.ShowAuthority` with its seat (`Shown`, `ShownSeat`; dropped the moment the screen stops
+  forwarding). The views then read it in place of the frozen local world: the angel, chain and mace draw that seat's
+  entry (position, facing, flap frame, the links hand to mace, the mace link, skin and armed grapple), the
+  `EnemySpawner` keeps one view per snapshot enemy and hides the local flock, each heart draws the authority's heart at
+  its own place in the world's list, and the HUD, the light and the camera show its HP, score, clock, game speed, pause,
+  game over and fade. Every other seat is drawn by its `ChainPlayer` marker: the angel sprite in the roster colour with
+  its chain line and mace (from the authority's world on the host, from `Latest` on a client). Not carried, so not
+  drawn from the snapshot: the gem link skins (hidden over the shown chain), the live-tuning readout and the grappled
+  enemy's HP (both the screen's own), and the sounds (played from local events). Snapshots are drawn as they arrive,
+  20 a second, with no interpolation between them.
 - **Bots and tests.** `ChainBot` is the game's `[NetBotDriver]` (`-bot A`): it waits for its seat, steers and swings
   with the same commands, and passes once the authority has moved its angel. `Tests/Online` runs on the kit's
   `NetSessionTest` (a host and a client: seats, forwarding as the sender's seat, refused bytes, snapshots, leaving) and

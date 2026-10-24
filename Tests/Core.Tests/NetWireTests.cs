@@ -128,6 +128,9 @@ namespace MindAttic.Chain.Tests
             Assert.IsTrue(snapshot.TryGetPlayer(new PlayerId(2), out var second));
             Assert.AreEqual(GrappleState.Armed, second.Grapple);
             Assert.AreEqual(world.Enemies.Count, snapshot.Enemies.Count);
+            Assert.AreEqual(world.RoundTime, snapshot.RoundTime, "the HUD's round clock (U.CHN-T73)");
+            Assert.Greater(snapshot.RoundTime, 0f);
+            Assert.AreEqual(world.Enemies[0].Radius, snapshot.Enemies[0].Radius, "what an enemy's sprite is sized to (U.CHN-T73)");
             Assert.AreEqual(1, snapshot.Hearts.Count);
             Assert.IsFalse(snapshot.TryGetPlayer(new PlayerId(9), out _));
 
@@ -135,6 +138,7 @@ namespace MindAttic.Chain.Tests
             Assert.IsNotNull(copy);
             Assert.AreEqual(snapshot.Sequence, copy.Sequence);
             Assert.AreEqual(snapshot.Time, copy.Time);
+            Assert.AreEqual(snapshot.RoundTime, copy.RoundTime);
             Assert.AreEqual(snapshot.GameSpeed, copy.GameSpeed);
             Assert.AreEqual(snapshot.Hp, copy.Hp);
             Assert.AreEqual(snapshot.MaxHp, copy.MaxHp);
@@ -164,6 +168,7 @@ namespace MindAttic.Chain.Tests
                 Assert.AreEqual(snapshot.Enemies[i].State, copy.Enemies[i].State);
                 Assert.AreEqual(snapshot.Enemies[i].Hp, copy.Enemies[i].Hp);
                 Assert.AreEqual(snapshot.Enemies[i].Frame, copy.Enemies[i].Frame);
+                Assert.AreEqual(snapshot.Enemies[i].Radius, copy.Enemies[i].Radius);
             }
 
             Assert.AreEqual(snapshot.Hearts[0].X, copy.Hearts[0].X);
@@ -199,8 +204,8 @@ namespace MindAttic.Chain.Tests
             Assert.IsNull(WorldSnapshot.Decode(bytes[..^1]), "truncated");
 
             var huge = (byte[])bytes.Clone();
-            // The player count follows the 1-byte version and 30 bytes of header.
-            BitConverter.GetBytes(int.MaxValue).CopyTo(huge, 31);
+            // The player count follows the 1-byte version and 34 bytes of header (version 2 added the round clock).
+            BitConverter.GetBytes(int.MaxValue).CopyTo(huge, 35);
             Assert.IsNull(WorldSnapshot.Decode(huge), "an unbounded count");
         }
 

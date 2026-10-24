@@ -184,7 +184,7 @@ namespace MindAttic.Chain
         /// </summary>
         public float GameOverDim => session == null || (sceneLight != null && sceneLight.LightsTheScene)
             ? 0f
-            : 1f - session.State.AmbientLevel;
+            : 1f - session.ShownAmbientLevel;
 
         /// <summary>The HP of the enemy the grapple holds, or null when it holds none.</summary>
         public float? GrappledHp => grapple != null && grapple.HeldEnemy is EnemyEntity enemy && enemy.IsAlive
@@ -357,7 +357,7 @@ namespace MindAttic.Chain
         /// </summary>
         public void TickFps(long nowMs)
         {
-            if (Options.DrawFps && (session == null || !session.State.IsPaused))
+            if (Options.DrawFps && (session == null || !session.ShowsPaused))
             {
                 Frames.Frame(nowMs);
             }
@@ -397,17 +397,21 @@ namespace MindAttic.Chain
                 return;
             }
 
+            // Online as a client the game shown is the remote authority's (U.CHN-T73): its HP, score, clock, speed,
+            // pause and game over, not this screen's frozen world's.
             var state = session.State;
-            var paused = state.IsPaused && !state.IsGameOver;
+            var shown = session.Shown;
+            var gameOver = session.ShowsGameOver;
+            var paused = session.ShowsPaused && !gameOver;
 
             // oneFrameRender draws the status box, renderDisplay and renderFPS only while not paused.
             SetShown(_status, !paused);
             SetShown(_fps, !paused && Options.DrawFps);
 
-            SetText(_hp, HudText.Hp(state.Hp));
-            SetText(_score, HudText.Score(state.Score));
-            SetText(_clock, HudText.Clock(session.World.RoundTime));
-            SetText(_gameSpeed, HudText.GameSpeed(session.World.GameSpeed));
+            SetText(_hp, HudText.Hp(shown != null ? shown.Hp : state.Hp));
+            SetText(_score, HudText.Score(shown != null ? shown.Score : state.Score));
+            SetText(_clock, HudText.Clock(shown != null ? shown.RoundTime : session.World.RoundTime));
+            SetText(_gameSpeed, HudText.GameSpeed(shown != null ? shown.GameSpeed : session.World.GameSpeed));
 
             var player = FindPlayer();
             SetShown(_readout, player != null);
@@ -423,9 +427,9 @@ namespace MindAttic.Chain
                 SetText(_grappled, HudText.Grappled(grappled.Value));
             }
 
-            SetShown(_gameOver, state.IsGameOver);
+            SetShown(_gameOver, gameOver);
             SetShown(_pause, paused);
-            if (state.IsGameOver)
+            if (gameOver)
             {
                 ShowOverlay(GameOverDim);
             }
@@ -717,7 +721,7 @@ namespace MindAttic.Chain
 
         private void RefreshMenu()
         {
-            var paused = session != null && session.State.IsPaused && !session.State.IsGameOver;
+            var paused = session != null && session.ShowsPaused && !session.ShowsGameOver;
             var shown = Options.MenuOpen && !paused;
             SetShown(_menu, shown);
             foreach (var entry in GameMenu.Entries)

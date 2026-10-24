@@ -77,7 +77,9 @@ namespace MindAttic.Chain
         public void RenderSkins()
         {
             var entity = Chain.Entity;
-            var count = entity != null && Chain.Simulation != null ? entity.Chain.ActiveLinkCount : 0;
+            // Online as a client the chain is the remote authority's, whose snapshots carry no link skins (U.CHN-T73):
+            // none are drawn over it rather than this screen's own world's on the wrong links.
+            var count = entity != null && Chain.Simulation != null && !Chain.IsShowingAuthority ? entity.Chain.ActiveLinkCount : 0;
             var plain = entity != null ? entity.Setup.Skins.Link : null;
 
             for (var i = 0; i < Math.Max(count, _links.Count); i++)

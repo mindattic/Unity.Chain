@@ -171,6 +171,29 @@ namespace MindAttic.Chain.Online.Tests
             yield return WaitUntil(() => onClient.Latest.IsPaused, "the client never saw the authority's pause");
             _hostGame.Submit(new Pause(ann.PlayerId, false));
             yield return WaitUntil(() => !onClient.Latest.IsPaused, "the client never saw the authority resume");
+            // U.CHN-T73: Ann's screen draws the authority's world, its own angel as her seat, not its frozen own.
+            yield return WaitUntil(() => _clientGame.Shown != null, "Ann's screen never showed the authority's world");
+            Assert.That(_clientGame.ShownSeat, Is.EqualTo(ann.PlayerId), "her views show her own seat");
+            Assert.That(_clientGame.TryGetShownPlayer(out var annShown), Is.True);
+            Assert.That(annShown.Id, Is.EqualTo(ann.PlayerId));
+            Assert.That(_clientGame.Shown.Players.Count, Is.EqualTo(2), "the host's seat with hers");
+            _hostGame.Submit(new Pause(ann.PlayerId, true));
+            yield return WaitUntil(() => _clientGame.ShowsPaused, "Ann's screen never showed the authority's pause");
+            Assert.That(_clientGame.State.IsPaused, Is.False, "her own world was never paused");
+            _hostGame.Submit(new Pause(ann.PlayerId, false));
+            yield return WaitUntil(() => !_clientGame.ShowsPaused, "Ann's screen never showed the authority resume");
+
+            // The host's seat, which Ann's screen has no angel for, is drawn by its marker with its chain.
+            var hostOnClient = WaitForSpawn<ChainPlayer>(Client, owner: Server.LocalClientId);
+            yield return hostOnClient;
+            var host = hostOnClient.Result;
+            yield return WaitUntil(() => host.ShowsMarker && host.ChainLine != null && host.ChainLine.positionCount > 1,
+                () => "the host's marker drew no chain on Ann's screen (" + (host.ChainLine == null ? "no line" : host.ChainLine.positionCount + " links") + ")");
+            Assert.That(onClient.Latest.TryGetPlayer(host.PlayerId, out var hostShown), Is.True);
+            Assert.That(host.ChainLine.positionCount, Is.EqualTo(hostShown.Links.Length));
+
+            Client.Leave();
+            yield return WaitUntil(() => _clientGame.Shown == null, "Ann's screen kept showing the authority after she left");
         }
 
         [UnityTest]

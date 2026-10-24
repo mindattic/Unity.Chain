@@ -8,7 +8,8 @@ namespace MindAttic.Chain
     /// <see cref="EnemyEntity"/> is. The enemy's rules (seek, knockback, grab, throw, flocking, HP)
     /// all run in the <see cref="GameWorld"/>; this view only reads them. <see cref="EnemySpawner"/>
     /// makes one for every <see cref="EnemySpawned"/> event and plays <see cref="PlayDeath"/> on
-    /// <see cref="EnemyKilled"/>.
+    /// <see cref="EnemyKilled"/>. Online as a client it shows one of the remote authority's enemies instead
+    /// (<see cref="Show"/>, U.CHN-T73), as the newest snapshot has it.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class Enemy : MonoBehaviour
@@ -26,12 +27,17 @@ namespace MindAttic.Chain
         /// <summary>The world enemy this view shows. Kept after it dies, so its last state can still be read.</summary>
         public EnemyEntity Entity { get; private set; }
 
-        public EnemyId Id => Entity != null ? Entity.Id : default;
-        public EnemyState State => Entity != null ? Entity.State : EnemyState.Dead;
-        public float Hp => Entity != null ? Entity.Hp : 0f;
-        public bool IsAlive => Entity != null && Entity.IsAlive;
+        /// <summary>Whether this view shows a remote authority's enemy (<see cref="Show"/>) rather than a world's.</summary>
+        public bool IsShown { get; private set; }
+
+        private WorldSnapshot.Enemy _shown;
+
+        public EnemyId Id => Entity != null ? Entity.Id : IsShown ? _shown.Id : default;
+        public EnemyState State => Entity != null ? Entity.State : IsShown ? _shown.State : EnemyState.Dead;
+        public float Hp => Entity != null ? Entity.Hp : IsShown ? _shown.Hp : 0f;
+        public bool IsAlive => Entity != null ? Entity.IsAlive : IsShown && _shown.State != EnemyState.Dead;
         public Vector2 Velocity => Entity != null ? Entity.Velocity.ToUnity() : Vector2.zero;
-        public Vector2 Position => Entity != null ? Entity.Position.ToUnity() : (Vector2)transform.position;
+        public Vector2 Position => Entity != null ? Entity.Position.ToUnity() : IsShown ? _shown.Position.ToUnity() : (Vector2)transform.position;
 
         public SpriteRenderer SpriteRenderer
         {
@@ -52,15 +58,33 @@ namespace MindAttic.Chain
             Follow();
         }
 
+        /// <summary>Shows <paramref name="enemy"/>, a remote authority's enemy as its newest snapshot has it (U.CHN-T73).</summary>
+        public void Show(WorldSnapshot.Enemy enemy)
+        {
+            Entity = null;
+            IsShown = true;
+            _shown = enemy;
+            Follow();
+        }
+
         /// <summary>Stands the sprite where the world has the enemy and shows its current animation frame. Called every frame; public so tests can drive it.</summary>
         public void Follow()
         {
-            if (Entity == null || !Entity.InWorld)
+            if (Entity != null)
             {
-                return;
+                if (Entity.InWorld)
+                {
+                    Draw(Entity.Position, Entity.Frame, Entity.Radius);
+                }
             }
+            else if (IsShown)
+            {
+                Draw(_shown.Position, _shown.Frame, _shown.Radius);
+            }
+        }
 
-            var p = Entity.Position;
+        private void Draw(Vec2 p, int frame, float radius)
+        {
             transform.position = new Vector3(p.X, p.Y, transform.position.z);
 
             if (spriteRenderer == null)
@@ -70,7 +94,7 @@ namespace MindAttic.Chain
 
             if (frames.Length > 0)
             {
-                spriteRenderer.sprite = frames[Entity.Frame % frames.Length];
+                spriteRenderer.sprite = frames[Mathf.Abs(frame) % frames.Length];
             }
 
             // The sprite's import is a 1-unit-wide baseline (ArtImportSettings, UNI-T19); scale it to
@@ -80,7 +104,7 @@ namespace MindAttic.Chain
             if (sprite != null)
             {
                 var nativeWidth = sprite.bounds.size.x;
-                var diameter = Entity.Radius * 2f;
+                var diameter = radius * 2f;
                 if (nativeWidth > 0f && diameter > 0f)
                 {
                     transform.localScale = Vector3.one * (diameter / nativeWidth);

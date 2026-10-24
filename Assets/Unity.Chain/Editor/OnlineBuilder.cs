@@ -30,6 +30,18 @@ namespace MindAttic.Chain.EditorTools
         public const string WorldSyncResource = "Online/ChainWorldSync";
 
         private const string MarkerSpritePath = "Assets/Unity.Chain/Art/Angel/angel_right1.png";
+        private const string MaceSpritePath = "Assets/Unity.Chain/Art/Chain/mace.png";
+
+        /// <summary>The marker chain's width: the scene chain's (SceneBuilder.CreateChain).</summary>
+        public const float MarkerChainWidth = 0.08f;
+
+        /// <summary>Writes only the network prefabs and their list (the scene keeps its references to them by GUID).</summary>
+        [MenuItem("MindAttic/Chain/Build Online Prefabs")]
+        public static void BuildPrefabsOnly()
+        {
+            BuildPrefabs();
+            Debug.Log("OnlineBuilder: wrote " + PlayerPrefabPath + " and " + WorldSyncPrefabPath + ".");
+        }
 
         /// <summary>Writes the network prefabs and their list, and returns the list.</summary>
         public static NetPrefabList BuildPrefabs()
@@ -45,6 +57,28 @@ namespace MindAttic.Chain.EditorTools
             markerRenderer.sprite = SceneBuilder.LoadSprite(MarkerSpritePath);
             markerRenderer.enabled = false;
             SceneBuilder.SetPrivateField(chainPlayer, "marker", markerRenderer);
+
+            // U.CHN-T73: another seat's chain and mace beside its marker, drawn as the scene's own chain is.
+            var chainGo = new GameObject("Chain");
+            chainGo.transform.SetParent(player.transform, false);
+            var chainLine = chainGo.AddComponent<LineRenderer>();
+            chainLine.sharedMaterial = SceneBuilder.LoadOrCreateLineMaterial();
+            chainLine.useWorldSpace = true;
+            chainLine.widthMultiplier = MarkerChainWidth;
+            chainLine.textureMode = LineTextureMode.Tile;
+            chainLine.positionCount = 0;
+            chainLine.enabled = false;
+            SceneBuilder.SetPrivateField(chainPlayer, "chainLine", chainLine);
+
+            var maceGo = new GameObject("Mace");
+            maceGo.transform.SetParent(player.transform, false);
+            // The mace sprite is one world unit across at scale 1; chain.json's maceScale times the line's width, as MaceController draws it.
+            maceGo.transform.localScale = Vector3.one * (MarkerChainWidth * SettingsStore.Current.MaceScale);
+            var maceRenderer = maceGo.AddComponent<SpriteRenderer>();
+            maceRenderer.sprite = SceneBuilder.LoadSprite(MaceSpritePath);
+            maceRenderer.sortingOrder = 10;
+            maceRenderer.enabled = false;
+            SceneBuilder.SetPrivateField(chainPlayer, "maceMarker", maceRenderer);
             var playerPrefab = PrefabUtility.SaveAsPrefabAsset(player, PlayerPrefabPath);
             Object.DestroyImmediate(player);
 

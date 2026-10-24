@@ -382,7 +382,7 @@ namespace MindAttic.Chain
             Place();
         }
 
-        private bool IsPaused => session != null && session.World.State.IsPaused;
+        private bool IsPaused => session != null && session.ShowsPaused; // the remote authority's pause online (U.CHN-T73)
 
         private Rect ResolveLevel(out bool hasLevel)
         {

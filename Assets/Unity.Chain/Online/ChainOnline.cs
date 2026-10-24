@@ -178,8 +178,9 @@ namespace MindAttic.Chain.Online
             game.HoldsQuit = false;
             if (game.IsRemote)
             {
-                // Back from someone else's game: this screen's own world starts over, as local play.
+                // Back from someone else's game: this screen draws and starts over its own world, as local play.
                 game.Forward = null;
+                game.StopShowingAuthority();
                 game.Restart();
             }
         }

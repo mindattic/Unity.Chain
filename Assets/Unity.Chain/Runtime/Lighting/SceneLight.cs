@@ -64,7 +64,7 @@ namespace MindAttic.Chain
         {
             get
             {
-                var ambient = session != null ? session.State.AmbientLevel : 1f;
+                var ambient = session != null ? session.ShownAmbientLevel : 1f; // the remote authority's fade online (U.CHN-T73)
                 var lit = State.LightColour(ambient);
                 return new Color(lit.R, lit.G, lit.B, 1f);
             }
@@ -73,7 +73,7 @@ namespace MindAttic.Chain
         /// <summary>One frame of renderLight: walks the cycle and lights the scene. Called from FixedUpdate; public so tests can drive it.</summary>
         public void Step(float deltaTime)
         {
-            if (session == null || !session.State.IsPaused) // pause skipped renderLight
+            if (session == null || !session.ShowsPaused) // pause skipped renderLight
             {
                 State.Step(deltaTime);
             }

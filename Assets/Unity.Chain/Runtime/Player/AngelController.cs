@@ -203,21 +203,40 @@ namespace MindAttic.Chain
             return new Rect(center.x - hx, center.y - hy, hx * 2f, hy * 2f);
         }
 
-        /// <summary>Draws the angel where the world has it.</summary>
-        private void Apply()
+        /// <summary>
+        /// Draws the angel where the world has it: online as a client, where the remote authority has this screen's seat
+        /// (<see cref="GameSession.Shown"/>, U.CHN-T73), its hand on the shown chain's link 0. Public so tests can drive it.
+        /// </summary>
+        public void Apply()
         {
+            if (Session != null && Session.Shown != null)
+            {
+                if (Session.TryGetShownPlayer(out var shown))
+                {
+                    var links = shown.Links;
+                    Draw(shown.Angel, links != null && links.Length > 0 ? links[0] : shown.Angel, shown.Facing, shown.Frame);
+                }
+
+                return;
+            }
+
             var flight = Flight;
             if (flight == null)
             {
                 return;
             }
 
-            var p = flight.RenderPosition.ToUnity();
+            Draw(flight.RenderPosition, flight.HandSocket, flight.Facing, flight.Frame);
+        }
+
+        private void Draw(Vec2 body, Vec2 handSocket, Facing facing, int frame)
+        {
+            var p = body.ToUnity();
             transform.position = new Vector3(p.x, p.y, transform.position.z);
 
             if (handSocketTransform != null)
             {
-                var hand = flight.HandSocket.ToUnity();
+                var hand = handSocket.ToUnity();
                 handSocketTransform.position = new Vector3(hand.x, hand.y, handSocketTransform.position.z);
             }
 
@@ -226,14 +245,14 @@ namespace MindAttic.Chain
                 return;
             }
 
-            var facingLeft = flight.Facing == Facing.Left;
+            var facingLeft = facing == Facing.Left;
             var useLeftSet = facingLeft && leftFrames.Length > 0;
             var frames = useLeftSet ? leftFrames : rightFrames;
             spriteRenderer.flipX = facingLeft && !useLeftSet;
 
             if (frames.Length > 0)
             {
-                spriteRenderer.sprite = frames[flight.Frame % frames.Length];
+                spriteRenderer.sprite = frames[Mathf.Abs(frame) % frames.Length];
             }
 
             // The sprite's import is a 1-unit-wide baseline (ArtImportSettings, UNI-T19); scale it to
@@ -248,6 +267,16 @@ namespace MindAttic.Chain
                 {
                     transform.localScale = Vector3.one * (diameter / nativeWidth);
                 }
+            }
+        }
+
+        // Online as a client the authority's snapshots move the angel whether or not this screen steers (U.CHN-T73);
+        // in local play SendInput draws it after each steer, as before.
+        private void LateUpdate()
+        {
+            if (Session != null && Session.Shown != null)
+            {
+                Apply();
             }
         }
 
