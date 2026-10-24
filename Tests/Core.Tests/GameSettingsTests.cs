@@ -227,6 +227,7 @@ namespace MindAttic.Chain.Tests
             Assert.AreEqual(1f, world.Enemies.MassMin);
             Assert.AreEqual(2f, world.Enemies.MassMax);
             Assert.AreEqual(1f, world.Enemies.Hp);
+            Assert.AreEqual(0.2f, world.Enemies.LoadHp, "loadEnemy's weaker first-wave HP, UNI-T70");
             Assert.AreEqual(0.36f, world.Enemies.Brain.SeekRate, 1e-6f);
             Assert.AreEqual(EnemyBrain.DefaultFlockSpeed, Load().World.Enemies.FlockSpeed, 1e-5f, "UNI-T35's 0.06 x 9");
             Assert.AreEqual(0.06f, world.Enemies.FlockSpeed, 1e-6f, "UNI-T35's 0.06 at scale 1");
@@ -329,6 +330,7 @@ namespace MindAttic.Chain.Tests
             Assert.AreEqual(1f, settings.World.GameSpeed, "gameSpeed = 1.0");
             Assert.AreEqual(30, settings.World.Session.MaxHp, "Angel(0).HP = maxHP");
             Assert.AreEqual(1f, settings.World.Enemies.Hp, "Enemy(n).HP = 1.0");
+            Assert.AreEqual(0.2f, settings.World.Enemies.LoadHp, "loadEnemy's Enemy(n).HP = 0.2, UNI-T70");
             Assert.AreEqual(settings.Heart.StartY, settings.World.Heart.StartY, "the world's hearts are item.json's");
             Assert.AreEqual(0.4f * 9f, settings.World.Heart.StartY, 1e-5f, "item(n).Y = 0.4");
             Assert.AreEqual(0.001f * 9f, settings.World.Heart.ResetFloatSpeed, 1e-6f, "floatSPD = 0.001");
@@ -349,9 +351,11 @@ namespace MindAttic.Chain.Tests
                 world.Step(1f / 60f);
             }
 
-            Assert.AreEqual(14, world.Enemies.Count);
+            // The first wave spawns at loadEnemy's weaker HP (UNI-T70): one of the ten waiting enemies
+            // takes enough incidental chain contact in this first second to die before ever seeking.
+            Assert.AreEqual(13, world.Enemies.Count);
             Assert.AreEqual(4, world.SeekerCount(), "the shipped Seek cap");
-            Assert.AreEqual(10, world.Enemies.Count(e => e.Brain.IsWaiting), "the rest hang back or stalk");
+            Assert.AreEqual(9, world.Enemies.Count(e => e.Brain.IsWaiting), "the rest hang back or stalk");
             Assert.AreEqual(6, world.Players[0].MaceIndex);
         }
 

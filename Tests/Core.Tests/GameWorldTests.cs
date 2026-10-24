@@ -528,6 +528,27 @@ namespace MindAttic.Chain.Tests
         }
 
         [Test]
+        public void SpawnWave_FirstWaveUsesLoadHp_LaterWavesUseResetHp()
+        {
+            // UNI-T70: Enemy.vb's loadEnemy spawns the game's first wave weaker than every wave Root.vb's
+            // Reset spawns after it.
+            var settings = GameWorld.Settings.Default;
+            settings.Enemies.Count = 3;
+            settings.Enemies.Hp = 1f;
+            settings.Enemies.LoadHp = 0.2f;
+            var world = new GameWorld(settings, new Random(1));
+
+            world.SpawnWave();
+            Assert.IsTrue(world.Enemies.All(e => e.Hp == 0.2f), "the very first wave spawns at loadEnemy's weaker HP");
+
+            world.Reset();
+            Assert.IsTrue(world.Enemies.All(e => e.Hp == 1f), "every wave after the first spawns at Reset's HP");
+
+            world.Reset();
+            Assert.IsTrue(world.Enemies.All(e => e.Hp == 1f), "a later reset still uses Reset's HP, not loadEnemy's");
+        }
+
+        [Test]
         public void RandomPositions_AreInsideTheArea()
         {
             var area = new Rect2(-8f, -4.5f, 16f, 9f);

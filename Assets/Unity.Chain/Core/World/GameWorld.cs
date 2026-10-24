@@ -31,8 +31,13 @@ namespace MindAttic.Chain.Core
         {
             /// <summary>Enemies per wave (Enemy.vb: maxEnemy 13, so 14).</summary>
             public int Count;
-            /// <summary>Starting HP (Root.vb Reset: 1.0).</summary>
+            /// <summary>Starting HP for every wave after the first (Root.vb Reset: 1.0).</summary>
             public float Hp;
+            /// <summary>
+            /// Starting HP for the very first wave only (Enemy.vb loadEnemy: 0.2, weaker than a post-Reset
+            /// wave's <see cref="Hp"/>; UNI-T70).
+            /// </summary>
+            public float LoadHp;
             /// <summary>Random mass range (Enemy.vb: 1-2). Knockback is divided by mass.</summary>
             public float MassMin;
             public float MassMax;
@@ -52,6 +57,7 @@ namespace MindAttic.Chain.Core
             {
                 Count = 14,
                 Hp = 1f,
+                LoadHp = 1f,
                 MassMin = 1f,
                 MassMax = 2f,
                 Radius = 0.3f,
@@ -101,6 +107,10 @@ namespace MindAttic.Chain.Core
         private readonly Random _visualRandom;
         private Vec2[] _snapshot = new Vec2[0];
         private int _nextEnemyId = 1;
+        // Enemy.vb's loadEnemy (the game's first wave, weaker) runs once; every wave after it is Root.vb's
+        // Reset (UNI-T70). Set the first time SpawnWave runs, whether that is this world's first Reset or,
+        // in a test, a direct SpawnWave call.
+        private bool _spawnedFirstWave;
 
         public GameWorld() : this(Settings.Default)
         {
@@ -248,12 +258,18 @@ namespace MindAttic.Chain.Core
             return enemy;
         }
 
-        /// <summary>Spawns <see cref="EnemySetup.Count"/> enemies at random points in the arena (Enemy.vb loadEnemy).</summary>
+        /// <summary>
+        /// Spawns <see cref="EnemySetup.Count"/> enemies at random points in the arena: the first wave this
+        /// world ever spawns at <see cref="EnemySetup.LoadHp"/> (Enemy.vb loadEnemy), every one after it at
+        /// <see cref="EnemySetup.Hp"/> (Root.vb Reset; UNI-T70).
+        /// </summary>
         public void SpawnWave()
         {
+            var hp = _spawnedFirstWave ? Config.Enemies.Hp : Config.Enemies.LoadHp;
+            _spawnedFirstWave = true;
             foreach (var point in RandomPositions(Arena ?? DefaultArena, Config.Enemies.Count, _random))
             {
-                SpawnEnemy(point);
+                SpawnEnemy(point, hp: hp);
             }
         }
 
@@ -411,13 +427,15 @@ namespace MindAttic.Chain.Core
         /// (Reset's <c>fadeOut = 255</c> and white ambient), game speed 1.0, unpaused; each angel at full HP
         /// and home at its start, flying, its chain collapsed on its hand with the chain's spring, resistance
         /// and gravity back at the data files' figures (whatever live tuning changed them) and its grapple
-        /// idle; every enemy replaced by a fresh wave at Reset's HP, seeking, each at a real random point in
-        /// the arena (the original's integer random put them all in the corners, BIBLE D1); every heart back
-        /// at its start, swaying left at Reset's <c>floatSPD</c>, drawn again. The chain length, the follow
-        /// flag and the heart's <c>turnAround</c> are kept, as Root.vb's Reset touches none of them. Then
+        /// idle; every enemy replaced by a fresh wave, seeking, each at a real random point in the arena (the
+        /// original's integer random put them all in the corners, BIBLE D1); every heart back at its start,
+        /// swaying left at Reset's <c>floatSPD</c>, drawn again. The chain length, the follow flag and the
+        /// heart's <c>turnAround</c> are kept, as Root.vb's Reset touches none of them. Then
         /// <see cref="WorldReset"/> has presentation recentre the camera (Reset's cam and target at the
         /// origin), jump the music to a random point (<c>rndMusicPos</c>) and switch lighting back on
-        /// (<c>bLighting = True</c>; the time of day runs on). The authority calls this once to begin.
+        /// (<c>bLighting = True</c>; the time of day runs on). The authority calls this once to begin: that
+        /// first wave spawns weaker, at Enemy.vb loadEnemy's HP, not Reset's (<see cref="SpawnWave"/>,
+        /// UNI-T70).
         /// </summary>
         public void Reset()
         {

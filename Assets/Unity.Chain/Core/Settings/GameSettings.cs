@@ -246,6 +246,7 @@ namespace MindAttic.Chain.Core
                     // Enemy.vb's enemies are 0..maxEnemy.
                     Count = enemies.MaxEnemy + 1,
                     Hp = enemies.ResetHP,
+                    LoadHp = enemies.LoadHP,
                     MassMin = enemies.MassBase,
                     MassMax = enemies.MassBase + enemies.MassRandom,
                     Radius = enemies.Port.Radius,

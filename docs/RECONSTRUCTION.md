@@ -97,7 +97,7 @@ but unreachable or does nothing; not ported, recorded here), **n/a** (DirectX pl
 | Behaviour | Original | Rebuild | Status / ticket |
 |---|---|---|---|
 | Count and spawn | 14 (`maxEnemy` 13). `getRndNum(-1, 1)` returns the integers -1, 0 or 1 and 0 is rejected, so every enemy spawns at one of the four corners (+/-1, +/-1) | no spawner | missing, UNI-T21 |
-| Start values | `loadEnemy`: HP 0.2, mass 1 + rand(0..1), random frame 0..6. `Reset`: HP 1.0, mass unchanged | `GameWorld.SpawnEnemy` (mass, UNI-T21; initial `EnemyBrain.Frame`, UNI-T19), but every spawn uses `enemies.json`'s `resetHP` (1.0) -- `loadHP` (0.2) is read and never used, so the very first wave is not weaker | partial, UNI-T70 |
+| Start values | `loadEnemy`: HP 0.2, mass 1 + rand(0..1), random frame 0..6. `Reset`: HP 1.0, mass unchanged | `GameWorld.SpawnWave`'s very first wave spawns at `enemies.json`'s `loadHP` (0.2, `EnemySetup.LoadHp`), every wave after it at `resetHP` (1.0, `EnemySetup.Hp`); mass and frame as `GameWorld.SpawnEnemy` already drew them (UNI-T21, initial `EnemyBrain.Frame` UNI-T19) | ported (UNI-T70) |
 | Seek | `d = (angel - offset - pos) * 0.006` (proportional, so it eases in) | `EnemyBrain` | ported |
 | Hurt | decays velocity by `resistSPD` 0.001 per axis, back to Seek when both are near zero | `EnemyBrain` | ported |
 | Grabbed | follows the mace link (+0.03, small random jitter), spins | `Grapple` in `GameWorld` | ported |
