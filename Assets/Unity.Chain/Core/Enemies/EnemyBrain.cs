@@ -90,6 +90,12 @@ namespace MindAttic.Chain.Core
             };
         }
 
+        /// <summary>Enemy.vb's animateEnemy: 0.1 s per frame.</summary>
+        public const float DefaultFrameDuration = 0.1f;
+
+        /// <summary>Enemy.vb's eFrames = 6, so 7 frames (0..6), Shadow\enemy1..7.</summary>
+        public const int FrameCount = 7;
+
         public Settings Config;
 
         public float MaxHp { get; }
@@ -97,6 +103,16 @@ namespace MindAttic.Chain.Core
         public float Mass { get; }
         public EnemyState State { get; private set; } = EnemyState.Seek;
         public Vec2 Velocity { get; private set; }
+
+        /// <summary>
+        /// Enemy.vb's <c>Enemy(n).Frame</c>: loadEnemy starts it at a random 0..6, then
+        /// <c>animateEnemy</c> advances it every <see cref="DefaultFrameDuration"/> while this enemy
+        /// is stepped (not while Grabbed: the world does not step a held enemy's brain, a minor
+        /// deviation -- the original kept animating a grabbed enemy too).
+        /// </summary>
+        public int Frame { get; private set; }
+
+        private float _frameTime;
 
         /// <summary>True from a throw until the enemy recovers: it knocks other enemies it touches.</summary>
         public bool IsThrown { get; private set; }
@@ -127,12 +143,13 @@ namespace MindAttic.Chain.Core
             }
         }
 
-        public EnemyBrain(float hp = 1f, float mass = 1f, Settings? settings = null)
+        public EnemyBrain(float hp = 1f, float mass = 1f, Settings? settings = null, int initialFrame = 0)
         {
             MaxHp = Calc.Max(0.0001f, hp);
             Hp = MaxHp;
             Mass = Calc.Max(0.01f, mass);
             Config = settings ?? Settings.Default;
+            Frame = ((initialFrame % FrameCount) + FrameCount) % FrameCount;
         }
 
         /// <summary>
@@ -145,6 +162,8 @@ namespace MindAttic.Chain.Core
         /// </summary>
         public Vec2 Step(Vec2 position, Vec2 seekPoint, float deltaTime)
         {
+            AdvanceFrame(deltaTime);
+
             var offset = seekPoint - position;
             switch (State)
             {
@@ -281,6 +300,17 @@ namespace MindAttic.Chain.Core
             }
 
             return Calc.Sign(difference);
+        }
+
+        /// <summary>Enemy.vb's animateEnemy: loops 0..<see cref="FrameCount"/>-1 every <see cref="DefaultFrameDuration"/>.</summary>
+        private void AdvanceFrame(float deltaTime)
+        {
+            _frameTime += deltaTime;
+            while (_frameTime >= DefaultFrameDuration)
+            {
+                _frameTime -= DefaultFrameDuration;
+                Frame = (Frame + 1) % FrameCount;
+            }
         }
 
         /// <summary>Caught by the grapple. Returns false if it cannot be caught.</summary>

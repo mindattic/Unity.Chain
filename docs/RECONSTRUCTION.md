@@ -86,7 +86,7 @@ but unreachable or does nothing; not ported, recorded here), **n/a** (DirectX pl
 | Steering | `X += mouseX * 0.00171`, `Y -= mouseY * 0.00171` from the exclusive mouse delta | `AngelFlight` | ported |
 | Facing | right when delta.x > 0, left when < 0 (kept otherwise); hand offset 0 right / 0.033 left | `AngelController` | ported |
 | Hover bob | triangle wave +/-0.01 in 0.001 steps per frame, applied to the draw offset | `AngelFlight` | ported |
-| Flap | 4 frames per facing, advance every 0.1 s, loops | frame logic in place, no art | partial, UNI-T19 |
+| Flap | 4 frames per facing, advance every 0.1 s, loops | frame logic in place, `angel_left1-4`/`angel_right1-4` wired | ported (UNI-T19) |
 | Bounds | X -0.6..0.5, Y -0.6..0.4 | `LevelBounds` | ported |
 | HP / hurt | 30 HP, 1 per enemy contact at most every 0.25 s, game over below 0 | `GameState` | ported (HP+1 quirk, UNI-T45) |
 | Contact rect | X..X+0.06 by Y+0.03..Y+0.15 | physics circle | deliberate deviation |
@@ -97,7 +97,7 @@ but unreachable or does nothing; not ported, recorded here), **n/a** (DirectX pl
 | Behaviour | Original | Rebuild | Status / ticket |
 |---|---|---|---|
 | Count and spawn | 14 (`maxEnemy` 13). `getRndNum(-1, 1)` returns the integers -1, 0 or 1 and 0 is rejected, so every enemy spawns at one of the four corners (+/-1, +/-1) | no spawner | missing, UNI-T21 |
-| Start values | `loadEnemy`: HP 0.2, mass 1 + rand(0..1), random frame 0..6. `Reset`: HP 1.0, mass unchanged | n/a | UNI-T21 (note both) |
+| Start values | `loadEnemy`: HP 0.2, mass 1 + rand(0..1), random frame 0..6. `Reset`: HP 1.0, mass unchanged | `GameWorld.SpawnEnemy` (mass, UNI-T21) and `EnemyBrain`'s initial `Frame` (UNI-T19) | ported |
 | Seek | `d = (angel - offset - pos) * 0.006` (proportional, so it eases in) | `EnemyBrain` | ported |
 | Hurt | decays velocity by `resistSPD` 0.001 per axis, back to Seek when both are near zero | `EnemyBrain` | ported |
 | Grabbed | follows the mace link (+0.03, small random jitter), spins | `Grapple` in `GameWorld` | ported |
@@ -106,7 +106,7 @@ but unreachable or does nothing; not ported, recorded here), **n/a** (DirectX pl
 | Mace hit | alive, not Hurt, not Grabbed: velocity = mace velocity / mass, damage = abs(dX + dY/2), score += damage * 1000; a held enemy takes the same | `GameWorld` mace step (swept circle, speed-based damage) | deliberate deviation (UNI-T45) |
 | Throw impact | thrown enemy knocks any overlapping enemy: v = thrown v / mass, Hurt | `EnemyBrain` | ported |
 | Flocking | overlapping live, not-grabbed pairs pushed apart by 0.0005 per axis, each pair visited twice a frame (so 0.001); range test commented out, `flockRange` unused | `EnemyBrain.FlockPush`, 0.06 u/s | ported, UNI-T23, UNI-T35 |
-| Animation | 7 frames (`Shadow\enemy1..7`), 0.1 s per frame | no art | partial, UNI-T19 |
+| Animation | 7 frames (`Shadow\enemy1..7`), 0.1 s per frame, starts at a random frame (`loadEnemy`) | `EnemyBrain.Frame`, advanced in `Step` and read by `Enemy`'s view | ported, deviation: paused while Grabbed since the world does not step a held enemy's brain (UNI-T19) |
 | AI states `Cautious`, `Align` | coded but never selected. `Cautious`: `d = 6 * seekSpd * -getSlope(angel, pos) / mass`, and `getSlope` returns pos - angel, so as written it charges; `Align`: `+/-seekSpd` per axis toward the angel (y with an `angelSize / 3` offset) | `EnemyBrain` Cautious/Align behind `GameWorld`'s Seek cap | fixed defect D18 (UNI-T65) |
 | AI states `Retreat`, `Wander`, `Limbo`, `Death` | empty or just sink | none | dead |
 
@@ -247,7 +247,7 @@ Checked against `AGENTS.md` (the owner's rebuild standard) and the reference rep
 | BIBLE | `docs/BIBLE.md` written: rules, architecture, data, fixed defects, deviations (UNI-T29) | done |
 | Built in code | `SceneBuilder`/`PlayerBuilder` generate the scene (good); keep it that way | ok |
 | Multiplayer seam | Not started | UNI-T26 |
-| Asset and meta hygiene | `.meta` files committed (UNI-T17); art and audio absent | UNI-T19, UNI-T20 |
+| Asset and meta hygiene | `.meta` files committed (UNI-T17); art imported and wired (UNI-T19); audio absent | UNI-T20 |
 
 ## 6. Build order
 

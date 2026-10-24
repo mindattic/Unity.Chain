@@ -8,7 +8,9 @@ namespace MindAttic.Chain
     /// Makes and removes the enemies' views as the world reports them. The world spawns the flock
     /// (Enemy.vb <c>loadEnemy</c>: 14 enemies at random points with a random mass of 1-2, tuned on the
     /// <see cref="GameSession"/>) on every reset; this spawner plays the events: an
-    /// <see cref="EnemySpawned"/> gets a new <see cref="Enemy"/> with a random frame, an
+    /// <see cref="EnemySpawned"/> gets a new <see cref="Enemy"/>, which shows the animation frame the
+    /// world already rolled for it (<see cref="EnemyEntity.Frame"/>, from <c>EnemyBrain</c>'s own port
+    /// of <c>loadEnemy</c>'s random start and <c>animateEnemy</c>'s 0.1 s loop), an
     /// <see cref="EnemyKilled"/> plays its death, and an <see cref="EnemyRemoved"/> (a reset clearing
     /// the old flock) destroys it.
     /// </summary>
@@ -16,11 +18,10 @@ namespace MindAttic.Chain
     public sealed class EnemySpawner : MonoBehaviour
     {
         [SerializeField] private GameSession session;
-        [Tooltip("Frames an enemy picks from at random. Optional: enemies with none keep a plain disc.")]
+        [Tooltip("Enemy.vb's 7-frame loop (Shadow/enemy1-7). Optional: enemies with none keep a plain disc.")]
         [SerializeField] private Sprite[] frames = new Sprite[0];
 
         private readonly Dictionary<EnemyId, Enemy> _views = new Dictionary<EnemyId, Enemy>();
-        private readonly System.Random _random = new System.Random();
         private GameSession _subscribed;
 
         public GameSession Session
@@ -112,9 +113,14 @@ namespace MindAttic.Chain
             go.transform.SetParent(transform, false);
 
             var renderer = go.AddComponent<SpriteRenderer>();
+            var view = go.AddComponent<Enemy>();
+            view.SpriteRenderer = renderer;
+
             if (frames != null && frames.Length > 0)
             {
-                renderer.sprite = frames[_random.Next(frames.Length)];
+                // Enemy.vb's 7-frame loop (UNI-T19): each enemy starts on the world's own random
+                // frame (Enemy.Frame, from EnemyBrain's loadEnemy port) and advances from there.
+                view.Frames = frames;
             }
             else
             {
@@ -123,7 +129,6 @@ namespace MindAttic.Chain
                 renderer.color = new Color(0.85f, 0.2f, 0.2f);
             }
 
-            var view = go.AddComponent<Enemy>();
             view.Bind(entity);
             return view;
         }

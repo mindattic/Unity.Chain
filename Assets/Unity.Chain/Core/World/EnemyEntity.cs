@@ -25,6 +25,9 @@ namespace MindAttic.Chain.Core
         public bool IsAlive => Brain.IsAlive;
         public Vec2 Velocity => Brain.Velocity;
 
+        /// <summary>Enemy.vb's animateEnemy frame, 0..<see cref="EnemyBrain.FrameCount"/>-1 (Shadow\enemy1..7).</summary>
+        public int Frame => Brain.Frame;
+
         /// <summary>True while the enemy is still in the world (it leaves when killed or cleared).</summary>
         public bool InWorld { get; internal set; } = true;
 

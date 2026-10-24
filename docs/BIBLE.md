@@ -205,7 +205,7 @@ Nothing tunes the game from the Inspector any more.
 | `hud.json` | the original window (512x448), the status box (0, 0, 96x48), each HUD line's anchor, pixel position, `Write` colour [alpha, red, green, blue], font size (points) and weight (the round clock's `clock` at (300, 5) in yellow, UNI-T53), `fpsSampleMs` (100), `drawFps` (on); `menu`: Gui.vb's menu panel at (10, 10), 255x255, its lines' colour (255, 255, 255, 64), font and each line's spot (UNI-T55); `zone`: Zone.vb's hit box, `bZone` (on), loadZone's left/right/top/bottom (0, 0.05, 0, -0.05 screen units), the enemy and mace corners renderZone moves it to, `texZone`'s colour (0, 128, 255), port: the line width (UNI-T56); port: the pause dim, the game-over banner, the text shadow (UNI-T50) | `Gui.vb`, `Engine.vb`, `Root.vb` |
 | `input.json` | `bJoystick`, the joystick's `joyRange` (1000) and `joyOutsideDeadZone` (250); port: `stickSpeed`, the mouse counts a second a full stick steers by (D14) | `Input.vb` |
 
-Still in code, for later tickets: the game-over fade step and floor (`GameState`), asset lists (UNI-T19, UNI-T20) and the arena size
+Still in code, for later tickets: the game-over fade step and floor (`GameState`), the audio clip list (UNI-T20) and the arena size
 (`LevelBounds`, UNI-T66).
 
 **Player options live in the player's profile** (UNI-T36): the shared MindAttic profile's settings.json (the

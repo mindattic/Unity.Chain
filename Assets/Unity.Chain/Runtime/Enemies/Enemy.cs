@@ -18,6 +18,11 @@ namespace MindAttic.Chain
         [Min(0f)]
         [SerializeField] private float destroyDelay = 0f;
 
+        [Header("Animation")]
+        [SerializeField] private SpriteRenderer spriteRenderer;
+        [Tooltip("Enemy.vb's 7-frame loop (Shadow/enemy1-7). Left empty, the sprite never changes.")]
+        [SerializeField] private Sprite[] frames = new Sprite[0];
+
         /// <summary>The world enemy this view shows. Kept after it dies, so its last state can still be read.</summary>
         public EnemyEntity Entity { get; private set; }
 
@@ -28,6 +33,18 @@ namespace MindAttic.Chain
         public Vector2 Velocity => Entity != null ? Entity.Velocity.ToUnity() : Vector2.zero;
         public Vector2 Position => Entity != null ? Entity.Position.ToUnity() : (Vector2)transform.position;
 
+        public SpriteRenderer SpriteRenderer
+        {
+            get => spriteRenderer;
+            set => spriteRenderer = value;
+        }
+
+        public Sprite[] Frames
+        {
+            get => frames;
+            set => frames = value ?? new Sprite[0];
+        }
+
         /// <summary>Shows <paramref name="entity"/>.</summary>
         public void Bind(EnemyEntity entity)
         {
@@ -35,7 +52,7 @@ namespace MindAttic.Chain
             Follow();
         }
 
-        /// <summary>Stands the sprite where the world has the enemy. Called every frame; public so tests can drive it.</summary>
+        /// <summary>Stands the sprite where the world has the enemy and shows its current animation frame. Called every frame; public so tests can drive it.</summary>
         public void Follow()
         {
             if (Entity == null || !Entity.InWorld)
@@ -45,6 +62,11 @@ namespace MindAttic.Chain
 
             var p = Entity.Position;
             transform.position = new Vector3(p.X, p.Y, transform.position.z);
+
+            if (spriteRenderer != null && frames.Length > 0)
+            {
+                spriteRenderer.sprite = frames[Entity.Frame % frames.Length];
+            }
         }
 
         /// <summary>The enemy died: hide it now and remove it (after <c>destroyDelay</c> in play mode).</summary>

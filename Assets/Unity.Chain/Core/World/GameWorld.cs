@@ -229,7 +229,8 @@ namespace MindAttic.Chain.Core
             var lo = Calc.Min(setup.MassMin, setup.MassMax);
             var hi = Calc.Max(setup.MassMin, setup.MassMax);
             var rolled = mass ?? (hi - lo < 1e-6f ? lo : lo + (float)_random.NextDouble() * (hi - lo));
-            var brain = new EnemyBrain(hp ?? setup.Hp, rolled, setup.Brain);
+            // Enemy.vb's loadEnemy: Enemy(n).Frame = getRndNum(0, 6).
+            var brain = new EnemyBrain(hp ?? setup.Hp, rolled, setup.Brain, _random.Next(EnemyBrain.FrameCount));
             if (SeekerCount() >= setup.SeekCap)
             {
                 brain.Wait((SeekPoint(position) - position).Magnitude);
