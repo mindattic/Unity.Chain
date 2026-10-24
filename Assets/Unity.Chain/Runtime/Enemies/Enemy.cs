@@ -63,9 +63,28 @@ namespace MindAttic.Chain
             var p = Entity.Position;
             transform.position = new Vector3(p.X, p.Y, transform.position.z);
 
-            if (spriteRenderer != null && frames.Length > 0)
+            if (spriteRenderer == null)
+            {
+                return;
+            }
+
+            if (frames.Length > 0)
             {
                 spriteRenderer.sprite = frames[Entity.Frame % frames.Length];
+            }
+
+            // The sprite's import is a 1-unit-wide baseline (ArtImportSettings, UNI-T19); scale it to
+            // this enemy's own physics circle (EnemyEntity.Radius x2) the same way HeartPickup scales
+            // heart.png to itemSize, so the art matches what it collides, is hit and is grabbed as.
+            var sprite = spriteRenderer.sprite;
+            if (sprite != null)
+            {
+                var nativeWidth = sprite.bounds.size.x;
+                var diameter = Entity.Radius * 2f;
+                if (nativeWidth > 0f && diameter > 0f)
+                {
+                    transform.localScale = Vector3.one * (diameter / nativeWidth);
+                }
             }
         }
 

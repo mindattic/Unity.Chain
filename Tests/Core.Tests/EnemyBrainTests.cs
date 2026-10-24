@@ -195,5 +195,44 @@ namespace MindAttic.Chain.Tests
             brain.Wait(10f);
             Assert.AreEqual(EnemyState.Hurt, brain.State);
         }
+
+        // --- Animation (Enemy.vb's loadEnemy random start, animateEnemy's 0.1 s loop; UNI-T19) ----
+
+        [Test]
+        public void Frame_StartsAtTheGivenInitialFrame_WrappedIntoRange()
+        {
+            Assert.AreEqual(0, new EnemyBrain().Frame, "default: Enemy.vb's getRndNum(0, 6) is the caller's job");
+            Assert.AreEqual(3, new EnemyBrain(initialFrame: 3).Frame);
+            Assert.AreEqual(0, new EnemyBrain(initialFrame: EnemyBrain.FrameCount).Frame, "wraps at the top");
+            Assert.AreEqual(EnemyBrain.FrameCount - 1, new EnemyBrain(initialFrame: -1).Frame, "wraps a negative value too");
+        }
+
+        [Test]
+        public void Frame_AdvancesOnceEveryTenthOfASecond_AndLoops()
+        {
+            var brain = new EnemyBrain(initialFrame: 0);
+
+            brain.Step(Vec2.Zero, Vec2.Zero, 0.09f);
+            Assert.AreEqual(0, brain.Frame, "not yet a full 0.1 s");
+
+            brain.Step(Vec2.Zero, Vec2.Zero, 0.02f); // 0.11 s total
+            Assert.AreEqual(1, brain.Frame);
+
+            // One large step spanning several frame durations advances through all of them, Enemy.vb
+            // having no cap on how many frames animateEnemy steps in a tick.
+            brain.Step(Vec2.Zero, Vec2.Zero, 1f);
+            Assert.AreEqual((1 + 10) % EnemyBrain.FrameCount, brain.Frame);
+        }
+
+        [Test]
+        public void Frame_DoesNotAdvance_WhileTheBrainIsNotStepped()
+        {
+            // The world does not step a Grabbed enemy's brain (GameWorld.StepEnemies), so its
+            // animation holds wherever it was -- a minor, documented deviation from the original,
+            // which kept animating a held enemy too (docs/RECONSTRUCTION.md).
+            var brain = new EnemyBrain(initialFrame: 2);
+            Assert.IsTrue(brain.Grab());
+            Assert.AreEqual(2, brain.Frame);
+        }
     }
 }

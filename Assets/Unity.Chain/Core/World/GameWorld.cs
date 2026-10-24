@@ -95,6 +95,10 @@ namespace MindAttic.Chain.Core
         private readonly List<EnemyEntity> _touched = new List<EnemyEntity>();
         private readonly List<float> _touchedAt = new List<float>();
         private readonly Random _random;
+        // A separate stream for cosmetic-only randomness (an enemy's starting animation frame, UNI-T19)
+        // so it never shifts the gameplay-affecting draws (positions, masses) that _random makes:
+        // a replay or a seeded test pinning those stays exact regardless of how many enemies spawn.
+        private readonly Random _visualRandom;
         private Vec2[] _snapshot = new Vec2[0];
         private int _nextEnemyId = 1;
 
@@ -106,6 +110,7 @@ namespace MindAttic.Chain.Core
         {
             Config = settings;
             _random = random ?? new Random();
+            _visualRandom = new Random(_random.Next());
             State = new GameState(settings.Session);
             GameSpeed = Calc.Max(0f, settings.GameSpeed);
         }
@@ -229,8 +234,9 @@ namespace MindAttic.Chain.Core
             var lo = Calc.Min(setup.MassMin, setup.MassMax);
             var hi = Calc.Max(setup.MassMin, setup.MassMax);
             var rolled = mass ?? (hi - lo < 1e-6f ? lo : lo + (float)_random.NextDouble() * (hi - lo));
-            // Enemy.vb's loadEnemy: Enemy(n).Frame = getRndNum(0, 6).
-            var brain = new EnemyBrain(hp ?? setup.Hp, rolled, setup.Brain, _random.Next(EnemyBrain.FrameCount));
+            // Enemy.vb's loadEnemy: Enemy(n).Frame = getRndNum(0, 6). Drawn from _visualRandom, not
+            // _random: purely cosmetic, so it never shifts the position/mass sequence (see field doc).
+            var brain = new EnemyBrain(hp ?? setup.Hp, rolled, setup.Brain, _visualRandom.Next(EnemyBrain.FrameCount));
             if (SeekerCount() >= setup.SeekCap)
             {
                 brain.Wait((SeekPoint(position) - position).Magnitude);

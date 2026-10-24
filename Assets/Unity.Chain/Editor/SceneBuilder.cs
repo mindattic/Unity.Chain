@@ -1,4 +1,5 @@
 using System.IO;
+using MindAttic.Chain.Core;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -123,12 +124,15 @@ namespace MindAttic.Chain.EditorTools
 
             // Chain.vb drew every link with gfx/chain/link.png (UNI-T19); tiled along the line so it
             // repeats per link instead of stretching one texture the chain's whole length.
+            // LineRenderer.textureMode Tile repeats the texture once per world unit times the
+            // material's x scale (not "scale.x total repeats", which is Stretch's behaviour), so a
+            // square-looking, undistorted tile needs the repeat length to equal the line's own width.
             var linkSprite = AssetDatabase.LoadAssetAtPath<Sprite>(ChainArtPath + "link.png");
             if (linkSprite != null)
             {
                 line.textureMode = LineTextureMode.Tile;
                 lineMaterial.mainTexture = linkSprite.texture;
-                lineMaterial.mainTextureScale = new Vector2(25f, 1f); // ~chain.json's maxLinks
+                lineMaterial.mainTextureScale = new Vector2(1f / line.widthMultiplier, 1f);
             }
 
             // The chain's player is seated by the GameSession, which binds these to the world.
@@ -181,15 +185,19 @@ namespace MindAttic.Chain.EditorTools
         {
             // Background.vb: a bgWidth (1.2) x 2*bgHeight (0.83) quad translated to x -0.56, left
             // edge on X and vertically centred (Root.vb's setupVertex), beach.png by default
-            // (UNI-T19). The sprite imports as a 1x1 unit square (ArtImportSettings), stretched here
-            // to that quad. The B/N toggle, the brick-room fallback and the rest of the area list are
-            // UNI-T40's: this is only the static backdrop so the scene is no longer empty behind it.
+            // (UNI-T19). Those are the original's own screen units, so OriginalSpace.ArenaLengthScale
+            // maps them into this port's world units exactly like every other original figure
+            // (GameSettings' m.Length calls) -- the DefaultArena is 16 x 9, not 1 x 1. The sprite
+            // imports as a 1x1 unit square (ArtImportSettings), stretched here to that quad. The B/N
+            // toggle, the brick-room fallback and the rest of the area list are UNI-T40's: this is
+            // only the static backdrop so the scene is no longer empty behind it.
+            const float scale = OriginalSpace.ArenaLengthScale;
             var go = new GameObject("Background");
             var renderer = go.AddComponent<SpriteRenderer>();
             renderer.sprite = AssetDatabase.LoadAssetAtPath<Sprite>(BackgroundSpritePath);
             renderer.sortingOrder = -100;
-            go.transform.position = new Vector3(-0.56f, 0f, 1f);
-            go.transform.localScale = new Vector3(1.2f, 0.83f, 1f);
+            go.transform.position = new Vector3(-0.56f * scale, 0f, 1f);
+            go.transform.localScale = new Vector3(1.2f * scale, 0.83f * scale, 1f);
         }
 
         private static SceneLight CreateSceneLight(GameSession session)

@@ -235,6 +235,20 @@ namespace MindAttic.Chain
             {
                 spriteRenderer.sprite = frames[flight.Frame % frames.Length];
             }
+
+            // The sprite's import is a 1-unit-wide baseline (ArtImportSettings, UNI-T19); scale it to
+            // the angel's own contact circle (angel.json's port.contactRadius x2) the same way
+            // HeartPickup scales heart.png to itemSize, so the art matches what it collides as.
+            var sprite = spriteRenderer.sprite;
+            if (sprite != null)
+            {
+                var nativeWidth = sprite.bounds.size.x;
+                var diameter = Settings.Angel.Port.ContactRadius * 2f;
+                if (nativeWidth > 0f && diameter > 0f)
+                {
+                    transform.localScale = Vector3.one * (diameter / nativeWidth);
+                }
+            }
         }
 
         private void OnDrawGizmosSelected()
