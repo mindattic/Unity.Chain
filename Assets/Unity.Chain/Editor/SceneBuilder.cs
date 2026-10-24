@@ -49,6 +49,7 @@ namespace MindAttic.Chain.EditorTools
             CreateEnemySpawner(session);
             CreateHeart(session);
             CreateMusicPlayer(session);
+            CreateWindowAspectLock();
 
             Directory.CreateDirectory(Path.GetDirectoryName(ScenePath) !);
             EditorSceneManager.SaveScene(scene, ScenePath);
@@ -179,6 +180,13 @@ namespace MindAttic.Chain.EditorTools
             var go = new GameObject("MusicPlayer");
             go.AddComponent<AudioSource>();
             go.AddComponent<MusicPlayer>().Session = session;
+        }
+
+        private static void CreateWindowAspectLock()
+        {
+            // UNI-T38: keeps the resizable window at the original's 4:3 shape.
+            var go = new GameObject("WindowAspectLock");
+            go.AddComponent<WindowAspectLockBehaviour>();
         }
 
         private static Material LoadOrCreateLineMaterial()

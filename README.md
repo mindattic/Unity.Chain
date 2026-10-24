@@ -56,6 +56,8 @@ Prerequisites: Unity 6000.4.3f1. Close the Editor before any batchmode run.
 In the Editor, open the project and use the **MindAttic > Chain** menu:
 
 - **Build Main Scene** regenerates `Assets/Scenes/Main.unity` and the build settings from code.
+- **Apply Project Settings** sets the window (640x480, windowed, resizable), company/product name,
+  `applicationIdentifier` and the Standalone icon (`battle.ico`, UNI-T38) from code.
 - **Build Windows Player** writes `Builds/Windows/Unity.Chain.exe`.
 
 Play `Assets/Scenes/Main.unity`, or run the built player. Run the tests from **Window > General > Test Runner**
@@ -66,8 +68,9 @@ From the command line (PowerShell, from the repo root):
 ```powershell
 $unity = "C:\Program Files\Unity\Hub\Editor\6000.4.3f1\Editor\Unity.exe"
 
-# regenerate the scene, then build the Windows player
+# regenerate the scene, apply project settings, then build the Windows player
 & $unity -batchmode -quit -projectPath . -executeMethod MindAttic.Chain.EditorTools.SceneBuilder.BuildMainScene -logFile -
+& $unity -batchmode -quit -projectPath . -executeMethod MindAttic.Chain.EditorTools.ProjectSettingsBuilder.Apply -logFile -
 & $unity -batchmode -quit -projectPath . -executeMethod MindAttic.Chain.EditorTools.PlayerBuilder.BuildWindows -logFile -
 
 # edit-mode and play-mode tests
