@@ -20,7 +20,7 @@ namespace MindAttic.Chain
     /// chosen by chain.json's <c>maceSkins.mode</c> and flipped by the seat's ToggleMaceMode debug key
     /// (<see cref="ToggleMode"/>). While the grapple is armed it instead wears Input.vb's grapple picture
     /// (<see cref="GrappleSprite"/>, chain.json's <c>maceSkins.files.grapple</c>, Textures.vb's
-    /// <c>texMaceGrapple</c>/mace2.png, UNI-T72), over whichever mode is current, reverting to that mode's
+    /// <c>texMaceGrapple</c>/mace2.png, U.CHN-T72), over whichever mode is current, reverting to that mode's
     /// picture on release. Only the picture changes; the world hits and grapples the same either way.
     /// </summary>
     [DisallowMultipleComponent]
@@ -231,7 +231,7 @@ namespace MindAttic.Chain
         /// </summary>
         private void ApplySkin()
         {
-            var sprite = (IsGrappleArmed ? grappleSprite : null) ?? SpriteFor(Mode);
+            var sprite = IsGrappleArmed && grappleSprite != null ? grappleSprite : SpriteFor(Mode);
             if (sprite != null && maceVisual.TryGetComponent<SpriteRenderer>(out var renderer) && renderer.sprite != sprite)
             {
                 renderer.sprite = sprite;

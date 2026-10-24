@@ -207,7 +207,7 @@ namespace MindAttic.Chain.EditorTools
             }
 
             mace.Skins = maceSkins;
-            // UNI-T72: Input.vb's texMaceGrapple (mace2.png), shown over whichever mode is current while armed.
+            // U.CHN-T72: Input.vb's texMaceGrapple (mace2.png), shown over whichever mode is current while armed.
             mace.GrappleSprite = LoadSprite(ChainArtPath + maceSkinData.GrappleFile);
             maceRenderer.sprite = mace.SpriteFor(maceSkinData.Mode) ?? maceRenderer.sprite;
 

@@ -201,7 +201,7 @@ namespace MindAttic.Chain.Tests
             _rig.Chain.RenderChain(1f);
             _mace.RenderMace();
             Assert.IsTrue(_mace.IsGrappleArmed);
-            Assert.AreSame(grappleArt, renderer.sprite, "Input.vb's texMaceGrapple while the button is held (UNI-T72)");
+            Assert.AreSame(grappleArt, renderer.sprite, "Input.vb's texMaceGrapple while the button is held (U.CHN-T72)");
 
             _rig.Grapple.SetButtonHeld(false);
             _rig.Step();

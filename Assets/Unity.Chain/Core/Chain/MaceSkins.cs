@@ -50,7 +50,7 @@ namespace MindAttic.Chain.Core
         /// <summary>
         /// Input.vb's <c>texMaceGrapple</c> (Textures.vb's mace2.png): the picture shown over whichever
         /// <see cref="MaceMode"/> is current while the grapple is armed, reverting to that mode's own
-        /// picture on release (chain.json's <c>maceSkins.files.grapple</c>, UNI-T72).
+        /// picture on release (chain.json's <c>maceSkins.files.grapple</c>, U.CHN-T72).
         /// </summary>
         public string GrappleFile { get; private set; }
 
