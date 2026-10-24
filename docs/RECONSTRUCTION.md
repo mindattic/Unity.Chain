@@ -165,7 +165,7 @@ Every binding of the original, with its state:
 | `renderTime`, `renderDate`, `levelText` | never called, or only move a matrix (no text drawn) | dead |
 | `Score` | += damage * 1000 | ported |
 | `SetupLights` | never called | dead |
-| Window and options | 640x480 borderless form; registry options; default 540x448/512x448, 16-bit | window shape ported (UNI-T38: 640x480, 4:3, aspect-locked while resizable); options screen, UNI-T59 |
+| Window and options | 640x480 borderless form; registry options; default 540x448/512x448, 16-bit | window shape ported (UNI-T38: 640x480, 4:3, snapped back once a border drag settles, not mid-drag; a maximized window is left alone); options screen, UNI-T59 |
 
 ### 3.7 Lighting, camera, background (`Lights.vb`, `Camera.vb`, `Background.vb`, `Cube.vb`, `Text.vb`)
 
@@ -240,7 +240,7 @@ Checked against `AGENTS.md` (the owner's rebuild standard) and the reference rep
 | URP | Done: a URP pipeline with the 2D renderer (`Assets/Unity.Chain/Rendering`, built by `Editor/RenderPipelineBuilder`) is assigned in GraphicsSettings and every quality level beside the committed global settings and volume profile; a headless import leaves them unchanged | UNI-T18 |
 | Unity.Shared profiles and settings | Done: `com.mindattic.unity.shared` referenced; volumes, mutes and reduce motion in the profile's common block, resolution, window mode and tuning overrides in its game block, through Core's `IPreferencesStore`; music and SFX play at the profile's volumes (BIBLE §6) | UNI-T36 |
 | UI | `GameHud` is IMGUI (`OnGUI`), not UI Toolkit or the shared components | UNI-T37 |
-| Project settings | Done: 640x480 windowed default, aspect-locked while resizable (`WindowAspectLock`/`WindowAspectLockBehaviour`), the Standalone icon from `battle.ico`, a global cursor policy (`CursorPolicy`: hidden and confined from the first frame), `applicationIdentifier` (`com.mindattic.unitychain`), company/product name and version set, all applied in code (`Editor/ProjectSettingsBuilder.cs`) | UNI-T38 |
+| Project settings | Done: 640x480 windowed default titled `Unity.Chain` (`productName`, replacing the original's unfinished `*** UNDER DEVELOPMENT ***`), snapped back to 4:3 once a border drag settles and left alone while maximized (`WindowAspectLock`/`WindowAspectLockBehaviour`; BIBLE V12), the Standalone icon from `battle.ico`, a global cursor policy (`CursorPolicy`: hidden and confined from the first frame; BIBLE V18), `applicationIdentifier` (`com.mindattic.unitychain`), company/product name and version set, all applied in code (`Editor/ProjectSettingsBuilder.cs`) | UNI-T38 |
 | Build, test and deploy scripts | None (`build.bat`, `test.bat`, `deploy.bat` exist in the reference repos) | UNI-T39 |
 | README | Rewritten: status, layout, build and test (UNI-T29) | done |
 | BIBLE | `docs/BIBLE.md` written: rules, architecture, data, fixed defects, deviations (UNI-T29) | done |

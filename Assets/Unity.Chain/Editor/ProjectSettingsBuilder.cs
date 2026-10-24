@@ -39,10 +39,10 @@ namespace MindAttic.Chain.EditorTools
 
             PlayerSettings.SetApplicationIdentifier(NamedBuildTarget.Standalone, ApplicationIdentifier);
 
-            if (string.IsNullOrEmpty(PlayerSettings.bundleVersion))
-            {
-                PlayerSettings.bundleVersion = DefaultBundleVersion;
-            }
+            // A fresh Unity project always has some non-empty bundleVersion of its own, so guarding this on
+            // "is it empty" never ran: set it outright, so the version really is this ticket's, not whatever
+            // the template happened to start with.
+            PlayerSettings.bundleVersion = DefaultBundleVersion;
 
             ApplyIcon();
 
