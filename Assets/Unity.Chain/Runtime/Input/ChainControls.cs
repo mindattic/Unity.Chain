@@ -19,7 +19,8 @@ namespace MindAttic.Chain
     /// <item><b>Debug</b>, the scene's toggles that belong to no player: ToggleLighting (Form1.vb's L, read by
     /// <see cref="SceneLight"/>), ShakeScreen (Form1.vb's 0, read by <see cref="CameraRig"/>), and, read by
     /// <see cref="GameHud"/>, ToggleFps (F4), ToggleMenu (Tab), ToggleWireframe (F1), ToggleTextures (F2),
-    /// ToggleCulling (F3) and ConfigureVideo (F12). Later debug keys join this map.</item>
+    /// ToggleCulling (F3) and ConfigureVideo (F12), and ToggleZones (Form1.vb's E, Zone.vb's hit boxes, flipped by
+    /// <see cref="GameHud"/> and drawn by <see cref="HitZoneOverlay"/>). Later debug keys join this map.</item>
     /// </list>
     /// Input.vb's and Form1.vb's keys keep their bindings; Minus and Equals stay free for game speed (UNI-T52)
     /// and the numpad for the debug camera (UNI-T57), as the original has them.
@@ -83,6 +84,8 @@ namespace MindAttic.Chain
         public InputAction ToggleCulling => Debug["ToggleCulling"];
         /// <summary>Form1.vb's F12: <c>toggleScreen</c>, windowed to fullscreen and back.</summary>
         public InputAction ConfigureVideo => Debug["ConfigureVideo"];
+        /// <summary>Form1.vb's E: <c>bZone = Not bZone</c>, Zone.vb's hit box overlay.</summary>
+        public InputAction ToggleZones => Debug["ToggleZones"];
 
         /// <summary>A new asset with the game's two maps and every binding.</summary>
         public static InputActionAsset BuildAsset()
@@ -125,6 +128,8 @@ namespace MindAttic.Chain
             Button(debug, "ToggleTextures", "<Keyboard>/f2");
             Button(debug, "ToggleCulling", "<Keyboard>/f3");
             Button(debug, "ConfigureVideo", "<Keyboard>/f12");
+            // Form1.vb's E (UNI-T56): Zone.vb's hit boxes.
+            Button(debug, "ToggleZones", "<Keyboard>/e");
 
             return asset;
         }

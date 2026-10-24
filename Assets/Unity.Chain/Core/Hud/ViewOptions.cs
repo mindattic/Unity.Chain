@@ -27,18 +27,22 @@ namespace MindAttic.Chain.Core
 
     /// <summary>
     /// Root.vb's option flags, the screen's own view state (they belong to no player and change nothing in the world):
-    /// <c>bRenderWireframe</c> (F1), <c>bRenderTextures</c> (F2), <c>bBackFaceCulling</c> (F3), <c>bDrawFPS</c> (F4)
-    /// and <c>bMenu</c> (Tab). Root.vb's <c>Reset</c> puts them all back (<see cref="Reset"/>): solid, textured, no
-    /// culling, the frame rate shown, the menu closed. The renderer reads the first three (UNI-T56), the HUD the rest.
+    /// <c>bRenderWireframe</c> (F1), <c>bRenderTextures</c> (F2), <c>bBackFaceCulling</c> (F3), <c>bDrawFPS</c> (F4),
+    /// <c>bMenu</c> (Tab) and <c>bZone</c> (E). Root.vb's <c>Reset</c> puts the first five back (<see cref="Reset"/>):
+    /// solid, textured, no culling, the frame rate shown, the menu closed; it never touches <c>bZone</c>, so the hit box
+    /// overlay stays as E left it. The renderer reads the first three (UNI-T56: Unity.Chain's ViewRenderFeature), the
+    /// HUD the frame rate and the menu, and the hit box overlay <see cref="Zones"/> (<see cref="HitZones"/>).
     /// </summary>
     public sealed class ViewOptions
     {
         private readonly bool _drawFpsAtReset;
 
         /// <param name="drawFps">hud.json's <c>drawFps</c>: Root.vb's <c>bDrawFPS = True</c> at the start and on every reset.</param>
-        public ViewOptions(bool drawFps = true)
+        /// <param name="zones">hud.json's <c>zone.bZone</c>: Root.vb's <c>bZone = True</c> at the start.</param>
+        public ViewOptions(bool drawFps = true, bool zones = true)
         {
             _drawFpsAtReset = drawFps;
+            Zones = zones;
             Reset();
         }
 
@@ -62,6 +66,23 @@ namespace MindAttic.Chain.Core
 
         /// <summary>bMenu: draw the menu panel (Tab). False at the start.</summary>
         public bool MenuOpen { get; private set; }
+
+        /// <summary>bZone: draw Zone.vb's hit boxes (E). True at the start; no reset changes it.</summary>
+        public bool Zones { get; private set; }
+
+        /// <summary>Raised after <see cref="ToggleZones"/> flips <see cref="Zones"/>, with its new state.</summary>
+        public event Action<bool> ZonesChanged;
+
+        /// <summary>Whether the scene is drawn other than plainly (wireframe, untextured or culled), so the renderer has work to do.</summary>
+        public bool AltersRendering => Wireframe || !Textured || BackFaceCulling;
+
+        /// <summary>Form1.vb's E: <c>bZone = Not bZone</c>. Returns the new state.</summary>
+        public bool ToggleZones()
+        {
+            Zones = !Zones;
+            ZonesChanged?.Invoke(Zones);
+            return Zones;
+        }
 
         /// <summary>Root.vb's Reset: every flag back to how the game starts. Raises <see cref="MenuChanged"/> if it closes the menu.</summary>
         public void Reset()

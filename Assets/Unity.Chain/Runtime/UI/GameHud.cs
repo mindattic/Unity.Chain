@@ -190,9 +190,14 @@ namespace MindAttic.Chain
 
         /// <summary>
         /// Root.vb's option flags (wireframe, textures, culling, the frame rate, the menu), the screen's own: F1-F4 and
-        /// Tab flip them, every reset puts them back. The renderer reads the first three (UNI-T56).
+        /// Tab flip them, every reset puts them back; E flips the hit box overlay (<see cref="ViewOptions.Zones"/>), which
+        /// no reset touches. While enabled, the HUD hands them to the renderer (<see cref="ViewRenderFeature.Options"/>),
+        /// which draws F1-F3, and <see cref="HitZoneOverlay"/> draws the hit boxes (UNI-T56).
         /// </summary>
-        public ViewOptions Options => _options ?? (_options = new ViewOptions(Layout.DrawFps));
+        public ViewOptions Options => _options ?? (_options = new ViewOptions(Layout.DrawFps, Layout.Zone.Shown));
+
+        /// <summary>Form1.vb's E: <c>bZone = Not bZone</c>, Zone.vb's hit box overlay. Returns the new state.</summary>
+        public bool ToggleZones() => Options.ToggleZones();
 
         /// <summary>Root.vb's bDrawFPS: whether the frame rate is drawn. F4 flips it; every reset turns it back on.</summary>
         public bool ShowFps
@@ -369,12 +374,17 @@ namespace MindAttic.Chain
             Attach();
             Refresh();
             (_controls ?? (_controls = new ChainControls())).Debug.Enable();
+            ViewRenderFeature.Options = Options;
         }
 
         private void OnDisable()
         {
             Unsubscribe();
             _controls?.Debug.Disable();
+            if (ViewRenderFeature.Options == _options)
+            {
+                ViewRenderFeature.Options = null;
+            }
         }
 
         private void OnDestroy()
@@ -411,6 +421,7 @@ namespace MindAttic.Chain
             if (_controls.ToggleCulling.WasPressedThisFrame()) { Act(MenuEntry.Culling); }
             if (_controls.ToggleFps.WasPressedThisFrame()) { Act(MenuEntry.Fps); }
             if (_controls.ConfigureVideo.WasPressedThisFrame()) { Act(MenuEntry.Video); }
+            if (_controls.ToggleZones.WasPressedThisFrame()) { ToggleZones(); }
         }
 
         // The fade, the grappled enemy's HP and the live tuning change every step without an event of their own.

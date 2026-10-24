@@ -106,9 +106,10 @@ The engine-free rules are tested by `Tests/Core.Tests` (`dotnet test Tests/Core.
 | L | | lighting on / off |
 | 0 | | screen shake: the view jumps, the next press puts it back |
 | Tab | | the original's menu panel on / off (lists F1-F4, F12 and Escape with their current state) |
-| F1 / F2 / F3 | | wireframe / textured / back-face culling flags (drawn by UNI-T56) |
+| F1 / F2 / F3 | | wireframe / untextured / back-face culling, drawn by a URP renderer feature |
 | F4 | | frame rate on / off |
 | F12 | | windowed / fullscreen |
+| E | | hit boxes (Zone.vb's overlay) on / off; on from the start |
 
 The bindings live in one `InputActionAsset` built in code (`Runtime/Input/ChainControls`); the stick's speed and
 dead zone are in `input.json`.

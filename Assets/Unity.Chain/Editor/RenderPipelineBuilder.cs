@@ -16,12 +16,15 @@ namespace MindAttic.Chain.EditorTools
     /// assets and settings untouched. Run from the menu or in batch mode via
     /// <c>-executeMethod MindAttic.Chain.EditorTools.RenderPipelineBuilder.BuildPipeline</c>;
     /// <see cref="SceneBuilder"/> runs it first so the scene's sprites take the 2D renderer's lit material.
+    /// It also puts <see cref="ViewRenderFeature"/> (UNI-T56: F1-F3's wireframe, untextured and culled drawing) on the
+    /// 2D renderer, with its override shader (<see cref="ViewShaderPath"/>) so the shader ships in the build.
     /// </summary>
     public static class RenderPipelineBuilder
     {
         public const string Folder = "Assets/Unity.Chain/Rendering";
         public const string PipelinePath = Folder + "/ChainURP.asset";
         public const string RendererPath = Folder + "/Chain2DRenderer.asset";
+        public const string ViewShaderPath = Folder + "/ViewOptions.shader";
         private const string PostProcessDataPath = "Packages/com.unity.render-pipelines.universal/Runtime/Data/PostProcessData.asset";
 
         [MenuItem("MindAttic/Chain/Build Render Pipeline")]
@@ -62,8 +65,49 @@ namespace MindAttic.Chain.EditorTools
             }
 
             QualitySettings.SetQualityLevel(current, false);
+            EnsureViewFeature(AssetDatabase.LoadAssetAtPath<Renderer2DData>(RendererPath));
             AssetDatabase.SaveAssets();
             return pipeline;
+        }
+
+        /// <summary>
+        /// Adds <see cref="ViewRenderFeature"/> to <paramref name="renderer"/> as a sub-asset if it has none, and points it
+        /// at the override shader. Returns the feature (null without a renderer).
+        /// </summary>
+        public static ViewRenderFeature EnsureViewFeature(Renderer2DData renderer)
+        {
+            if (renderer == null)
+            {
+                return null;
+            }
+
+            var shader = AssetDatabase.LoadAssetAtPath<Shader>(ViewShaderPath);
+            var feature = renderer.rendererFeatures.Find(f => f is ViewRenderFeature) as ViewRenderFeature;
+            if (feature == null)
+            {
+                // As the renderer's own "Add Renderer Feature" does: a sub-asset, listed, with its local id in the map.
+                feature = ScriptableObject.CreateInstance<ViewRenderFeature>();
+                feature.name = nameof(ViewRenderFeature);
+                feature.Shader = shader;
+                AssetDatabase.AddObjectToAsset(feature, renderer);
+                renderer.rendererFeatures.Add(feature);
+                AssetDatabase.TryGetGUIDAndLocalFileIdentifier(feature, out _, out long localId);
+
+                var serialized = new SerializedObject(renderer);
+                var map = serialized.FindProperty("m_RendererFeatureMap");
+                map.arraySize = renderer.rendererFeatures.Count;
+                map.GetArrayElementAtIndex(map.arraySize - 1).longValue = localId;
+                serialized.ApplyModifiedPropertiesWithoutUndo();
+                renderer.SetDirty();
+                EditorUtility.SetDirty(renderer);
+            }
+            else if (feature.Shader != shader)
+            {
+                feature.Shader = shader;
+                EditorUtility.SetDirty(feature);
+            }
+
+            return feature;
         }
 
         private static UniversalRenderPipelineAsset CreatePipeline()

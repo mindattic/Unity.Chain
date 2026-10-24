@@ -18,6 +18,7 @@ namespace MindAttic.Chain.EditorTools
     {
         public const string ScenePath = "Assets/Scenes/Main.unity";
         private const string LineMaterialPath = "Assets/Unity.Chain/Materials/ChainLine.mat";
+        private const string ZoneMaterialPath = "Assets/Unity.Chain/Materials/ZoneLine.mat";
 
         [MenuItem("MindAttic/Chain/Build Main Scene")]
         public static void BuildMainScene()
@@ -45,7 +46,8 @@ namespace MindAttic.Chain.EditorTools
             // Root.vb's Reset recentres the camera and jumps the music: both follow the session's resets.
             rig.Session = session;
             var sceneLight = CreateSceneLight(session);
-            CreateGameHud(session, grapple, sceneLight);
+            var hud = CreateGameHud(session, grapple, sceneLight);
+            CreateHitZoneOverlay(session, hud);
             CreateEnemySpawner(session);
             CreateHeart(session);
             CreateMusicPlayer(session);
@@ -152,13 +154,24 @@ namespace MindAttic.Chain.EditorTools
             return sceneLight;
         }
 
-        private static void CreateGameHud(GameSession session, GrappleController grapple, SceneLight sceneLight)
+        private static GameHud CreateGameHud(GameSession session, GrappleController grapple, SceneLight sceneLight)
         {
             var go = new GameObject("GameHud");
             var hud = go.AddComponent<GameHud>();
             hud.Session = session;
             hud.Grapple = grapple;
             hud.SceneLight = sceneLight;
+            return hud;
+        }
+
+        private static void CreateHitZoneOverlay(GameSession session, GameHud hud)
+        {
+            // Zone.vb's hit boxes (UNI-T56), lit by the scene's 2D light as the original's line strip took its ambient.
+            var go = new GameObject("HitZones");
+            var overlay = go.AddComponent<HitZoneOverlay>();
+            overlay.Session = session;
+            overlay.Hud = hud;
+            overlay.LineMaterial = LoadOrCreateMaterial(ZoneMaterialPath, "ZoneLine", "Universal Render Pipeline/2D/Sprite-Lit-Default");
         }
 
         private const string HeartSpritePath = "Assets/Unity.Chain/Art/Items/heart.png";
@@ -189,19 +202,22 @@ namespace MindAttic.Chain.EditorTools
             go.AddComponent<WindowAspectLockBehaviour>();
         }
 
-        private static Material LoadOrCreateLineMaterial()
+        private static Material LoadOrCreateLineMaterial() =>
+            LoadOrCreateMaterial(LineMaterialPath, "ChainLine", "Universal Render Pipeline/Unlit");
+
+        private static Material LoadOrCreateMaterial(string path, string name, string shaderName)
         {
-            var existing = AssetDatabase.LoadAssetAtPath<Material>(LineMaterialPath);
+            var existing = AssetDatabase.LoadAssetAtPath<Material>(path);
             if (existing != null)
             {
                 return existing;
             }
 
-            var shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Sprites/Default");
-            var material = new Material(shader) { name = "ChainLine" };
+            var shader = Shader.Find(shaderName) ?? Shader.Find("Sprites/Default");
+            var material = new Material(shader) { name = name };
 
-            Directory.CreateDirectory(Path.GetDirectoryName(LineMaterialPath) !);
-            AssetDatabase.CreateAsset(material, LineMaterialPath);
+            Directory.CreateDirectory(Path.GetDirectoryName(path) !);
+            AssetDatabase.CreateAsset(material, path);
             return material;
         }
 

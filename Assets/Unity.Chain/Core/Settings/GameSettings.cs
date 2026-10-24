@@ -89,6 +89,9 @@ namespace MindAttic.Chain.Core
         /// <summary>How a player's stick adds to their mouse steering (input.json: Input.vb's joystick, BIBLE D14).</summary>
         public SteerInput.Settings Steering { get; private set; }
 
+        /// <summary>Zone.vb's hit box overlay (hud.json's <c>zone</c>) in world units (<see cref="HitZones"/>, UNI-T56).</summary>
+        public HitZones.Settings Zones { get; private set; }
+
         /// <summary>
         /// Reads and validates every data file from <paramref name="source"/>, then maps them to the port. Throws a
         /// <see cref="SettingsException"/> listing every problem (a missing file, bad JSON with its line, a missing or
@@ -310,6 +313,7 @@ namespace MindAttic.Chain.Core
                 joystickEnabled: Input.BJoystick,
                 deadZone: Input.JoyOutsideDeadZone / Input.JoyRange,
                 stickSpeed: Input.Port.StickSpeed);
+            Zones = HitZones.Settings.From(Hud.Zone, m);
         }
     }
 

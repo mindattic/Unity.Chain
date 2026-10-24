@@ -266,6 +266,7 @@ namespace MindAttic.Chain.Tests
                     (controls.ToggleTextures, "<Keyboard>/f2"),
                     (controls.ToggleCulling, "<Keyboard>/f3"),
                     (controls.ConfigureVideo, "<Keyboard>/f12"),
+                    (controls.ToggleZones, "<Keyboard>/e"),
                 };
                 foreach (var (action, path) in keys)
                 {

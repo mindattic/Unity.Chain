@@ -121,6 +121,9 @@ namespace MindAttic.Chain.Core
         /// <summary>Gui.vb's renderMenu: the Tab menu panel and its lines.</summary>
         public HudMenu Menu { get; private set; }
 
+        /// <summary>Zone.vb's hit box overlay (the E key), in the original's screen units (UNI-T56).</summary>
+        public HudZone Zone { get; private set; }
+
         public HudPort Port { get; private set; }
 
         internal static HudData Read(SettingsReader r)
@@ -146,6 +149,7 @@ namespace MindAttic.Chain.Core
             data.FpsSampleMs = r.Integer("fpsSampleMs", 1, 60000);
             data.DrawFps = r.Flag("drawFps");
             data.Menu = HudMenu.Read(r);
+            data.Zone = HudZone.Read(r);
 
             var port = r.Section("port");
             data.Port = new HudPort(
@@ -213,6 +217,74 @@ namespace MindAttic.Chain.Core
             lines.Done();
             r.Done();
             return new HudMenu(position, size, colour, fontSize, bold, spots);
+        }
+    }
+
+    /// <summary>
+    /// hud.json's <c>zone</c>: Zone.vb's loadZone and renderZone, in the original's screen units (y up), which
+    /// <see cref="GameSettings"/> maps through space.json into <see cref="HitZones.Settings"/>. loadZone builds one
+    /// line-strip box, Left 0 to Right 0.05 and Top 0 to Bottom -0.05 from its corner; renderZone moves a copy of it to
+    /// each enemy's <c>Enemy(n).X + enemySize / 2, Enemy(n).Y</c> (the enemy quad's centre: it spans 0..enemySize
+    /// across and -enemySize / 2..enemySize / 2 up and down) and one to <c>rectMace.Left, rectMace.Top</c>
+    /// (<c>link(Mace).X + 0.01, link(Mace).Y + maceSize / 2</c>), drawn in <c>texZone</c> (gfx/gui/event.png, a 2 x 2 of
+    /// 0, 128, 255) while <c>bZone</c>, which Root.vb starts True and Form1.vb's E flips.
+    /// </summary>
+    public sealed class HudZone
+    {
+        /// <summary>Root.vb's <c>bZone = True</c>: the overlay is drawn from the start.</summary>
+        public bool Shown { get; private set; }
+
+        /// <summary>loadZone's <c>Left</c>, from the box's corner (0).</summary>
+        public float Left { get; private set; }
+
+        /// <summary>loadZone's <c>Right</c> (0.05).</summary>
+        public float Right { get; private set; }
+
+        /// <summary>loadZone's <c>Top</c> (0).</summary>
+        public float Top { get; private set; }
+
+        /// <summary>loadZone's <c>Bottom</c> (-0.05, y up).</summary>
+        public float Bottom { get; private set; }
+
+        /// <summary>Where renderZone puts an enemy's box corner, from the enemy's centre (0, 0).</summary>
+        public Vec2 EnemyCorner { get; private set; }
+
+        /// <summary>
+        /// Where renderZone puts the mace's box corner (rectMace's top-left), from the mace's centre: the 3.5x mace quad
+        /// spans <c>link(Mace).X</c>..<c>+ 3.5 x linkSize</c>, so its centre is 0.04375 right of the link, and
+        /// <c>rectMace.Left</c> 0.01 right of it is -0.03375 from the centre; <c>rectMace.Top</c> is +0.0375.
+        /// </summary>
+        public Vec2 MaceCorner { get; private set; }
+
+        /// <summary>texZone's colour (event.png: 0, 128, 255, opaque).</summary>
+        public Argb Colour { get; private set; }
+
+        /// <summary>Not in the original (a D3D line strip is one pixel wide): the line's width, world units.</summary>
+        public float LineWidth { get; private set; }
+
+        internal static HudZone Read(SettingsReader parent)
+        {
+            var r = parent.Section("zone");
+            var zone = new HudZone
+            {
+                Shown = r.Flag("bZone"),
+                Left = r.Number("left"),
+                Right = r.Number("right"),
+                Top = r.Number("top"),
+                Bottom = r.Number("bottom"),
+                EnemyCorner = r.Pair("enemyCorner"),
+                MaceCorner = r.Pair("maceCorner"),
+                Colour = r.Colour("colour"),
+            };
+
+            r.Check(zone.Right > zone.Left, "right", "must be greater than left");
+            r.Check(zone.Top > zone.Bottom, "top", "must be greater than bottom");
+
+            var port = r.Section("port");
+            zone.LineWidth = port.Positive("lineWidth");
+            port.Done();
+            r.Done();
+            return zone;
         }
     }
 
