@@ -208,12 +208,9 @@ namespace MindAttic.Chain.EditorTools
             chainAudio.SetClips(ChainSound.EnemyDeath, LoadClips(SfxPath, "death_", 1, 4));
 
             // GrappleCatch is defend.wav, as ChainSound's own doc comment says (UNI-T20). GrappleThrow
-            // has no source clip in the original set (BIBLE V10) and is left empty until one is chosen.
-            var defend = AssetDatabase.LoadAssetAtPath<AudioClip>(SfxPath + "defend.wav");
-            if (defend != null)
-            {
-                chainAudio.SetClips(ChainSound.GrappleCatch, new[] { defend });
-            }
+            // has no source clip in the original set (BIBLE V10, UNI-T71) and is left empty until one
+            // is chosen; that is the one clip set this method does not require.
+            chainAudio.SetClips(ChainSound.GrappleCatch, new[] { LoadClip(SfxPath + "defend.wav") });
 
             return (chain, grapple);
         }
@@ -313,11 +310,7 @@ namespace MindAttic.Chain.EditorTools
             // Sound.vb's playMusic track (UNI-T20); music.wma converted to .ogg, as Unity cannot
             // import WMA (BIBLE V11). Set through the serialized field, not the Music property,
             // which would try to Play() the source while the scene is only being built.
-            var clip = AssetDatabase.LoadAssetAtPath<AudioClip>(MusicClipPath);
-            if (clip != null)
-            {
-                SetPrivateField(music, "music", clip);
-            }
+            SetPrivateField(music, "music", LoadClip(MusicClipPath));
         }
 
         private static void CreateWindowAspectLock()
@@ -403,20 +396,33 @@ namespace MindAttic.Chain.EditorTools
             return sprites.ToArray();
         }
 
-        /// <summary>Loads "{folder}{prefix}{n}.wav" for n in [first, last], skipping any that are missing.</summary>
+        /// <summary>
+        /// Loads "{folder}{prefix}{n}.wav" for n in [first, last]. Unlike <see cref="LoadSprites"/>,
+        /// every one of these is a clip UNI-T20 imported on purpose (see SfxPath's Assets folder):
+        /// a missing file means a clip set silently plays fewer sounds than it should, so this throws
+        /// instead of skipping it, failing the scene build loudly rather than shipping a partial import.
+        /// </summary>
         private static AudioClip[] LoadClips(string folder, string prefix, int first, int last)
         {
-            var clips = new System.Collections.Generic.List<AudioClip>();
+            var clips = new AudioClip[last - first + 1];
             for (var n = first; n <= last; n++)
             {
-                var clip = AssetDatabase.LoadAssetAtPath<AudioClip>($"{folder}{prefix}{n}.wav");
-                if (clip != null)
-                {
-                    clips.Add(clip);
-                }
+                clips[n - first] = LoadClip($"{folder}{prefix}{n}.wav");
             }
 
-            return clips.ToArray();
+            return clips;
+        }
+
+        /// <summary>Loads the AudioClip at <paramref name="path"/>, throwing if it is missing (see <see cref="LoadClips"/>).</summary>
+        private static AudioClip LoadClip(string path)
+        {
+            var clip = AssetDatabase.LoadAssetAtPath<AudioClip>(path);
+            if (clip == null)
+            {
+                throw new System.IO.FileNotFoundException($"SceneBuilder: expected an AudioClip at '{path}' (UNI-T20).", path);
+            }
+
+            return clip;
         }
     }
 }

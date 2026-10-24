@@ -61,11 +61,12 @@ namespace MindAttic.Chain.Tests
             Assert.AreEqual(chain, chainAudio.Chain, "ChainAudio is not wired to the Chain.");
             Assert.IsNotNull(chainAudio.SfxSource, "ChainAudio has no AudioSource to play through.");
 
-            // UNI-T20: the clip sets must actually hold the imported sfx, not just exist as empty arrays.
-            Assert.IsNotEmpty(chainAudio.GetClips(ChainSound.Swing), "ChainAudio has no swing clips (sword_swing_1-7).");
-            Assert.IsNotEmpty(chainAudio.GetClips(ChainSound.Impact), "ChainAudio has no impact clips (sword_hit_1-3).");
-            Assert.IsNotEmpty(chainAudio.GetClips(ChainSound.EnemyDeath), "ChainAudio has no death clips (death_1-4).");
-            Assert.IsNotEmpty(chainAudio.GetClips(ChainSound.GrappleCatch), "ChainAudio has no grapple-catch clip (defend.wav).");
+            // UNI-T20: the exact imported counts, not just "non-empty" -- a renamed or missing sfx
+            // file would otherwise still pass with a silently shorter clip set.
+            Assert.AreEqual(7, chainAudio.GetClips(ChainSound.Swing).Length, "ChainAudio does not have all 7 swing clips (sword_swing_1-7).");
+            Assert.AreEqual(3, chainAudio.GetClips(ChainSound.Impact).Length, "ChainAudio does not have all 3 impact clips (sword_hit_1-3).");
+            Assert.AreEqual(4, chainAudio.GetClips(ChainSound.EnemyDeath).Length, "ChainAudio does not have all 4 death clips (death_1-4).");
+            Assert.AreEqual(1, chainAudio.GetClips(ChainSound.GrappleCatch).Length, "ChainAudio has no grapple-catch clip (defend.wav).");
             Assert.AreEqual(angel, session.Angel, "GameSession is not wired to the AngelController.");
             Assert.AreEqual(session, spawner.Session, "EnemySpawner is not wired to the GameSession.");
             Assert.AreEqual(session, hud.Session, "GameHud is not wired to the GameSession.");
