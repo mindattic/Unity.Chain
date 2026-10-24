@@ -30,7 +30,7 @@ namespace MindAttic.Chain.Core
     }
 
     /// <summary>
-    /// Which formula a mace hit computes its damage with (chain.json's <c>port</c>, UNI-T45, BIBLE D11).
+    /// Which formula a mace hit computes its damage with (chain.json's <c>port</c>, U.CHN-T45, BIBLE D11).
     /// </summary>
     public enum MaceDamageFormula
     {

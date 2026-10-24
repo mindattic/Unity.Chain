@@ -13,7 +13,7 @@ namespace MindAttic.Chain.Core
     ///
     /// Engine.vb's <c>renderDisplay</c> drew <c>HP + 1</c> bars and <c>GameOver</c> only ended the
     /// game below zero, so 30 HP took 31 hits (BIBLE D10). <see cref="Settings.HpOvershoot"/> (1 by
-    /// default, UNI-T45) reproduces that exactly; 0 is the rebuild's own earlier choice (exactly
+    /// default, U.CHN-T45) reproduces that exactly; 0 is the rebuild's own earlier choice (exactly
     /// <see cref="Hp"/> bars, game over at HP 0).
     /// </summary>
     public sealed class GameState
@@ -34,7 +34,7 @@ namespace MindAttic.Chain.Core
             /// <c>renderDisplay</c> drawing <c>HP + 1</c> bars and <c>GameOver</c> ending only below zero, BIBLE
             /// D10): the HUD shows <c>Hp + HpOvershoot</c> bars and the game ends once <c>Hp &lt; 1 - HpOvershoot</c>.
             /// 0 is the rebuild's own earlier choice (exactly <see cref="Hp"/> bars, game over at HP 0); 1 (the
-            /// default, UNI-T45) is the original's own: 30 HP takes 31 hits.
+            /// default, U.CHN-T45) is the original's own: 30 HP takes 31 hits.
             /// </summary>
             public int HpOvershoot;
 

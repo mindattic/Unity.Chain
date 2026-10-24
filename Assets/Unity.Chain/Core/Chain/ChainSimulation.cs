@@ -3,15 +3,15 @@ namespace MindAttic.Chain.Core
     /// <summary>
     /// Spring-chain physics ported from Philip Winston's "Elastic Trail" (2000) and the
     /// Chain.vb/DirectX game built on it (2005). See docs/chain-physics.md for the source
-    /// reading. UNI-T45 settled every deviation from Chain.vb's own behaviour back to a data
+    /// reading. U.CHN-T45 settled every deviation from Chain.vb's own behaviour back to a data
     /// default (<see cref="Settings.PullBothNeighbors"/>, <see cref="Settings.SimulateAllLinks"/>,
     /// <see cref="Settings.Link1DropPerSecond"/>, <see cref="Settings.MaceOffsetPerSecond"/>): the
     /// port pulls each link from its previous neighbour only (as the port's own <c>If/ElseIf</c>
     /// always did, not both neighbours as *Elastic Trail* did), simulates every link whether or not
     /// it is drawn, and carries the port's two stray per-frame drift lines as settings instead of
-    /// dropping them. <see cref="GameWorld.Step"/> cuts real time into sub-steps close to the
-    /// original's own frame length (<see cref="TimeScale"/>) so this integration keeps the original's
-    /// discrete feel at any host frame rate.
+    /// dropping them. <see cref="GameWorld.Step"/>'s fixed-step accumulator (<see cref="TimeScale"/>)
+    /// banks real time and runs whole sub-steps of the original's own frame length, so this
+    /// integration keeps the original's discrete feel at any host frame rate.
     /// </summary>
     public sealed class ChainSimulation
     {
@@ -42,14 +42,14 @@ namespace MindAttic.Chain.Core
             /// <c>l</c> only ever runs 1..maxLinks, the <c>If</c> always takes the first branch and the
             /// <c>ElseIf</c> is dead code, so the port's own chain was pulled from the previous link only,
             /// BIBLE D7). False (the original's own behaviour) by default; true is the rebuild's earlier
-            /// choice, kept only where a caller asks for it explicitly (UNI-T45).
+            /// choice, kept only where a caller asks for it explicitly (U.CHN-T45).
             /// </summary>
             public readonly bool PullBothNeighbors;
 
             /// <summary>
             /// Whether every link past <see cref="ActiveLinkCount"/> keeps simulating (Chain.vb's
             /// <c>animateChain</c> always loops all <c>maxLinks</c> links regardless of <c>Mace</c>; only
-            /// <c>renderChain</c>'s draw loop stops at <c>Mace</c>, BIBLE V3/§7 UNI-T45). True (matching the
+            /// <c>renderChain</c>'s draw loop stops at <c>Mace</c>, BIBLE V3/§7 U.CHN-T45). True (matching the
             /// original) by default: <see cref="ActiveLinkCount"/> then governs only the mace link and what
             /// is drawn, never what the tail does. False parks the inactive tail on the last active link
             /// instead (the rebuild's earlier choice, kept only where asked for explicitly).
@@ -60,10 +60,10 @@ namespace MindAttic.Chain.Core
             /// Chain.vb's stray "'fix" line in <c>renderChain</c>: <c>link(1).Y -= 0.0004</c>, applied to
             /// link 1 every frame with no condition at all (not even <c>followMouse</c>), world units per
             /// second (BIBLE D8 §7). 0 (no drift) in the bare <see cref="Default"/>; chain.json maps the
-            /// original's own figure onto it (UNI-T45). Applied once a fixed step, not scaled by how many
-            /// times the original's draw loop happened to repeat the line (it re-runs once per drawn link
-            /// up to the mace, so as shipped it actually dropped link 1 by 0.0004 x (Mace + 1) a frame; the
-            /// port takes the original's single figure once a step, as the ticket settles it).
+            /// original's own figure onto it (U.CHN-T45). The original's own draw loop ("For l = 0 To Mace")
+            /// re-runs this unconditional line once per drawn link, so a frame with the shipped default
+            /// actually drops link 1 by 0.0004 x (Mace + 1); <see cref="Step"/> reproduces that literally by
+            /// applying this figure <c>ActiveLinkCount</c> times a step, not once.
             /// </summary>
             public readonly float Link1DropPerSecond;
 
@@ -72,7 +72,7 @@ namespace MindAttic.Chain.Core
             /// every frame while following, cumulatively, instead of as a one-off sprite offset (BIBLE D8
             /// §7), world units per second. Applied to link index <c>ActiveLinkCount - 1</c> (the live mace
             /// link) while <see cref="IsFollowing"/>. Zero in the bare <see cref="Default"/>; chain.json maps
-            /// the original's own figure onto it (UNI-T45).
+            /// the original's own figure onto it (U.CHN-T45).
             /// </summary>
             public readonly Vec2 MaceOffsetPerSecond;
 
@@ -252,10 +252,11 @@ namespace MindAttic.Chain.Core
                 _positions[i] = position;
             }
 
-            // Chain.vb's stray "'fix" line: link(1).Y -= 0.0004, every frame, unconditionally (BIBLE D8).
+            // Chain.vb's stray "'fix" line: link(1).Y -= 0.0004, unconditionally, once per drawn link
+            // (renderChain's "For l = 0 To Mace"), so it fires ActiveLinkCount times a frame (BIBLE D8).
             if (_positions.Length > 1 && (Config.Link1DropPerSecond != 0f))
             {
-                _positions[1] = _positions[1].WithY(_positions[1].Y - Config.Link1DropPerSecond * deltaTime);
+                _positions[1] = _positions[1].WithY(_positions[1].Y - Config.Link1DropPerSecond * deltaTime * _activeLinkCount);
             }
 
             // Chain.vb's maceOffset: added to the live mace link's position every frame while following,

@@ -83,7 +83,7 @@ namespace MindAttic.Chain.Tests
         public void BothNeighbors_PullAMiddleLinkTowardTheMidpoint()
         {
             // *Elastic Trail*'s both-neighbor pull (docs/chain-physics.md), opted into explicitly: Chain.vb's own
-            // If/ElseIf only ever pulls the previous link (BIBLE D7, UNI-T45), so this is PullBothNeighbors: true,
+            // If/ElseIf only ever pulls the previous link (BIBLE D7, U.CHN-T45), so this is PullBothNeighbors: true,
             // not the port's default.
             // Drag is needed: an undamped chain yanked 10 units keeps oscillating for ever,
             // so the middle/tail distance below would never settle.
@@ -121,7 +121,7 @@ namespace MindAttic.Chain.Tests
         public void ActiveLinkCount_ParksTheInactiveTailOnTheEndLink()
         {
             // Chain.vb's animateChain always simulates every link (SimulateAllLinks: true is the default,
-            // BIBLE V3/D8, UNI-T45); parking the inactive tail on the end link is the rebuild's earlier
+            // BIBLE V3/D8, U.CHN-T45); parking the inactive tail on the end link is the rebuild's earlier
             // choice, opted into here explicitly.
             var settings = new ChainSimulation.Settings(
                 segmentLength: 0.2f,
@@ -197,14 +197,14 @@ namespace MindAttic.Chain.Tests
             return chain.GetVelocity(1);
         }
 
-        // --- UNI-T45: a scripted mouse path replayed against the original's own recurrence -------
+        // --- U.CHN-T45: a scripted mouse path replayed against the original's own recurrence -------
 
         /// <summary>
         /// Replays a scripted mouse path against an independent, line-by-line transcription of Chain.vb's
         /// own <c>animateChain</c>/<c>renderChain</c> recurrence -- the "recorded original trajectory" --
         /// in the original's own per-frame screen-space units (<see cref="OriginalSpace.Identity"/>: no
         /// scaling at all, so one <see cref="ChainSimulation.Step"/> of 1 second is exactly one of the
-        /// original's frames). This is the end-to-end regression for every default UNI-T45 settled at
+        /// original's frames). This is the end-to-end regression for every default U.CHN-T45 settled at
         /// once: the previous-link-only spring pull (BIBLE D7), every link simulating whether or not it is
         /// drawn (BIBLE V3), and the link(1) drop and mace offset (BIBLE D8) -- not just the few simple
         /// cases the other tests in this file check one at a time.
@@ -296,9 +296,15 @@ namespace MindAttic.Chain.Tests
                     refPos[l] += velocity;
                 }
 
-                // renderChain's two stray lines (BIBLE D8): the port takes each one's single figure once a
-                // step, not once per drawn link as the original's own draw loop happened to repeat them.
-                refPos[1] = refPos[1].WithY(refPos[1].Y - link1DropPerFrame);
+                // renderChain's two stray lines (BIBLE D8). The maceOffset add sits inside the "If l = Mace"
+                // branch, so it only ever fires once; the link(1) drop sits outside it, in the "For l = 0 To
+                // Mace" body itself, so it re-runs once per drawn link -- mace + 1 times a frame -- and
+                // ChainSimulation.Step reproduces that literally (ActiveLinkCount times, mace + 1 here). A
+                // single multiplication, not a loop of mace + 1 additions, so this takes the same
+                // floating-point rounding path as Step's own "* deltaTime * _activeLinkCount": over 180
+                // frames of a chaotic, coupled spring system even a few ULPs of rounding difference compound
+                // past the assertions' tolerance.
+                refPos[1] = refPos[1].WithY(refPos[1].Y - link1DropPerFrame * (mace + 1));
                 refPos[mace] += maceOffset;
             }
 
@@ -312,7 +318,9 @@ namespace MindAttic.Chain.Tests
                 ReferenceFrame();
                 chain.Step(1f);
 
-                for (var l = 0; l <= mace; l++)
+                // SimulateAllLinks (BIBLE V3): every one of the 26 links keeps simulating whether or not it
+                // is drawn, not just 0..mace, so the whole chain is checked against the reference every frame.
+                for (var l = 0; l < linkCount; l++)
                 {
                     Assert.AreEqual(refPos[l].X, chain.GetPosition(l).X, 1e-4f, $"link {l} x diverged at frame {frame}");
                     Assert.AreEqual(refPos[l].Y, chain.GetPosition(l).Y, 1e-4f, $"link {l} y diverged at frame {frame}");

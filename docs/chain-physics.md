@@ -33,9 +33,11 @@ turned that into `If / ElseIf`, so in practice only the previous-neighbor spring
 only ever runs 1..`maxLinks`, so the `If` always takes the first branch and the `ElseIf` is dead
 code) — the chain is pulled from the head only, not from both ends. **Update, U.CHN-T45 (BIBLE
 D7):** this reads like an unintentional regression against the JS original, but Chain.vb is itself
-the game the rebuild ports, not *Elastic Trail*, so the owner settled it as a data default matching
-Chain.vb's own shipped behaviour (`ChainSimulation.Settings.PullBothNeighbors`, false by default);
-the JS original's both-neighbor pull is kept as an explicit opt-in, not the port's default.
+the game the rebuild ports, not *Elastic Trail*, so this ticket settles it as a data default
+matching Chain.vb's own shipped behaviour (`ChainSimulation.Settings.PullBothNeighbors`, false by
+default), per the rebuild standard's own rule (`AGENTS.md`): everything that works matches the
+original exactly, and only a difference the owner actually calls for is kept. The JS original's
+both-neighbor pull is kept as an explicit opt-in, not the port's default.
 
 ## Game-specific layers in Chain.vb / Angel.vb
 
@@ -116,12 +118,18 @@ the JS original's both-neighbor pull is kept as an explicit opt-in, not the port
   (`ChainSimulation.Settings.MaceOffsetPerSecond` and `Link1DropPerSecond`): zero by default (the
   mace sprite offset stays a render-only transform, no position mutation, with no fudge term), but
   chain.json maps the original's own figures onto them, so the shipped game carries both drifts, as
-  the original does.
+  the original does. The stray line sits inside `renderChain`'s own draw loop ("For l = 0 To Mace"),
+  so it re-runs once per drawn link -- `ActiveLinkCount` times a frame -- and `ChainSimulation.Step`
+  reproduces that literally, not just the figure once a step.
 - Frame-rate dependence (no `dt` scaling) is also settled as a data default, not simply dropped:
   **update, U.CHN-T45 (BIBLE D9)**, `GameWorld.Settings.PhysicsStepRate` (60 by default, from
-  space.json's `framesPerSecond`) cuts real time into sub-steps close to the original's own frame
-  length (`TimeScale.Substeps`), so the chain's discrete per-frame integration keeps the original's
-  feel at any host frame rate, not only at exactly 60 fps.
+  space.json's `framesPerSecond`) feeds `GameWorld.Step`'s own fixed-step accumulator: it banks real
+  time and runs as many whole `1 / PhysicsStepRate`-second sub-steps as that has filled, carrying
+  any leftover to the next call, so the chain's discrete per-frame integration keeps the original's
+  feel at any host frame rate, not only at exactly 60 fps or at one that happens to divide evenly
+  into it. (An earlier version of this rounded how many sub-steps to split each call's own `dt`
+  into, which drifted off the original's frame length at a rate that was not an exact multiple or
+  divisor of 60, e.g. 144, 90 or 50 Hz; the accumulator does not.)
 
 ## Default tuning (starting point, to be re-tuned by feel in-engine)
 

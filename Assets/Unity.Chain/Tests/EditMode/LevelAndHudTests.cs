@@ -474,7 +474,7 @@ namespace MindAttic.Chain.Tests
             _rig.Step(0.1f);
             Assert.AreEqual(29, Session.State.Hp);
 
-            // PhysicsStepRate's 60 fps sub-stepping (BIBLE D9, UNI-T45) crosses the 0.25 s delay partway
+            // PhysicsStepRate's 60 fps sub-stepping (BIBLE D9, U.CHN-T45) crosses the 0.25 s delay partway
             // through this step (at game time 16/60 s), not only on a whole 0.1 s boundary.
             _rig.Step(0.1f);
             Assert.AreEqual(28, Session.State.Hp);
@@ -540,7 +540,7 @@ namespace MindAttic.Chain.Tests
             Assert.IsFalse(state.AdvanceGameOver(), "nothing happens while playing");
             Assert.AreEqual(GameState.FullAmbient, state.Ambient);
 
-            // HpOvershoot's default of 1 (BIBLE D10, UNI-T45) takes one hit past zero, not just to zero.
+            // HpOvershoot's default of 1 (BIBLE D10, U.CHN-T45) takes one hit past zero, not just to zero.
             for (var i = 0; i <= state.MaxHp; i++) { state.TryHurt(i); }
             Assert.IsTrue(state.IsGameOver);
 

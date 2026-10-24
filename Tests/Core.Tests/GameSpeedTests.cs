@@ -109,13 +109,19 @@ namespace MindAttic.Chain.Tests
         [Test]
         public void TheSpeed_ScalesGameTime()
         {
+            // GameWorld.Step's fixed-step accumulator (BIBLE D9, U.CHN-T45) banks deltaTime x GameSpeed and
+            // only advances RoundTime in whole 1/60 s sub-steps, carrying any leftover (including a float
+            // rounding remainder right at a sub-step boundary) to the next call, so a single call does not
+            // advance game time by an arbitrary fraction of a sub-step.
+            const float fixedStep = 1f / 60f;
+
             _world.GameSpeed = 0.5f;
-            _world.Step(Dt);
-            Assert.AreEqual(Dt * 0.5f, _world.RoundTime, 1e-7f);
+            _world.Step(Dt); // 0.02 * 0.5 = 0.01 s banked, under one sub-step: none runs yet
+            Assert.AreEqual(0f, _world.RoundTime, 1e-7f);
 
             _world.GameSpeed = 2f;
-            _world.Step(Dt);
-            Assert.AreEqual(Dt * 2.5f, _world.RoundTime, 1e-6f);
+            _world.Step(Dt); // + 0.02 * 2 = 0.04 s; 0.01 + 0.04 = 0.05 s, two whole sub-steps and change
+            Assert.AreEqual(2 * fixedStep, _world.RoundTime, 1e-6f);
         }
 
         [Test]

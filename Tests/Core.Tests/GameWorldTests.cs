@@ -179,7 +179,7 @@ namespace MindAttic.Chain.Tests
             for (var i = 0; i < 50; i++) { _world.Step(Dt); }
 
             Assert.Less(_player.MacePosition.Y, _player.Flight.HandSocket.Y);
-            // SimulateAllLinks's default (true, BIBLE V3/D8, UNI-T45) keeps every link beyond the active count
+            // SimulateAllLinks's default (true, BIBLE V3/D8, U.CHN-T45) keeps every link beyond the active count
             // animating on its own, as Chain.vb's animateChain always did, rather than parking it on the mace;
             // the invariant that survives shortening is that the mace is still the last active link.
             Assert.AreEqual(_player.Chain.ActiveLinkCount - 1, _player.MaceIndex, "the mace is the last active link after shortening");
@@ -210,19 +210,28 @@ namespace MindAttic.Chain.Tests
         [Test]
         public void EnemyAtTheMace_IsHitWithTheMaceVelocity_AndScored()
         {
-            Swing();
+            // 9, not Swing's usual 10: PhysicsStepRate's fixed-step accumulator (BIBLE D9, U.CHN-T45) banks
+            // Dt = 1/50 s against a 1/60 s sub-step, so most Step calls run one sub-step but every fifth
+            // call runs two to catch up. A call that runs two would knock the enemy back on the first and
+            // then, in the same call, decelerate it by one Hurt tick (EnemyBrain.HurtDeceleration) before
+            // this test ever reads its velocity; 9 swings land the final, hit-causing Step call on a
+            // single-sub-step call instead, so the knockback is read before any deceleration.
+            Swing(steps: 9);
             var enemy = _world.SpawnEnemy(_player.MacePosition, mass: 1f, hp: 100f);
             Events();
 
-            // The step moves the mace on; predict the velocity it will hit with from a twin world.
-            var velocity = Twin(w => w.SpawnEnemy(w.FindPlayer(P0).MacePosition + new Vec2(50f, 50f), 1f, 100f));
+            // The step moves the mace on; predict the velocity it will hit with from a twin world that
+            // places its own enemy at the same spot, so it is the twin's own hit event's velocity, not
+            // just its mace velocity once the whole Step call returns (the same reasoning as above: a hit
+            // is not always on a call's last sub-step).
+            var velocity = TwinHitVelocity(_player.MacePosition, steps: 9);
             _world.Step(Dt);
 
             var hit = Events().OfType<EnemyHit>().Single();
             Assert.AreEqual(P0, hit.Player);
             Assert.AreEqual(enemy.Id, hit.Enemy);
             Assert.AreEqual(velocity, hit.MaceVelocity);
-            // MaceDamageFormula.Original (the default, UNI-T45/BIBLE D11): Engine.vb's checkMaceImpact,
+            // MaceDamageFormula.Original (the default, U.CHN-T45/BIBLE D11): Engine.vb's checkMaceImpact,
             // abs(dX + dY/2) of the mass-divided impact velocity (mass 1 here, so the velocity itself),
             // at PlayerSetup.Default's VelocityToOriginalScale of 1.
             Assert.AreEqual(Math.Abs(velocity.X + velocity.Y * 0.5f), hit.Damage, 1e-4f);
@@ -234,15 +243,24 @@ namespace MindAttic.Chain.Tests
             Assert.IsFalse(hit.Killed);
         }
 
-        /// <summary>Runs one more step of a world that has had the same commands as this one, and returns its mace velocity.</summary>
-        private Vec2 Twin(Action<GameWorld> setup)
+        /// <summary>
+        /// Runs the same commands as this test's own world in a fresh one, places an enemy of its own at
+        /// <paramref name="enemyPosition"/> and returns the velocity its own <see cref="EnemyHit"/> event
+        /// carries -- an independent prediction that does not touch this test's world or its events. Reads
+        /// the hit event itself, not the twin's mace velocity once its whole <see cref="GameWorld.Step"/>
+        /// call returns: PhysicsStepRate's fixed-step accumulator (BIBLE D9, U.CHN-T45) can bank more than
+        /// one physics sub-step into a single wall-clock <c>Step</c> call, and a hit lands on whichever
+        /// sub-step first finds the overlap, which is not always the call's last one.
+        /// </summary>
+        private Vec2 TwinHitVelocity(Vec2 enemyPosition, int steps = 10)
         {
             var twin = NewWorld();
             twin.AddPlayer(P0, PlayerSetup.Default);
-            Swing(twin, P0);
-            setup(twin);
+            Swing(twin, P0, steps);
+            twin.SpawnEnemy(enemyPosition, 1f, 100f);
+            twin.TakeEvents();
             twin.Step(Dt);
-            return twin.FindPlayer(P0).MaceVelocity;
+            return twin.TakeEvents().OfType<EnemyHit>().Single().MaceVelocity;
         }
 
         [Test]
@@ -594,7 +612,7 @@ namespace MindAttic.Chain.Tests
             world.Step(0.1f);
             Assert.AreEqual(29, world.State.Hp, "inside the 0.25 s hurt delay");
 
-            // PhysicsStepRate's 60 fps sub-stepping (BIBLE D9, UNI-T45) crosses the 0.25 s delay partway
+            // PhysicsStepRate's 60 fps sub-stepping (BIBLE D9, U.CHN-T45) crosses the 0.25 s delay partway
             // through this step (at game time 16/60 s), not only on a whole 0.1 s boundary.
             world.Step(0.1f);
             Assert.AreEqual(28, world.State.Hp);
@@ -636,7 +654,7 @@ namespace MindAttic.Chain.Tests
             world.Submit(new ChangeChainLength(P0, 2));
             world.AddHitScoreForTest(1f);
 
-            // HpOvershoot's default of 1 (BIBLE D10, UNI-T45) takes one hit past zero, not just to zero,
+            // HpOvershoot's default of 1 (BIBLE D10, U.CHN-T45) takes one hit past zero, not just to zero,
             // to end the game: 30 HP needs 31 hits.
             for (var i = 0; i < 31; i++) { world.Step(Dt); }
             Assert.IsTrue(world.State.IsGameOver);

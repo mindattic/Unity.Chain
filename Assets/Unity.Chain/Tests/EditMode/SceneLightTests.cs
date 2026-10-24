@@ -69,7 +69,7 @@ namespace MindAttic.Chain.Tests
         [Test]
         public void GameOverFade_DimsTheLight()
         {
-            // HpOvershoot's default of 1 (BIBLE D10, UNI-T45) takes one hit past zero, not just to zero.
+            // HpOvershoot's default of 1 (BIBLE D10, U.CHN-T45) takes one hit past zero, not just to zero.
             for (var i = 0; i <= _session.State.MaxHp; i++)
             {
                 _session.State.TryHurt(i);
@@ -138,7 +138,7 @@ namespace MindAttic.Chain.Tests
             var hud = Track(new GameObject("Hud")).AddComponent<GameHud>();
             hud.Session = _session;
             hud.SceneLight = _light;
-            // HpOvershoot's default of 1 (BIBLE D10, UNI-T45) takes one hit past zero, not just to zero.
+            // HpOvershoot's default of 1 (BIBLE D10, U.CHN-T45) takes one hit past zero, not just to zero.
             for (var i = 0; i <= _session.State.MaxHp; i++)
             {
                 _session.State.TryHurt(i);

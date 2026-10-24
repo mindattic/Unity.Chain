@@ -38,7 +38,7 @@ namespace MindAttic.Chain.Core
         public float HitRadius;
         /// <summary>Damage per world unit per second of mace speed at impact (<see cref="MaceDamageFormula.SpeedTimesFactor"/> only).</summary>
         public float DamagePerSpeed;
-        /// <summary>Which formula a mace hit computes its damage with (chain.json's <c>port</c>, UNI-T45, BIBLE D11).</summary>
+        /// <summary>Which formula a mace hit computes its damage with (chain.json's <c>port</c>, U.CHN-T45, BIBLE D11).</summary>
         public MaceDamageFormula DamageFormula;
         /// <summary>
         /// Converts a mass-divided impact velocity (world units/second) back to the original's own per-frame

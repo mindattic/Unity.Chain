@@ -62,7 +62,7 @@
     }
   },
   "port": {
-    "_about": "Not in the original; world units and seconds, never mapped. pullBothNeighbors and simulateAllLinks are UNI-T45's settled deviations: both false/true reproduce Chain.vb's own behaviour (its If/ElseIf only ever pulls the previous link, BIBLE D7; animateChain always loops every link, BIBLE V3/D8); true/false are the rebuild's earlier choices, kept only where this file asks for them explicitly.",
+    "_about": "Not in the original; world units and seconds, never mapped. pullBothNeighbors, simulateAllLinks and maceDamageFormula are U.CHN-T45's settled deviations: false/true/Original reproduce Chain.vb's own behaviour (its If/ElseIf only ever pulls the previous link, BIBLE D7; animateChain always loops every link, BIBLE V3/D8; checkMaceImpact's abs(dX + dY/2) of the mass-divided velocity, BIBLE D11); true/false/SpeedTimesFactor are the rebuild's earlier choices, kept only where this file asks for them explicitly.",
     "keepInArena": true,
     "wallBounce": 0.5,
     "hitRadius": 0.3,
@@ -70,6 +70,7 @@
     "catchRadius": 0.35,
     "throwMultiplier": 1,
     "pullBothNeighbors": false,
-    "simulateAllLinks": true
+    "simulateAllLinks": true,
+    "maceDamageFormula": "Original"
   }
 }

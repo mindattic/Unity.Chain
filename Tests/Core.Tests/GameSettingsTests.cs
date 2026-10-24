@@ -351,7 +351,7 @@ namespace MindAttic.Chain.Tests
                 world.Step(1f / 60f);
             }
 
-            // UNI-T45's settled chain defaults (the previous-link-only spring pull, BIBLE D7; the 60 fps
+            // U.CHN-T45's settled chain defaults (the previous-link-only spring pull, BIBLE D7; the 60 fps
             // sub-stepping, BIBLE D9) changed the mace's first-second path enough that no enemy now takes
             // incidental chain contact before the first wave finishes spawning (loadEnemy's weaker HP,
             // UNI-T70, still matters once play starts).
@@ -359,6 +359,39 @@ namespace MindAttic.Chain.Tests
             Assert.AreEqual(4, world.SeekerCount(), "the shipped Seek cap");
             Assert.AreEqual(10, world.Enemies.Count(e => e.Brain.IsWaiting), "the rest hang back or stalk");
             Assert.AreEqual(6, world.Players[0].MaceIndex);
+        }
+
+        [Test]
+        public void Shipped_VelocityToOriginalScale_GivesSaneMaceDamageAgainstEnemyHp()
+        {
+            // BIBLE D11, U.CHN-T45: VelocityToOriginalScale (space.json's lengthScale x framesPerSecond,
+            // inverted) converts a world-units-a-second mace velocity back to Engine.vb's own
+            // abs(dX + dY/2) formula's per-frame screen-space units. A formula-only test (EnemyBrainTests)
+            // cannot catch a wrong scale here -- 1 instead of ~1/540, or the conversion applied twice or
+            // not at all -- since it never loads the real figure; this checks the shipped scale against the
+            // shipped enemy HP it actually has to chip away (enemies.json's resetHP/loadHP), at the real
+            // mace speeds the game already tunes its swing whoosh against (audio.json port.swingSpeed, the
+            // speed a swing first registers, and port.fullVolumeSpeed, a hard one).
+            var settings = Load();
+            Assert.AreEqual(MaceDamageFormula.Original, settings.Player.DamageFormula, "the shipped default, BIBLE D11");
+
+            var resetHp = settings.World.Enemies.Hp;
+            var loadHp = settings.World.Enemies.LoadHp;
+            var mass = settings.World.Enemies.MassMin;
+
+            float DamageAt(float speed)
+            {
+                var brain = new EnemyBrain(hp: resetHp, mass: mass);
+                return brain.Hit(new Vec2(speed, 0f), settings.Player.DamagePerSpeed, settings.Player.DamageFormula, settings.Player.VelocityToOriginalScale);
+            }
+
+            var audibleDamage = DamageAt(settings.AudioTuning.Swing.SwingSpeed);
+            var hardDamage = DamageAt(settings.AudioTuning.Swing.FullVolumeSpeed);
+
+            Assert.Greater(audibleDamage, 0f, "a swing loud enough to hear should not deal zero damage");
+            Assert.Greater(hardDamage, audibleDamage, "a harder swing deals more damage");
+            Assert.Less(hardDamage, resetHp, "a single hard swing should not one-shot a freshly spawned enemy");
+            Assert.Greater(hardDamage, loadHp * 0.01f, "a hard swing should not be a rounding error against the lightest enemy's HP");
         }
 
         // --- Validation -------------------------------------------------------------------------

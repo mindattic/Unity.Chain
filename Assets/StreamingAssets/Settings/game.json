@@ -1,7 +1,8 @@
 {
-  "_source": "Engine.vb: checkMaceImpact (Score += damage * 1000) and checkAngelHit (HP -= 1). Root.vb: gameSpeed, 1.0 at the start and again on every Reset. Input.vb getKeyboard: Minus gameSpeed -= 0.01 and Equals += 0.01 every frame the key is held, never below 0 (UNI-T52); the original only drew it, the port runs every step at it (BIBLE D13, V20).",
+  "_source": "Engine.vb: checkMaceImpact (Score += damage * 1000) and checkAngelHit (HP -= 1). Root.vb: gameSpeed, 1.0 at the start and again on every Reset. Input.vb getKeyboard: Minus gameSpeed -= 0.01 and Equals += 0.01 every frame the key is held, never below 0 (UNI-T52); the original only drew it, the port runs every step at it (BIBLE D13, V20). hpOvershoot is U.CHN-T45's settled deviation: renderDisplay drew HP + 1 bars and GameOver only ended the game below zero, so 1 (the default) reproduces that exactly; 0 is the rebuild's earlier choice, kept only where this file asks for it explicitly (BIBLE D10).",
   "pointsPerDamage": 1000,
   "contactDamage": 1,
   "gameSpeed": 1.0,
-  "gameSpeedStep": 0.01
+  "gameSpeedStep": 0.01,
+  "hpOvershoot": 1
 }

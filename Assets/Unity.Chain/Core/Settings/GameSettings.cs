@@ -241,10 +241,10 @@ namespace MindAttic.Chain.Core
                 HitRadius = chain.Port.HitRadius,
                 DamagePerSpeed = chain.Port.DamagePerSpeed,
                 // Engine.vb's checkMaceImpact abs(dX + dY/2) of the mass-divided impact velocity (BIBLE D11,
-                // UNI-T45) is the original's own behaviour and the default (MaceDamageFormula.Original);
-                // VelocityToOriginalScale converts a world-units/second velocity back to that formula's own
-                // per-frame screen-space units.
-                DamageFormula = MaceDamageFormula.Original,
+                // U.CHN-T45) is the original's own behaviour and the default (chain.json's port.maceDamageFormula,
+                // "Original"); VelocityToOriginalScale converts a world-units/second velocity back to that
+                // formula's own per-frame screen-space units.
+                DamageFormula = chain.Port.MaceDamageFormula,
                 VelocityToOriginalScale = m.ToOriginalSpeed(1f),
                 CatchRadius = chain.Port.CatchRadius,
                 ThrowMultiplier = chain.Port.ThrowMultiplier,
@@ -261,8 +261,9 @@ namespace MindAttic.Chain.Core
                     ContactDamage = Game.ContactDamage,
                     PointsPerDamage = Game.PointsPerDamage,
                     // Engine.vb's renderDisplay drew HP + 1 bars, and GameOver only ended the game below zero
-                    // (BIBLE D10, UNI-T45): the original's own behaviour, and the default.
-                    HpOvershoot = GameState.Settings.Default.HpOvershoot,
+                    // (BIBLE D10, U.CHN-T45): the original's own behaviour, and the default (game.json's
+                    // hpOvershoot, 1).
+                    HpOvershoot = Game.HpOvershoot,
                 },
                 Enemies = new GameWorld.EnemySetup
                 {
@@ -293,9 +294,9 @@ namespace MindAttic.Chain.Core
                 GameSpeed = Game.GameSpeed,
                 // Input.vb's 0.01 a frame while Minus or Equals is held: a rate with no length in it.
                 GameSpeedRate = m.PerSecond(Game.GameSpeedStep),
-                // The original's own frame rate (BIBLE D9, UNI-T45): Step cuts real time into sub-steps close
-                // to its length, so the chain's discrete integration keeps the original's feel at any host
-                // frame rate.
+                // The original's own frame rate (BIBLE D9, U.CHN-T45): Step's fixed-step accumulator banks
+                // real time and runs whole sub-steps of its length, so the chain's discrete integration keeps
+                // the original's feel at any host frame rate.
                 PhysicsStepRate = Space.FramesPerSecond,
             };
 
@@ -390,10 +391,10 @@ namespace MindAttic.Chain.Core
         public bool FollowMouse { get; private set; }
         public float MaceScale { get; private set; }
 
-        /// <summary>Chain.vb's renderChain "'fix" line: <c>link(1).Y -= 0.0004</c>, every frame, unconditionally (BIBLE D8, UNI-T45).</summary>
+        /// <summary>Chain.vb's renderChain "'fix" line: <c>link(1).Y -= 0.0004</c>, every frame, unconditionally (BIBLE D8, U.CHN-T45).</summary>
         public float Link1DropPerFrame { get; private set; }
 
-        /// <summary>Chain.vb's <c>maceOffset</c> (-0.012, -0.012), added to the mace link's position every frame while following (BIBLE D8, UNI-T45).</summary>
+        /// <summary>Chain.vb's <c>maceOffset</c> (-0.012, -0.012), added to the mace link's position every frame while following (BIBLE D8, U.CHN-T45).</summary>
         public Vec2 MaceOffset { get; private set; }
 
         /// <summary>Form1.vb's live-tuning keys: steps and limits, in the file's own units (UNI-T51).</summary>
@@ -459,7 +460,8 @@ namespace MindAttic.Chain.Core
                 catchRadius: port.Number("catchRadius", 0f),
                 throwMultiplier: port.Number("throwMultiplier", 0f),
                 pullBothNeighbors: port.Flag("pullBothNeighbors"),
-                simulateAllLinks: port.Flag("simulateAllLinks"));
+                simulateAllLinks: port.Flag("simulateAllLinks"),
+                maceDamageFormula: port.Choice<MaceDamageFormula>("maceDamageFormula"));
             port.Done();
             return data;
         }
@@ -507,7 +509,7 @@ namespace MindAttic.Chain.Core
     /// <summary>chain.json's port-only figures, world units and seconds.</summary>
     public readonly struct ChainPort
     {
-        public ChainPort(bool keepInArena, float wallBounce, float hitRadius, float damagePerSpeed, float catchRadius, float throwMultiplier, bool pullBothNeighbors, bool simulateAllLinks)
+        public ChainPort(bool keepInArena, float wallBounce, float hitRadius, float damagePerSpeed, float catchRadius, float throwMultiplier, bool pullBothNeighbors, bool simulateAllLinks, MaceDamageFormula maceDamageFormula)
         {
             KeepInArena = keepInArena;
             WallBounce = wallBounce;
@@ -517,6 +519,7 @@ namespace MindAttic.Chain.Core
             ThrowMultiplier = throwMultiplier;
             PullBothNeighbors = pullBothNeighbors;
             SimulateAllLinks = simulateAllLinks;
+            MaceDamageFormula = maceDamageFormula;
         }
 
         /// <summary>Links bounce off the arena (V4; Chain.vb's checkBounds is commented out).</summary>
@@ -529,10 +532,12 @@ namespace MindAttic.Chain.Core
         public float CatchRadius { get; }
         /// <summary>Launch velocity = mace velocity x this (the original throws at the mace's velocity: 1).</summary>
         public float ThrowMultiplier { get; }
-        /// <summary>See <see cref="ChainSimulation.Settings.PullBothNeighbors"/> (BIBLE D7, UNI-T45).</summary>
+        /// <summary>See <see cref="ChainSimulation.Settings.PullBothNeighbors"/> (BIBLE D7, U.CHN-T45).</summary>
         public bool PullBothNeighbors { get; }
-        /// <summary>See <see cref="ChainSimulation.Settings.SimulateAllLinks"/> (BIBLE V3/D8, UNI-T45).</summary>
+        /// <summary>See <see cref="ChainSimulation.Settings.SimulateAllLinks"/> (BIBLE V3/D8, U.CHN-T45).</summary>
         public bool SimulateAllLinks { get; }
+        /// <summary>See <see cref="MindAttic.Chain.Core.MaceDamageFormula"/> (BIBLE D11, U.CHN-T45): <c>Original</c> by default.</summary>
+        public MaceDamageFormula MaceDamageFormula { get; }
     }
 
     /// <summary>angel.json: Angel.vb, in its own units.</summary>
@@ -709,12 +714,19 @@ namespace MindAttic.Chain.Core
         /// <summary>Input.vb's Minus/Equals: <c>gameSpeed -= 0.01</c> / <c>+= 0.01</c> each frame the key is held (UNI-T52).</summary>
         public float GameSpeedStep { get; private set; }
 
+        /// <summary>
+        /// Engine.vb's <c>renderDisplay</c> drawing <c>HP + 1</c> bars and <c>GameOver</c> ending only below
+        /// zero (BIBLE D10, U.CHN-T45): the original's own behaviour and the default, 1 (<see cref="GameState.Settings.HpOvershoot"/>).
+        /// </summary>
+        public int HpOvershoot { get; private set; }
+
         internal static GameData Read(SettingsReader r) => new GameData
         {
             PointsPerDamage = r.Number("pointsPerDamage", 0f),
             ContactDamage = r.Integer("contactDamage", 0),
             GameSpeed = r.Number("gameSpeed", 0f),
             GameSpeedStep = r.Positive("gameSpeedStep"),
+            HpOvershoot = r.Integer("hpOvershoot", 0),
         };
     }
 

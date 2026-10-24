@@ -82,11 +82,13 @@ namespace MindAttic.Chain.Core
             public float GameSpeedRate;
 
             /// <summary>
-            /// The original's own frame rate (BIBLE D9), steps a second: <see cref="Step"/> cuts real time into
-            /// sub-steps close to 1 / this many seconds (<see cref="TimeScale.Substeps(float,float,float)"/>), so the
-            /// chain's discrete integration keeps the original's feel whatever the host's own frame rate is. 60
-            /// (space.json's <c>framesPerSecond</c>, the same figure every per-frame data file is converted at)
-            /// by default; 0 falls back to the coarser speed-only rule.
+            /// The original's own frame rate (BIBLE D9), steps a second: <see cref="Step"/> banks real time in a
+            /// fixed-step accumulator and runs whole <c>1 / PhysicsStepRate</c>-second sub-steps from it, carrying
+            /// the remainder forward, so the chain's discrete integration keeps the original's feel at any host
+            /// frame rate, not only at an exact multiple of it. 60 (space.json's <c>framesPerSecond</c>, the same
+            /// figure every per-frame data file is converted at) by default; 0 falls back to sub-steps sized to
+            /// each call's own <c>deltaTime</c> instead of a fixed length (the coarser speed-only rule used
+            /// before a data file set the rate).
             /// </summary>
             public float PhysicsStepRate;
 
@@ -165,6 +167,17 @@ namespace MindAttic.Chain.Core
         }
 
         private float _gameSpeed;
+
+        /// <summary>
+        /// Game seconds banked by <see cref="Step"/> that have not yet filled a whole
+        /// <see cref="Settings.PhysicsStepRate"/> sub-step (BIBLE D9, U.CHN-T45): a true fixed-step
+        /// accumulator, not a per-call rounding of how many sub-steps to split that call's own
+        /// <c>deltaTime</c> into. A host frame rate that is not an exact multiple or divisor of
+        /// <c>PhysicsStepRate</c> (144 Hz, 90 Hz, 50 Hz, ...) still advances in exactly
+        /// <c>1 / PhysicsStepRate</c>-second sub-steps on average, carrying the remainder forward
+        /// instead of running one sub-step sized to that call's own <c>deltaTime</c>.
+        /// </summary>
+        private float _stepAccumulator;
 
         /// <summary>The hearts in the world (Item.vb's items 0..maxItem: the one Health10 heart).</summary>
         public IReadOnlyList<HeartFloat> Hearts => _hearts;
@@ -453,6 +466,7 @@ namespace MindAttic.Chain.Core
             State.Reset();
             RoundTime = 0f;
             GameSpeed = Config.GameSpeed;
+            _stepAccumulator = 0f;
             foreach (var player in _players)
             {
                 player.Restart();
@@ -622,33 +636,47 @@ namespace MindAttic.Chain.Core
         // --- The step ------------------------------------------------------------------------
 
         /// <summary>
-        /// One fixed step of <paramref name="deltaTime"/> real seconds, run at the <see cref="GameSpeed"/>: it plays
-        /// <paramref name="deltaTime"/> x the speed of game time, cut into <see cref="TimeScale.Substeps"/> equal
-        /// sub-steps so none is longer than <paramref name="deltaTime"/> (the chain's springs stay stable at any
-        /// speed). Everything the original did once a frame (the mace's sweep, the grapple, the hurt check, the
-        /// game-over fade) runs once a sub-step. A game-over reset ends the step there: the new round starts on
-        /// the next one, at its own speed. Does nothing while paused or at speed 0.
+        /// One real step of <paramref name="deltaTime"/> seconds, run at the <see cref="GameSpeed"/>: it banks
+        /// <paramref name="deltaTime"/> x the speed of game time in <see cref="_stepAccumulator"/> and then runs
+        /// as many whole <c>1 / <see cref="Settings.PhysicsStepRate"/></c> sub-steps as that has filled (BIBLE D9,
+        /// U.CHN-T45), up to <see cref="TimeScale.MaxSubsteps"/>, carrying any leftover to the next call -- a true
+        /// fixed-step accumulator, so the chain's discrete per-frame integration keeps the original's own frame
+        /// length (and so its feel) at any host frame rate, not only at an exact multiple of it.
+        /// <see cref="Settings.PhysicsStepRate"/> at or below 0 falls back to sub-steps sized to this call's own
+        /// <paramref name="deltaTime"/> instead of a fixed length (the coarser rule used before a data file set
+        /// the rate). Everything the original did once a frame (the mace's sweep, the grapple, the
+        /// hurt check, the game-over fade) runs once a sub-step. A game-over reset ends the step there and clears
+        /// the accumulator: the new round starts on the next one, at its own speed. Does nothing while paused or
+        /// at speed 0.
         /// </summary>
         public void Step(float deltaTime)
         {
-            if (State.IsPaused || deltaTime <= 0f)
+            if (State.IsPaused || deltaTime <= 0f || GameSpeed <= 0f)
             {
                 return;
             }
 
-            var substeps = TimeScale.Substeps(GameSpeed, deltaTime, Config.PhysicsStepRate);
-            if (substeps == 0)
+            var fixedStep = Config.PhysicsStepRate > 0f ? 1f / Config.PhysicsStepRate : deltaTime;
+            _stepAccumulator += deltaTime * GameSpeed;
+
+            // A long stall (a breakpoint, a loading hitch) should not queue an unbounded backlog of catch-up steps.
+            var maxBanked = fixedStep * TimeScale.MaxSubsteps;
+            if (_stepAccumulator > maxBanked)
             {
-                return;
+                _stepAccumulator = maxBanked;
             }
 
-            var gameTime = deltaTime * GameSpeed / substeps;
-            for (var i = 0; i < substeps; i++)
+            var steps = 0;
+            while (_stepAccumulator >= fixedStep && steps < TimeScale.MaxSubsteps)
             {
-                if (StepOnce(gameTime))
+                if (StepOnce(fixedStep))
                 {
+                    _stepAccumulator = 0f;
                     return;
                 }
+
+                _stepAccumulator -= fixedStep;
+                steps++;
             }
         }
 
