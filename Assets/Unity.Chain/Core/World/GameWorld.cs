@@ -123,7 +123,7 @@ namespace MindAttic.Chain.Core
 
         /// <summary>
         /// Seconds of play this round, in game time: Gui.vb's <c>timerMin:timerSec</c> clock, which <see cref="Reset"/>
-        /// sets back to 0:00. The HUD's m:ss readout is UNI-T53.
+        /// sets back to 0:00. The HUD shows it as m:ss (<see cref="RoundClock"/>, UNI-T53).
         /// </summary>
         public float RoundTime { get; private set; }
 

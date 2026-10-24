@@ -281,6 +281,14 @@ namespace MindAttic.Chain.Tests
             Assert.AreEqual("0.97", HudText.GameSpeed(0.97f));
             Assert.AreEqual("60 fps", HudText.Fps(60));
         }
+
+        [Test]
+        public void Clock_IsUpdateClocksMSs()
+        {
+            Assert.AreEqual("0:00", HudText.Clock(0f));
+            Assert.AreEqual("0:07", HudText.Clock(7.4f));
+            Assert.AreEqual("2:15", HudText.Clock(135f));
+        }
     }
 
     public class GameSessionTests
@@ -551,6 +559,35 @@ namespace MindAttic.Chain.Tests
             Session.Restart();
             Assert.IsTrue(hud.ShowFps, "Root.vb's Reset sets bDrawFPS = True");
             Assert.IsNotNull(hud.FpsText);
+        }
+
+        [Test]
+        public void Hud_Clock_CountsTheRoundsSeconds_AtTheTop_AndAResetZeroesIt()
+        {
+            var hud = _rig.Track(new GameObject("Hud")).AddComponent<GameHud>();
+            hud.Session = Session;
+            var scale = hud.Scale;
+
+            // Gui.vb updateClock: Write(timerMin & ":" & timerSec, fontClock, 300, 5, 255, 255, 255, 0).
+            var clock = hud.Root.Q<Label>("hud-clock");
+            Assert.AreEqual(300f * scale, clock.style.left.value.value, 1e-4f);
+            Assert.AreEqual(5f * scale, clock.style.top.value.value, 1e-4f);
+            Assert.AreEqual((Color)new Color32(255, 255, 0, 255), clock.style.color.value, "yellow");
+            Assert.AreEqual(16f * 96f / 72f * scale, clock.style.fontSize.value.value, 1e-4f, "fontClock, Arial Narrow 16 pt");
+            Assert.AreEqual("0:00", hud.ClockText);
+
+            for (var i = 0; i < 13; i++) { _rig.Step(0.1f); }
+            hud.Refresh();
+            Assert.AreEqual(HudText.Clock(Session.World.RoundTime), hud.ClockText);
+            Assert.AreEqual("0:01", hud.ClockText, "1.3 s of play");
+
+            Assert.IsTrue(Session.Submit(new Pause(_rig.Id, true)));
+            Assert.IsNull(hud.ClockText, "oneFrameRender skips updateClock while paused");
+            Assert.IsTrue(Session.Submit(new Pause(_rig.Id, false)));
+
+            Session.Restart();
+            hud.Refresh();
+            Assert.AreEqual("0:00", hud.ClockText, "Root.vb's Reset: timerMin = 0, timerSec = 0");
         }
 
         [Test]

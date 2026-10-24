@@ -53,6 +53,12 @@ namespace MindAttic.Chain.Tests
             Assert.IsFalse(hud.Pause.Bold);
             Assert.AreEqual(10f * 96f / 72f, hud.Hp.FontPixels, 1e-5f, "points at 96 dpi");
 
+            Assert.AreEqual(HudAnchor.TopLeft, hud.Clock.Anchor);
+            Assert.AreEqual(new Vec2(300f, 5f), hud.Clock.Position, "updateClock's Write at 300, 5");
+            AreEqual(new Argb(255, 255, 255, 0), hud.Clock.Colour, "clock yellow");
+            Assert.AreEqual(16f, hud.Clock.FontSize, "fontClock, Arial Narrow 16");
+            Assert.IsFalse(hud.Clock.Bold, "fontClock is Regular");
+
             Assert.AreEqual(100, hud.FpsSampleMs, "iFPSProfileSpeed");
             Assert.IsTrue(hud.DrawFps, "bDrawFPS starts True");
         }
@@ -87,6 +93,24 @@ namespace MindAttic.Chain.Tests
 
             counter.Frame(300);
             Assert.AreEqual(10, counter.FrameRate, "one frame since: 10 fps");
+        }
+
+        [Test]
+        public void RoundClock_IsUpdateClocksMSs_CountingWholeSeconds()
+        {
+            Assert.AreEqual("0:00", RoundClock.Format(0f));
+            Assert.AreEqual("0:00", RoundClock.Format(0.999f), "a second counts only once it has passed");
+            Assert.AreEqual("0:01", RoundClock.Format(1f));
+            Assert.AreEqual("0:09", RoundClock.Format(9.5f), "timerMin & \":0\" & timerSec below 10");
+            Assert.AreEqual("0:10", RoundClock.Format(10f));
+            Assert.AreEqual("0:59", RoundClock.Format(59.99f));
+            Assert.AreEqual("1:00", RoundClock.Format(60f), "timerSec rolls over into timerMin");
+            Assert.AreEqual("1:05", RoundClock.Format(65f));
+            Assert.AreEqual("75:30", RoundClock.Format(75 * 60 + 30), "minutes are never padded or capped");
+            Assert.AreEqual("0:00", RoundClock.Format(-3f));
+            Assert.AreEqual("0:00", RoundClock.Format(float.NaN));
+            Assert.AreEqual(1L, RoundClock.Minutes(119f));
+            Assert.AreEqual(59, RoundClock.Seconds(119f));
         }
 
         [Test]

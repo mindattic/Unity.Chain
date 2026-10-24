@@ -12,6 +12,8 @@ namespace MindAttic.Chain
     /// <item>the status box art (Gui.vb renderStatus: <c>status_box.png</c>, 96 x 48 at the top left);</item>
     /// <item>HP as one <c>|</c> per point and the score, red; the grappled enemy's HP in yellow while the grapple
     /// holds one; the chain's <c>Res</c>/<c>Grav</c>/<c>Spring</c> in blue; the game speed, red, top right;</item>
+    /// <item>the round clock (Gui.vb updateClock, UNI-T53): <c>m:ss</c> of <see cref="GameWorld.RoundTime"/> at
+    /// (300, 5) in yellow, back to 0:00 on every reset, hidden with the rest of the status layer while paused;</item>
     /// <item>the frame rate top right (Gui.vb renderFPS), sampled every 100 ms by a <see cref="FrameRateCounter"/>,
     /// shown from the start, flipped by F4 (the Debug map's ToggleFps) and shown again by every reset (Root.vb's
     /// <c>bDrawFPS = True</c>);</item>
@@ -65,6 +67,7 @@ namespace MindAttic.Chain
         private Label _score;
         private Label _readout;
         private Label _grappled;
+        private Label _clock;
         private Label _gameSpeed;
         private Label _fps;
         private Label _pause;
@@ -142,6 +145,9 @@ namespace MindAttic.Chain
 
         /// <summary>The Res/Grav/Spring block as it is shown.</summary>
         public string ReadoutText => Root != null ? _readout.text : null;
+
+        /// <summary>The round clock (<c>m:ss</c>) as it is shown, or null while it is hidden (paused).</summary>
+        public string ClockText => Root != null && Shown(_status) ? _clock.text : null;
 
         /// <summary>The game speed as it is shown.</summary>
         public string GameSpeedText => Root != null ? _gameSpeed.text : null;
@@ -247,6 +253,7 @@ namespace MindAttic.Chain
 
             SetText(_hp, HudText.Hp(state.Hp));
             SetText(_score, HudText.Score(state.Score));
+            SetText(_clock, HudText.Clock(session.World.RoundTime));
             SetText(_gameSpeed, HudText.GameSpeed(session.World.GameSpeed));
 
             var player = FindPlayer();
@@ -472,6 +479,7 @@ namespace MindAttic.Chain
             _score = AddLabel(_status, "hud-score", layout.Score);
             _readout = AddLabel(_status, "hud-readout", layout.Readout);
             _grappled = AddLabel(_status, "hud-grappled", layout.Grappled);
+            _clock = AddLabel(_status, "hud-clock", layout.Clock);
             _gameSpeed = AddLabel(_status, "hud-game-speed", layout.GameSpeed);
 
             _fps = AddLabel(_root, "hud-fps", layout.Fps);

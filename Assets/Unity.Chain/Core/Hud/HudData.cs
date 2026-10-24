@@ -100,6 +100,9 @@ namespace MindAttic.Chain.Core
         /// <summary>The grappled enemy's HP, yellow.</summary>
         public HudTextStyle Grappled { get; private set; }
 
+        /// <summary>Gui.vb's updateClock: the round's <c>m:ss</c> (<see cref="RoundClock"/>) at (300, 5), yellow, fontClock.</summary>
+        public HudTextStyle Clock { get; private set; }
+
         /// <summary><c>FormatNumber(gameSpeed, 2)</c>.</summary>
         public HudTextStyle GameSpeed { get; private set; }
 
@@ -133,6 +136,7 @@ namespace MindAttic.Chain.Core
             data.Score = HudTextStyle.Read(r, "score");
             data.Readout = HudTextStyle.Read(r, "readout");
             data.Grappled = HudTextStyle.Read(r, "grappled");
+            data.Clock = HudTextStyle.Read(r, "clock");
             data.GameSpeed = HudTextStyle.Read(r, "gameSpeed");
             data.Fps = HudTextStyle.Read(r, "fps");
             data.Pause = HudTextStyle.Read(r, "pause");
