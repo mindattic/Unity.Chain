@@ -761,20 +761,87 @@ namespace MindAttic.Chain.Tests
         }
 
         [Test]
-        public void Hud_Menu_F12_FlipsTheWindowMode_IntoTheProfile()
+        public void Hud_Menu_F12_OpensFrmConfig_AndSubmitKeepsItInTheProfile()
         {
             var previous = PlayerProfile.Store;
-            var store = new MemoryPreferencesStore();
+            var store = new MemoryPreferencesStore(new PlayerPreferences
+            {
+                StockVolumesApplied = true,
+                WindowMode = WindowMode.Windowed,
+                MusicVolume = 0.5f,
+                SfxVolume = 0.5f,
+                AmbientVolume = 0.5f,
+            });
             PlayerProfile.Store = store;
             try
             {
                 var hud = _rig.Track(new GameObject("Hud")).AddComponent<GameHud>();
                 hud.Session = Session;
-                var windowed = Screen.fullScreenMode == FullScreenMode.Windowed;
+                Assert.IsFalse(hud.ConfigShown, "closed until F12");
+                Assert.Greater(hud.Root.IndexOf(hud.Config), hud.Root.IndexOf(hud.MenuPanel), "drawn over the menu");
+                Assert.AreEqual(PickingMode.Position, hud.Config.pickingMode, "its controls take the mouse");
 
-                Assert.AreEqual(windowed, hud.Act(MenuEntry.Video), "windowed goes fullscreen, fullscreen windowed");
-                Assert.AreEqual(windowed ? WindowMode.Fullscreen : WindowMode.Windowed, PlayerProfile.Preferences.WindowMode);
-                Assert.AreEqual(1, store.Writes, "saveOptions: kept in the profile");
+                // F12 opens it on the profile's settings (frm_config_Load) and holds the world still while it is open.
+                Assert.IsTrue(hud.Act(MenuEntry.Video));
+                Assert.IsTrue(hud.ConfigShown);
+                Assert.IsTrue(Session.State.IsPaused);
+                var form = hud.Config.Form;
+                Assert.IsFalse(form.Fullscreen);
+                var resolution = hud.Config.Q<DropdownField>("config-resolution");
+                Assert.IsFalse(resolution.enabledSelf, "fra_res is disabled while windowed");
+                Assert.AreEqual("640 x 480", resolution.value);
+                Assert.AreEqual(0.5f, hud.Config.Q<Slider>("config-ambient").value, 1e-6f);
+
+                // F12 again closes it and keeps nothing.
+                form.SetFullscreen(true);
+                Assert.IsFalse(hud.Act(MenuEntry.Video));
+                Assert.IsFalse(Session.State.IsPaused, "the world goes on");
+                Assert.AreEqual(0, store.Writes);
+                Assert.AreEqual(WindowMode.Windowed, PlayerProfile.Preferences.WindowMode);
+
+                // Fullscreen at 1024 x 768 with new volumes, then Submit: into the profile, applied, closed.
+                hud.OpenConfig();
+                form.SetFullscreen(true);
+                Assert.IsTrue(resolution.enabledSelf, "fra_res is enabled in fullscreen");
+                Assert.IsTrue(form.SelectResolution(2));
+                Assert.AreEqual("1024 x 768", resolution.value);
+                form.SetMusicVolume(0.25f);
+                form.SetSfxVolume(0.75f);
+                form.SetAmbientVolume(0f);
+                Assert.AreEqual(0.25f, hud.Config.Q<Slider>("config-music").value, 1e-6f);
+                var heard = 0;
+                PlayerProfile.Changed += Heard;
+                try
+                {
+                    hud.Config.Submit();
+                }
+                finally
+                {
+                    PlayerProfile.Changed -= Heard;
+                }
+
+                Assert.AreEqual(1, store.Writes, "Submit keeps it in the profile");
+                Assert.AreEqual(1, heard, "the music and sound effects take the new volumes at once");
+                var kept = store.Read();
+                Assert.AreEqual(WindowMode.Fullscreen, kept.WindowMode);
+                Assert.AreEqual(new DisplayResolution(1024, 768), kept.Resolution);
+                Assert.AreEqual(0.25f, kept.MusicVolume, 1e-6f);
+                Assert.AreEqual(0.75f, kept.SfxVolume, 1e-6f);
+                Assert.AreEqual(0f, kept.AmbientVolume, 1e-6f);
+                Assert.IsFalse(hud.ConfigShown, "Me.Hide()");
+                Assert.IsFalse(Session.State.IsPaused);
+
+                // Default: windowed at 640 x 480, only on the controls until Submit.
+                hud.OpenConfig();
+                Assert.IsNotNull(hud.Config.Q<Button>("config-default"));
+                Assert.IsNotNull(hud.Config.Q<Button>("config-submit"));
+                form.Default();
+                Assert.IsFalse(form.Fullscreen);
+                Assert.AreEqual("640 x 480", resolution.value);
+                Assert.AreEqual(1, store.Writes);
+                hud.CloseConfig();
+
+                void Heard() => heard++;
             }
             finally
             {

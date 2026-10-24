@@ -47,19 +47,8 @@ namespace MindAttic.Chain
             }
         }
 
-        /// <summary>
-        /// Form1.vb's F12 and the menu's <c>F12 - Configure Video</c>: windowed becomes fullscreen and fullscreen
-        /// windowed (<see cref="PlayerPreferences.ToggleScreen"/>), kept in the profile as <c>saveOptions</c> kept it in
-        /// the registry, and put into effect in a player build. The original restarted its engine to rebuild the D3D
-        /// device; Unity switches in place, so the round goes on (BIBLE V21). Returns the new mode.
-        /// </summary>
-        public static WindowMode ToggleScreen()
-        {
-            var mode = PlayerProfile.Preferences.ToggleScreen(Screen.fullScreenMode != FullScreenMode.Windowed);
-            PlayerProfile.Save();
-            Apply();
-            return mode;
-        }
+        /// <summary>Whether the screen is shown other than in a window now (the config screen's starting Display Mode when the profile names none).</summary>
+        public static bool FullScreenNow => Screen.fullScreenMode != FullScreenMode.Windowed && Screen.fullScreenMode != FullScreenMode.MaximizedWindow;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void ApplyOnStart() => Apply();

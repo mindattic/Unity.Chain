@@ -72,6 +72,24 @@ namespace MindAttic.Chain.Tests
         }
 
         [Test]
+        public void TheAmbientVolume_TakesSoundVbs_UntilTheProfileHoldsOne()
+        {
+            var fresh = PlayerPreferences.Load(new MemoryPreferencesStore(), StockAudio);
+            Assert.AreEqual(0.1778f, fresh.AmbientVolume, 1e-4f, "Sound.vb's ambientVolume -1500 is -15 dB");
+
+            // A profile stocked before the slider existed still gets it.
+            var older = PlayerPreferences.Load(new MemoryPreferencesStore(new PlayerPreferences { StockVolumesApplied = true, MusicVolume = 0.5f }), StockAudio);
+            Assert.AreEqual(0.1778f, older.AmbientVolume, 1e-4f);
+            Assert.AreEqual(0.5f, older.MusicVolume);
+
+            var store = new MemoryPreferencesStore();
+            var own = PlayerPreferences.Load(store, StockAudio);
+            own.AmbientVolume = 0.9f;
+            store.Write(own);
+            Assert.AreEqual(0.9f, PlayerPreferences.Load(store, StockAudio).AmbientVolume, 1e-6f);
+        }
+
+        [Test]
         public void Gains_AreZeroWhenMuted_AndVolumesClampToOne()
         {
             var preferences = new PlayerPreferences { MusicVolume = 3f, SfxVolume = -1f };

@@ -329,7 +329,8 @@ namespace MindAttic.Chain.Core
                 sfxVolume: AudioData.Linear(Audio.SfxVolume),
                 musicVolume: AudioData.Linear(Audio.MusicVolume),
                 randomMusicStart: Audio.RndMusicPos,
-                port: Audio.Port);
+                port: Audio.Port,
+                ambientVolume: AudioData.Linear(Audio.AmbientVolume));
             MaceScale = chain.MaceScale;
             Steering = new SteerInput.Settings(
                 joystickEnabled: Input.BJoystick,
@@ -831,17 +832,21 @@ namespace MindAttic.Chain.Core
     /// <summary>The audio the port plays with: Sound.vb's volumes as gains, and the swing sound's tuning.</summary>
     public readonly struct AudioTuning
     {
-        public AudioTuning(float sfxVolume, float musicVolume, bool randomMusicStart, AudioPort port)
+        public AudioTuning(float sfxVolume, float musicVolume, bool randomMusicStart, AudioPort port, float ambientVolume = 1f)
         {
             SfxVolume = sfxVolume;
             MusicVolume = musicVolume;
             RandomMusicStart = randomMusicStart;
             Swing = port;
+            AmbientVolume = ambientVolume;
         }
 
         /// <summary>sfxVolume -1000 is -10 dB, a gain of about 0.32.</summary>
         public float SfxVolume { get; }
         public float MusicVolume { get; }
+
+        /// <summary>Sound.vb's ambientVolume -1500 (-15 dB, a gain of about 0.18); nothing plays on it yet (frmConfig's Ambient slider keeps it).</summary>
+        public float AmbientVolume { get; }
         /// <summary>Sound.vb's rndMusicPos: the music starts at a random point.</summary>
         public bool RandomMusicStart { get; }
         public AudioPort Swing { get; }

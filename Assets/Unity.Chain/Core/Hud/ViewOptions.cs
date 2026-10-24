@@ -18,7 +18,10 @@ namespace MindAttic.Chain.Core
         /// <summary>F4: <c>drawFrameRate = Not drawFrameRate</c> (bDrawFPS).</summary>
         Fps,
 
-        /// <summary>F12: <c>toggleScreen = True</c>, the window switches between windowed and fullscreen.</summary>
+        /// <summary>
+        /// F12, "Configure Video": opens frmConfig.vb's settings screen (<see cref="ConfigForm"/>, UNI-T59). The original's
+        /// F12 only flipped fullscreen and restarted, never opening the form its menu names (BIBLE D27).
+        /// </summary>
         Video,
 
         /// <summary>Escape: <c>bRunning = False</c>, the game ends (the world's <see cref="QuitGame"/>).</summary>

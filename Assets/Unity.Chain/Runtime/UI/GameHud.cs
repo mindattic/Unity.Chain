@@ -20,8 +20,8 @@ namespace MindAttic.Chain
     /// <item>Gui.vb's renderMenu (UNI-T55): Tab opens <c>menu.jpg</c>, 255 x 255 at (10, 10), listing F1 solid or
     /// wireframe, F2 textured or shaded, F3 culling, F4 the frame rate, F12 configure video and ESC quit, each line
     /// naming what its key does now (<see cref="GameMenu"/>); the flags are the screen's <see cref="Options"/>
-    /// (Root.vb's, all put back and the menu closed by every reset); F12 switches windowed and fullscreen
-    /// (<see cref="DisplayPreferences.ToggleScreen"/>) and ESC is the seat's own Quit, the world's
+    /// (Root.vb's, all put back and the menu closed by every reset); F12 opens frmConfig.vb's settings screen
+    /// (<see cref="ConfigScreen"/>, <see cref="ToggleConfig"/>, UNI-T59) and ESC is the seat's own Quit, the world's
     /// <see cref="QuitGame"/>; drawn only while not paused, as oneFrameRender draws it;</item>
     /// <item>while paused only the half see-through red <c>- PAUSE -</c> banner (oneFrameRender draws none of the
     /// HUD while paused), over the port's dim; at game over the port's banner over the fade (dimmed here unless
@@ -83,6 +83,9 @@ namespace MindAttic.Chain
         private Label _gameOver;
         private VisualElement _menu;
         private readonly Label[] _menuLines = new Label[GameMenu.Entries.Count];
+        private ConfigScreen _config;
+        private bool _pausedForConfig;
+        private (CursorLockMode lockState, bool visible) _cursorBeforeConfig;
 
         public GameSession Session
         {
@@ -228,9 +231,9 @@ namespace MindAttic.Chain
         }
 
         /// <summary>
-        /// What a menu line's key does: F1-F4 flip their flag (returning its new state), F12 switches windowed and
-        /// fullscreen (true when it went fullscreen), ESC sends the world <see cref="QuitGame"/> for the seated player,
-        /// as the seat's own Escape does (true when the world took it).
+        /// What a menu line's key does: F1-F4 flip their flag (returning its new state), F12 opens or closes the config
+        /// screen (<see cref="ToggleConfig"/>, true when it opened), ESC sends the world <see cref="QuitGame"/> for the
+        /// seated player, as the seat's own Escape does (true when the world took it).
         /// </summary>
         public bool Act(MenuEntry entry)
         {
@@ -238,7 +241,7 @@ namespace MindAttic.Chain
             switch (entry)
             {
                 case MenuEntry.Video:
-                    result = DisplayPreferences.ToggleScreen() != WindowMode.Windowed;
+                    result = ToggleConfig();
                     break;
                 case MenuEntry.Quit:
                     var player = session != null ? FindPlayer() : null;
@@ -251,6 +254,94 @@ namespace MindAttic.Chain
 
             Refresh();
             return result;
+        }
+
+        /// <summary>frmConfig.vb's settings screen (UNI-T59), over the HUD's other layers; hidden until F12.</summary>
+        public ConfigScreen Config => Root != null ? _config : null;
+
+        /// <summary>Whether the config screen is open.</summary>
+        public bool ConfigShown => Root != null && Shown(_config);
+
+        /// <summary>
+        /// F12 and the menu's "F12 - Configure Video": opens the config screen (frmConfig.vb, which the original's menu
+        /// names but never opened, BIBLE D27) or closes it again without keeping anything. Returns whether it is open.
+        /// </summary>
+        public bool ToggleConfig()
+        {
+            if (ConfigShown)
+            {
+                CloseConfig();
+            }
+            else
+            {
+                OpenConfig();
+            }
+
+            return ConfigShown;
+        }
+
+        /// <summary>
+        /// Opens the config screen on the player's settings (<c>frm_config_Load</c>, from the profile). The world pauses
+        /// while it is open and the cursor is freed to work the controls; closing it puts both back.
+        /// </summary>
+        public void OpenConfig()
+        {
+            if (ConfigShown)
+            {
+                return;
+            }
+
+            _config.Form.Load(PlayerProfile.Preferences, DisplayPreferences.FullScreenNow);
+            SetShown(_config, true);
+
+            var player = session != null ? FindPlayer() : null;
+            _pausedForConfig = player != null && !session.State.IsPaused && session.Submit(new Pause(player.Id, true));
+
+            _cursorBeforeConfig = (UnityEngine.Cursor.lockState, UnityEngine.Cursor.visible);
+            UnityEngine.Cursor.lockState = CursorLockMode.None;
+            UnityEngine.Cursor.visible = true;
+            Refresh();
+        }
+
+        /// <summary>Closes the config screen (the form's close box, F12 again, or after Submit), unpausing if it paused.</summary>
+        public void CloseConfig()
+        {
+            if (!ConfigShown)
+            {
+                return;
+            }
+
+            SetShown(_config, false);
+            if (_pausedForConfig && session != null && session.State.IsPaused && !session.State.IsGameOver)
+            {
+                var player = FindPlayer();
+                if (player != null)
+                {
+                    session.Submit(new Pause(player.Id, false));
+                }
+            }
+
+            _pausedForConfig = false;
+            UnityEngine.Cursor.lockState = _cursorBeforeConfig.lockState;
+            UnityEngine.Cursor.visible = _cursorBeforeConfig.visible;
+            Refresh();
+        }
+
+        /// <summary>
+        /// <c>btnSubmit_Click</c>: the screen's window mode, resolution and volumes go into the player's profile
+        /// (<see cref="PlayerProfile.Save"/>, the Unity.Shared profile where the original wrote video.cfg and the registry's
+        /// Software\MindAttic\Engine), the music and sound effects take the new volumes at once, the display settings are
+        /// put into effect in a player build (<see cref="DisplayPreferences.Apply"/>; no restart, BIBLE V21), and the
+        /// screen closes (<c>Me.Hide()</c>). Returns whether the profile was written.
+        /// </summary>
+        public bool SubmitConfig()
+        {
+            _config.Form.Submit(PlayerProfile.Preferences);
+            var saved = PlayerProfile.Save();
+            PlayerProfile.NotifyChanged();
+            DisplayPreferences.Apply();
+            CloseConfig();
+            return saved;
         }
 
         /// <summary>Gui.vb's frame counter (sampled every hud.json <c>fpsSampleMs</c>).</summary>
@@ -379,6 +470,7 @@ namespace MindAttic.Chain
 
         private void OnDisable()
         {
+            CloseConfig();
             Unsubscribe();
             _controls?.Debug.Disable();
             if (ViewRenderFeature.Options == _options)
@@ -570,6 +662,12 @@ namespace MindAttic.Chain
             _gameOver.text = HudText.GameOver;
 
             BuildMenu(layout.Menu);
+
+            _config = new ConfigScreen(layout.Config, Scale);
+            _config.Submitted += () => SubmitConfig();
+            _config.CloseRequested += CloseConfig;
+            SetShown(_config, false);
+            _root.Add(_config);
 
             SetShown(_overlay, false);
             SetShown(_pause, false);

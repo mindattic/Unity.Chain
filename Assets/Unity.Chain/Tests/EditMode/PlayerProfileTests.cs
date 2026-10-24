@@ -98,6 +98,8 @@ namespace MindAttic.Chain.Tests
             var preferences = store.Read();
             preferences.Resolution = new DisplayResolution(1600, 900);
             preferences.WindowMode = WindowMode.Borderless;
+            Assert.IsFalse(preferences.HasAmbientVolume, "a profile with no ambient volume reads none");
+            preferences.AmbientVolume = 0.3f; // frmConfig's Ambient slider (UNI-T59): Chain's own key, not the common block
             preferences.TuningOverrides["chain.json"] = "{\"springK\": 0.5, \"port\": {\"hitRadius\": 0.45}}";
             profile.Settings.Game.Set("somethingElse", 7); // a field this game does not know survives
             Assert.IsTrue(store.Write(preferences));
@@ -107,8 +109,10 @@ namespace MindAttic.Chain.Tests
             Assert.AreEqual(1600, game.GetObject(PlayerPreferences.GameKeys.Resolution).GetInt("width"));
             Assert.AreEqual(0.45f, game.GetObject("tuning").GetObject("chain.json").GetObject("port").GetFloat("hitRadius"));
             Assert.AreEqual(7, game.GetInt("somethingElse"));
+            Assert.AreEqual(0.3f, game.GetFloat(PlayerPreferences.GameKeys.AmbientVolume), 1e-6f);
 
             var again = store.Read();
+            Assert.AreEqual(0.3f, again.AmbientVolume, 1e-6f);
             Assert.AreEqual(new DisplayResolution(1600, 900), again.Resolution);
             Assert.AreEqual(WindowMode.Borderless, again.WindowMode);
             var tuned = GameSettings.Load(new TuningOverrideSource(new DirectorySettingsSource(SettingsStore.Folder), again.TuningOverrides));

@@ -43,6 +43,11 @@ namespace MindAttic.Chain
                 WindowMode = PlayerPreferences.ParseWindowMode(game.GetString(PlayerPreferences.GameKeys.WindowMode)),
             };
 
+            if (game.ContainsKey(PlayerPreferences.GameKeys.AmbientVolume))
+            {
+                preferences.AmbientVolume = game.GetFloat(PlayerPreferences.GameKeys.AmbientVolume, 1f);
+            }
+
             var resolution = game.GetObject(PlayerPreferences.GameKeys.Resolution);
             if (resolution != null)
             {
@@ -87,6 +92,10 @@ namespace MindAttic.Chain
 
             var game = settings.Game;
             game.Set(PlayerPreferences.GameKeys.StockVolumes, preferences.StockVolumesApplied);
+            if (preferences.HasAmbientVolume)
+            {
+                game.Set(PlayerPreferences.GameKeys.AmbientVolume, preferences.AmbientVolume);
+            }
 
             if (preferences.Resolution is DisplayResolution size)
             {

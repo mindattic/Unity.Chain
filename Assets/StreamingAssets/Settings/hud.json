@@ -35,6 +35,19 @@
     "_source": "Form1.vb Startup (UNI-T58): n = getRndNum(1, 12) (Root.vb: rndNum.Next(1, 12 + 1), a Random seeded from the clock), then Me.BackgroundImage = gfx/gui/load/load640_<n>.jpg on the 640 x 480 form while the Engine is built, cleared (Me.BackgroundImage = Nothing) just before the first oneFrameRender. pictures is how many load640_<n> there are, numbered from 1.",
     "pictures": 12
   },
+  "config": {
+    "_source": "frmConfig.vb (UNI-T59), opened by F12 and the menu's 'F12 - Configure Video': ClientSize 296 x 262 (shown centred, pixels of the original's window); cbo_resolution's items '640 x 480', '800 x 600', '1024 x 768', enabled only in fullscreen (fra_res); btnDefault_Click picks opt_window and Items.Item(0) (and 16 bit, a colour depth Unity has no use for, so not ported). The Sound group's Music, Sfx and Ambient sliders shipped disabled and unwired (BIBLE D28).",
+    "size": [296, 262],
+    "resolutions": {
+      "640 x 480": [640, 480],
+      "800 x 600": [800, 600],
+      "1024 x 768": [1024, 768]
+    },
+    "default": {
+      "windowMode": "Windowed",
+      "resolution": "640 x 480"
+    }
+  },
   "zone": {
     "_source": "Zone.vb loadZone/renderZone (UNI-T56), Textures.vb texZone (gfx/gui/event.png, a 2 x 2 of 0, 128, 255), Root.vb bZone = True, Form1.vb's E (bZone = Not bZone). Screen units, y up (space.json maps them). loadZone's box runs left..right and bottom..top from its corner; renderZone moves one to each enemy, its corner at Enemy(n).X + enemySize / 2, Enemy(n).Y (the enemy quad's centre: enemyCorner, from the centre), and one to the mace, its corner at rectMace.Left, rectMace.Top (link(Mace).X + 0.01, link(Mace).Y + maceSize / 2; the 3.5 x linkSize mace quad's centre is link(Mace).X + 0.04375, so maceCorner is [0.01 - 0.04375, 0.075 / 2] from the centre). Root.vb's Reset never touches bZone.",
     "bZone": true,

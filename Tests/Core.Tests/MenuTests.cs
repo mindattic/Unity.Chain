@@ -136,14 +136,113 @@ namespace MindAttic.Chain.Tests
                 "each line follows its flag; F3's is the right way round (BIBLE D22)");
         }
 
-        [Test]
-        public void F12_FlipsTheWindowMode()
-        {
-            var preferences = new PlayerPreferences();
+        // --- F12: frmConfig.vb (UNI-T59) ------------------------------------------------------------
 
-            Assert.AreEqual(WindowMode.Fullscreen, preferences.ToggleScreen(fullScreen: false));
+        private static ConfigForm NewForm() => new ConfigForm(Hud.Config);
+
+        [Test]
+        public void HudJson_HoldsFrmConfig()
+        {
+            var config = Hud.Config;
+
+            Assert.AreEqual(new Vec2(296f, 262f), config.Size, "ClientSize");
+            CollectionAssert.AreEqual(new[] { "640 x 480", "800 x 600", "1024 x 768" }, config.Resolutions.Select(x => x.Label).ToArray(), "cbo_resolution's items");
+            CollectionAssert.AreEqual(
+                new[] { new DisplayResolution(640, 480), new DisplayResolution(800, 600), new DisplayResolution(1024, 768) },
+                config.Resolutions.Select(x => x.Size).ToArray());
+            Assert.AreEqual(WindowMode.Windowed, config.DefaultWindowMode, "btnDefault: opt_window");
+            Assert.AreEqual(0, config.DefaultResolution, "btnDefault: Items.Item(0)");
+        }
+
+        [Test]
+        public void HudJson_RejectsADefaultResolutionNotInTheList()
+        {
+            var shipped = new DirectorySettingsSource(GameSettingsTests.ShippedFolder);
+            var source = new MemorySettingsSource(shipped).Set(
+                GameSettings.HudFile,
+                shipped.Read(GameSettings.HudFile).Replace("\"resolution\": \"640 x 480\"", "\"resolution\": \"320 x 200\"")
+                    .Replace("\"windowMode\": \"Windowed\"", "\"windowMode\": \"Maximized\""));
+
+            var e = Assert.Throws<SettingsException>(() => GameSettings.Load(source));
+
+            Assert.IsTrue(e.Errors.Any(x => x.Contains("hud.json.config.default") && x.Contains("'resolution'")), string.Join("\n", e.Errors));
+            Assert.IsTrue(e.Errors.Any(x => x.Contains("hud.json.config.default") && x.Contains("'windowMode'")), string.Join("\n", e.Errors));
+        }
+
+        [Test]
+        public void Config_Load_ShowsTheProfile_AndOnlyFullscreenEnablesTheResolution()
+        {
+            var form = NewForm();
+            var preferences = new PlayerPreferences
+            {
+                WindowMode = WindowMode.Fullscreen,
+                Resolution = new DisplayResolution(1024, 768),
+                MusicVolume = 0.5f,
+                SfxVolume = 0.25f,
+                AmbientVolume = 0.75f,
+            };
+
+            form.Load(preferences, fullScreenNow: false);
+
+            Assert.IsTrue(form.Fullscreen);
+            Assert.IsTrue(form.ResolutionEnabled, "fra_res is enabled in fullscreen");
+            Assert.AreEqual("1024 x 768", form.Resolution.Label);
+            Assert.AreEqual(0.5f, form.MusicVolume);
+            Assert.AreEqual(0.25f, form.SfxVolume);
+            Assert.AreEqual(0.75f, form.AmbientVolume);
+
+            form.SetFullscreen(false);
+            Assert.IsFalse(form.ResolutionEnabled, "opt_window: fra_res.Enabled = False");
+            Assert.IsFalse(form.SelectResolution(1), "a disabled list cannot be picked");
+            Assert.AreEqual(2, form.ResolutionIndex);
+
+            // No window mode in the profile: the screen's own; a size not in the list: the default one.
+            form.Load(new PlayerPreferences { Resolution = new DisplayResolution(1920, 1080) }, fullScreenNow: true);
+            Assert.IsTrue(form.Fullscreen);
+            Assert.AreEqual(0, form.ResolutionIndex);
+            form.Load(new PlayerPreferences { WindowMode = WindowMode.Borderless }, fullScreenNow: false);
+            Assert.IsTrue(form.Fullscreen, "borderless counts as fullscreen");
+        }
+
+        [Test]
+        public void Config_Default_IsWindowed640x480_AndLeavesTheSoundAlone()
+        {
+            var form = NewForm();
+            form.Load(new PlayerPreferences { WindowMode = WindowMode.Fullscreen, Resolution = new DisplayResolution(800, 600), MusicVolume = 0.4f }, false);
+
+            form.Default();
+
+            Assert.IsFalse(form.Fullscreen, "opt_window.Checked = True");
+            Assert.AreEqual(new DisplayResolution(640, 480), form.Resolution.Size, "Items.Item(0)");
+            Assert.AreEqual(0.4f, form.MusicVolume, "btnDefault never touched the Sound group");
+        }
+
+        [Test]
+        public void Config_Submit_WritesTheModeResolutionAndAllThreeVolumes()
+        {
+            var form = NewForm();
+            var preferences = new PlayerPreferences { SfxVolume = 0.5f };
+            form.Load(preferences, fullScreenNow: false);
+            var changes = 0;
+            form.Changed += () => changes++;
+
+            form.SetFullscreen(true);
+            Assert.IsTrue(form.SelectResolution(1));
+            form.SetMusicVolume(0.2f);
+            form.SetSfxVolume(2f);
+            form.SetAmbientVolume(0.6f);
+            Assert.AreEqual(5, changes);
+
+            form.Submit(preferences);
+
             Assert.AreEqual(WindowMode.Fullscreen, preferences.WindowMode);
-            Assert.AreEqual(WindowMode.Windowed, preferences.ToggleScreen(fullScreen: true));
+            Assert.AreEqual(new DisplayResolution(800, 600), preferences.Resolution);
+            Assert.AreEqual(0.2f, preferences.MusicVolume);
+            Assert.AreEqual(1f, preferences.SfxVolume, "clamped to a gain");
+            Assert.AreEqual(0.6f, preferences.AmbientVolume);
+
+            form.SetFullscreen(false);
+            form.Submit(preferences);
             Assert.AreEqual(WindowMode.Windowed, preferences.WindowMode);
         }
     }

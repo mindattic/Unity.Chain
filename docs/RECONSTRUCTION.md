@@ -148,7 +148,7 @@ Every binding of the original, with its state:
 | Tab | menu panel (`bMenu`, drawn only while not paused; `Reset` closes it) | ported (UNI-T55; the Debug map's ToggleMenu, `GameHud.ToggleMenu`; see 3.6) |
 | Pause | pause | ported (Pause action: Pause, P as an extra, gamepad Start -> `TogglePause` -> `PauseChanged`; BIBLE V8, UNI-T54) |
 | Esc | quit (`bRunning = False`, `Finalize`, the form closes; works paused) | ported (Quit action: Escape -> Core `QuitGame` -> `QuitRequested`; `GameSession` ends the application, or stops play mode in the Editor; UNI-T54). Escape closing the scripter is UNI-T61's |
-| F12 | toggle fullscreen and restart the engine (config) | ported (UNI-T55; the Debug map's ConfigureVideo flips the profile's window mode in place, no restart, BIBLE V21); the settings screen it will open is UNI-T59 |
+| F12 | toggle fullscreen and restart the engine (config) | ported (UNI-T55, UNI-T59): the Debug map's ConfigureVideo opens frmConfig's settings screen, whose Submit applies the window mode in place, no restart (BIBLE V21, D27) |
 | J | joystick toggle; the joystick code reads axes and buttons and binds nothing | fixed: the gamepad drives the actions, its stick steers like the mouse, J switches the stick (BIBLE D14, UNI-T34) |
 | Numpad + Enter / 4 6 / 8 2, X, Z | debug camera | ported, UNI-T57: the Debug map's CameraForward/Backward/Left/Right/Up/Down, Isometric, Deisometric, read held by `CameraRig` into a Core `DebugCamera` (BIBLE V1, D26; the anchor move is dead, V22) |
 | ` (grave) | scripter console | missing, UNI-T60, UNI-T61 |
@@ -168,7 +168,7 @@ Every binding of the original, with its state:
 | `renderTime`, `renderDate`, `levelText` | never called, or only move a matrix (no text drawn) | dead |
 | `Score` | += damage * 1000 | ported |
 | `SetupLights` | never called | dead |
-| Window and options | 640x480 borderless form; registry options; default 540x448/512x448, 16-bit | window shape ported (UNI-T38: 640x480, 4:3, snapped back once a border drag settles, not mid-drag; a maximized window is left alone); options screen, UNI-T59 |
+| Window and options | 640x480 borderless form; registry options; default 540x448/512x448, 16-bit | window shape ported (UNI-T38: 640x480, 4:3, snapped back once a border drag settles, not mid-drag; a maximized window is left alone); options screen ported (UNI-T59: frmConfig's Display Mode, Resolution, Default, Submit and the Sound sliders, in the profile; BIBLE V21, D27, D28) |
 
 ### 3.7 Lighting, camera, background (`Lights.vb`, `Camera.vb`, `Background.vb`, `Cube.vb`, `Text.vb`)
 
@@ -190,7 +190,7 @@ DirectSound `SecondaryBuffer`s are loaded for `sword_swing_1..7`, `sword_hit_1..
 (`rndMusicPos`, at init and on `Reset`). `playSFX` is **never called**, and `bSound` and `bMusic` both default to
 `False`, so the shipped game is silent. Volumes: music 0, sfx -1000, ambient -1500 (unused). The rebuild already
 plays swing, hit, death, catch and throw sounds and loops music (more than the original), with no clips shipped:
-UNI-T20. `defend` and `footstep` are unused in both. Volumes and mutes are the shared profile's since UNI-T36, with these as the stock ones; the options screen is UNI-T59.
+UNI-T20. `defend` and `footstep` are unused in both. Volumes and mutes are the shared profile's since UNI-T36, with these as the stock ones; frmConfig's options screen (UNI-T59) sets them, and the ambient volume in Chain's own `game.ambientVolume`.
 
 ### 3.9 Script language (`Script.vb`)
 

@@ -90,7 +90,7 @@ namespace MindAttic.Chain
         public InputAction ToggleTextures => Debug["ToggleTextures"];
         /// <summary>Form1.vb's F3: <c>backFaceCulling = Not backFaceCulling</c>.</summary>
         public InputAction ToggleCulling => Debug["ToggleCulling"];
-        /// <summary>Form1.vb's F12: <c>toggleScreen</c>, windowed to fullscreen and back.</summary>
+        /// <summary>F12, the menu's "F12 - Configure Video": opens frmConfig.vb's settings screen (the original only flipped <c>toggleScreen</c>, BIBLE D27).</summary>
         public InputAction ConfigureVideo => Debug["ConfigureVideo"];
         /// <summary>Form1.vb's E: <c>bZone = Not bZone</c>, Zone.vb's hit box overlay.</summary>
         public InputAction ToggleZones => Debug["ToggleZones"];

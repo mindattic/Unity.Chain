@@ -71,12 +71,29 @@ namespace MindAttic.Chain.Core
             /// <summary><c>{"chain.json": {"springK": 0.3, "port": {"hitRadius": 0.4}}}</c>: keys laid over the stock data files.</summary>
             public const string Tuning = "tuning";
 
+            /// <summary>frmConfig.vb's Ambient Volume slider, a 0-1 gain (the shared common block has only music and sound effects); missing takes audio.json's.</summary>
+            public const string AmbientVolume = "ambientVolume";
+
             public const string Width = "width";
             public const string Height = "height";
         }
 
         private float _musicVolume = 1f;
         private float _sfxVolume = 1f;
+        private float? _ambientVolume;
+
+        /// <summary>
+        /// Ambient volume, a 0-1 gain (Sound.vb's ambientVolume, frmConfig.vb's Ambient Volume slider), kept in Chain's
+        /// own block of the profile. Nothing plays on it yet, as nothing did in the original.
+        /// </summary>
+        public float AmbientVolume
+        {
+            get => _ambientVolume ?? 1f;
+            set => _ambientVolume = Clamp01(value);
+        }
+
+        /// <summary>Whether <see cref="AmbientVolume"/> was set (read from the profile, or given the stock figure).</summary>
+        public bool HasAmbientVolume => _ambientVolume.HasValue;
 
         /// <summary>Music volume, a 0-1 gain.</summary>
         public float MusicVolume
@@ -121,6 +138,7 @@ namespace MindAttic.Chain.Core
         {
             MusicVolume = stock.MusicVolume,
             SfxVolume = stock.SfxVolume,
+            AmbientVolume = stock.AmbientVolume,
             StockVolumesApplied = true,
         };
 
@@ -144,6 +162,11 @@ namespace MindAttic.Chain.Core
                 preferences.StockVolumesApplied = true;
             }
 
+            if (!preferences.HasAmbientVolume)
+            {
+                preferences.AmbientVolume = stock.AmbientVolume;
+            }
+
             return preferences;
         }
 
@@ -158,18 +181,6 @@ namespace MindAttic.Chain.Core
                 case "maximized": return Core.WindowMode.Maximized;
                 default: return null;
             }
-        }
-
-        /// <summary>
-        /// Form1.vb's F12 (<c>toggleScreen</c>, then Startup's <c>isFullscreen = Not isFullscreen</c> and
-        /// <c>saveOptions</c>): the window mode becomes windowed if the screen is <paramref name="fullScreen"/> now, else
-        /// fullscreen. Returns the new mode, now in <see cref="WindowMode"/>; the caller saves and applies it.
-        /// </summary>
-        public WindowMode ToggleScreen(bool fullScreen)
-        {
-            var mode = fullScreen ? Core.WindowMode.Windowed : Core.WindowMode.Fullscreen;
-            WindowMode = mode;
-            return mode;
         }
 
         /// <summary>The name settings.json uses for <paramref name="mode"/>.</summary>
@@ -188,6 +199,7 @@ namespace MindAttic.Chain.Core
                 Resolution = Resolution,
                 WindowMode = WindowMode,
                 StockVolumesApplied = StockVolumesApplied,
+                _ambientVolume = _ambientVolume,
             };
             foreach (var pair in TuningOverrides)
             {

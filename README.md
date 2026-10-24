@@ -115,7 +115,7 @@ The engine-free rules are tested by `Tests/Core.Tests` (`dotnet test Tests/Core.
 | Tab | | the original's menu panel on / off (lists F1-F4, F12 and Escape with their current state) |
 | F1 / F2 / F3 | | wireframe / untextured / back-face culling, drawn by a URP renderer feature |
 | F4 | | frame rate on / off |
-| F12 | | windowed / fullscreen |
+| F12 | | the settings screen (frmConfig: windowed / fullscreen, resolution, music / sfx / ambient volume; Submit saves to the profile), pausing while open |
 | E | | hit boxes (Zone.vb's overlay) on / off; on from the start |
 | B / N | | beach / utopia background |
 
