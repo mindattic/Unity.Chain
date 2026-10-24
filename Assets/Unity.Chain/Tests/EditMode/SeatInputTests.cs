@@ -46,7 +46,7 @@ namespace MindAttic.Chain.Tests
                 CollectionAssert.AreEquivalent(
                     new[]
                     {
-                        "Steer", "SteerStick", "Grapple", "ChainShorter", "ChainLonger", "ToggleFollow", "Pause", "Quit", "Reset", "ToggleJoystick",
+                        "Steer", "SteerStick", "Grapple", "ChainShorter", "ChainLonger", "ToggleFollow", "SkinLinks", "Pause", "Quit", "Reset", "ToggleJoystick",
                         "ResistanceUp", "ResistanceDown", "GravityDown", "GravityUp", "SpringUp", "SpringDown",
                         "GameSpeedDown", "GameSpeedUp",
                     },
@@ -72,6 +72,7 @@ namespace MindAttic.Chain.Tests
                 CollectionAssert.Contains(Paths(c.ChainShorter), "<Keyboard>/leftBracket", "Input.vb keyChainMinus");
                 CollectionAssert.Contains(Paths(c.ChainLonger), "<Keyboard>/rightBracket", "Input.vb keyChainPlus");
                 CollectionAssert.Contains(Paths(c.ToggleFollow), "<Keyboard>/f");
+                CollectionAssert.AreEqual(new[] { "<Keyboard>/u" }, Paths(c.SkinLinks), "Form1.vb: Case Keys.U");
                 CollectionAssert.Contains(Paths(c.Pause), "<Keyboard>/pause");
                 CollectionAssert.Contains(Paths(c.Reset), "<Keyboard>/r");
                 CollectionAssert.Contains(Paths(c.ToggleJoystick), "<Keyboard>/j");
@@ -179,6 +180,16 @@ namespace MindAttic.Chain.Tests
 
             Assert.IsFalse(_rig.Player.IsFollowing);
             Assert.That(_events.OfType<FollowChanged>().Single().Player, Is.EqualTo(_rig.Id));
+        }
+
+        [Test]
+        public void U_PutsTheGemsOnThisSeatsChain()
+        {
+            _input.Dispatch(new SeatInput.Frame { SkinLinks = true }, 0f);
+
+            Assert.IsTrue(_rig.Player.HasGemSkins);
+            Assert.AreEqual("aqua", _rig.Player.LinkSkin(1));
+            Assert.That(_events.OfType<LinksSkinned>().Single().Player, Is.EqualTo(_rig.Id));
         }
 
         [Test]

@@ -104,6 +104,7 @@ The engine-free rules are tested by `Tests/Core.Tests` (`dotnet test Tests/Core.
 | Left button (hold, release) | right trigger or A (hold, release) | arm the grapple, throw what it holds |
 | `[` / `]` | left / right shoulder | shorten / lengthen the chain |
 | F | Y | chain follows the hand / hangs slack |
+| U | | gem links: links 1-5 become aqua, emerald, teardrop, tablet, pearl (no key takes them off) |
 | Pause or P | Start | pause / resume |
 | Escape | | quit |
 | R | Back (Select) | start over |
@@ -120,7 +121,7 @@ The engine-free rules are tested by `Tests/Core.Tests` (`dotnet test Tests/Core.
 The bindings live in one `InputActionAsset` built in code (`Runtime/Input/ChainControls`); the stick's speed and
 dead zone are in `input.json`.
 
-The original's other keys (live spring, drag and gravity tuning, game speed, gem skins,
+The original's other keys (live spring, drag and gravity tuning, game speed,
 debug views, the script console) are listed with their tickets in
 [docs/RECONSTRUCTION.md §3.5](docs/RECONSTRUCTION.md).
 

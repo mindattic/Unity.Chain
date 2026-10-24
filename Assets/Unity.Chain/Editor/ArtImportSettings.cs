@@ -5,7 +5,8 @@ namespace MindAttic.Chain.EditorTools
 {
     /// <summary>
     /// UNI-T19: every sprite imported under Art/Angel, Art/Enemies, Art/Chain (mace.png, mace2.png,
-    /// magnet.png) and Art/Background imports at a native 1-unit-wide baseline
+    /// magnet.png, and UNI-T41's gem skins aqua, emerald, teardrop, tablet and pearl, centred and scaled to the
+    /// line's width by LinkSkinView) and Art/Background imports at a native 1-unit-wide baseline
     /// (<c>spritePixelsPerUnit</c> from the texture's own pixel width, so the mapping holds even if the
     /// art is ever resized) -- Angel and Enemies get a <b>centred</b> pivot: angel.json's own doc
     /// comment says it plainly ("the port's sprites are centred"), and the enemies match, both being
@@ -65,7 +66,7 @@ namespace MindAttic.Chain.EditorTools
             }
             else if (path.StartsWith(ChainFolder))
             {
-                // mace.png, mace2.png, magnet.png
+                // mace.png, mace2.png, magnet.png and the gem link skins (UNI-T41)
                 centered = true;
             }
             else if (path.StartsWith(BackgroundFolder))

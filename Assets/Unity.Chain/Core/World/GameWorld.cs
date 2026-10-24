@@ -482,9 +482,9 @@ namespace MindAttic.Chain.Core
         /// <summary>
         /// Applies a player's command. Returns false when it changed nothing: the sender is not seated,
         /// the game is paused (steering and the chain length wait then; pause, reset, quit, follow, the
-        /// live-tuning keys and the game speed still work, as in Form1.vb's key handler and Input.vb's
-        /// polling), or the command had no effect (a tuning knob already at its limit, the game speed
-        /// already 0). Steering also waits while the game speed is 0, as time stands still.
+        /// gem skins, the live-tuning keys and the game speed still work, as in Form1.vb's key handler and
+        /// Input.vb's polling), or the command had no effect (a tuning knob already at its limit, the game
+        /// speed already 0, the gems already on). Steering also waits while the game speed is 0, as time stands still.
         /// </summary>
         public bool Submit(GameCommand command)
         {
@@ -548,6 +548,15 @@ namespace MindAttic.Chain.Core
                 case ToggleFollow _:
                     var changed = ChainFollow.Apply(player.Chain, new ToggleFollowCommand(player.Id.Value));
                     Emit(new FollowChanged(player.Id, changed.IsFollowing));
+                    return true;
+
+                case SkinLinks _:
+                    if (!player.PutOnGems())
+                    {
+                        return false;
+                    }
+
+                    Emit(new LinksSkinned(player.Id));
                     return true;
 
                 case TuneChain tune:

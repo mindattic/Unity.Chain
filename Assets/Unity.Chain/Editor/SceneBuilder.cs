@@ -197,6 +197,18 @@ namespace MindAttic.Chain.EditorTools
             maceRenderer.sortingOrder = 10; // drawn over the chain line and the angel
             SetPrivateField(mace, "maceVisual", maceVisualGo.transform);
 
+            // Form1.vb's U (UNI-T41): the links wearing a gem are drawn over the line, every gfx/chain link picture
+            // wired under its chain.json name.
+            var skinData = SettingsStore.Current.Chain.Skins;
+            var skinArt = new LinkSkinView.SkinArt[skinData.Skins.Count];
+            for (var i = 0; i < skinArt.Length; i++)
+            {
+                var name = skinData.Skins[i];
+                skinArt[i] = new LinkSkinView.SkinArt(name, LoadSprite(ChainArtPath + skinData.File(name)));
+            }
+
+            go.AddComponent<LinkSkinView>().Skins = skinArt;
+
             var audioSource = go.AddComponent<AudioSource>();
             audioSource.playOnAwake = false;
             audioSource.spatialBlend = 0f;
@@ -275,13 +287,13 @@ namespace MindAttic.Chain.EditorTools
             backdrop.Room = room;
         }
 
-        /// <summary>Loads the sprite at <paramref name="path"/>, throwing if it is missing: area.json names only art UNI-T19 and UNI-T40 imported.</summary>
+        /// <summary>Loads the sprite at <paramref name="path"/>, throwing if it is missing: area.json and chain.json's skins name only art UNI-T19, UNI-T40 and UNI-T41 imported.</summary>
         private static Sprite LoadSprite(string path)
         {
             var sprite = AssetDatabase.LoadAssetAtPath<Sprite>(path);
             if (sprite == null)
             {
-                throw new FileNotFoundException($"SceneBuilder: expected a sprite at '{path}' (area.json, UNI-T40).", path);
+                throw new FileNotFoundException($"SceneBuilder: expected a sprite at '{path}' (area.json or chain.json's skins).", path);
             }
 
             return sprite;

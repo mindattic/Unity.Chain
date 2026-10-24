@@ -228,6 +228,7 @@ namespace MindAttic.Chain.Core
                 WallBounce = chain.Port.WallBounce,
                 Following = chain.FollowMouse,
                 Tuning = chain.Tuning.ToPort(m),
+                Skins = chain.Skins.ToPort(),
                 MaceIndex = chain.Mace,
                 MinMaceIndex = chain.MaceMin,
                 MaxMaceIndex = chain.MaceMax,
@@ -373,6 +374,9 @@ namespace MindAttic.Chain.Core
         /// <summary>Form1.vb's live-tuning keys: steps and limits, in the file's own units (UNI-T51).</summary>
         public ChainTuningData Tuning { get; private set; }
 
+        /// <summary>Textures.vb's link pictures and Form1.vb's U gems (UNI-T41).</summary>
+        public LinkSkinData Skins { get; private set; }
+
         public ChainPort Port { get; private set; }
 
         internal static ChainData Read(SettingsReader r)
@@ -407,6 +411,10 @@ namespace MindAttic.Chain.Core
             tuning.Check(t.GravityMin < t.GravityMax, "gravityMax", $"must be above gravityMin ({t.GravityMin})");
             tuning.Check(t.SpringMin < t.SpringMax, "springMax", $"must be above springMin ({t.SpringMin})");
             tuning.Done();
+
+            var skins = r.Section("skins");
+            data.Skins = LinkSkinData.Read(skins, data.MaxLinks);
+            skins.Done();
 
             var port = r.Section("port");
             data.Port = new ChainPort(

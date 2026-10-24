@@ -21,6 +21,8 @@ namespace MindAttic.Chain.Core
         public bool Following;
         /// <summary>Form1.vb's live-tuning keys: each knob's step and limits (chain.json's <c>tuning</c>).</summary>
         public ChainTuning Tuning;
+        /// <summary>What each link is drawn with: Textures.vb's link and Form1.vb's U gems (chain.json's <c>skins</c>).</summary>
+        public LinkSkins Skins;
 
         /// <summary>The mace's link (Chain.vb's Mace: 6, adjustable 1-12).</summary>
         public int MaceIndex;
@@ -51,6 +53,7 @@ namespace MindAttic.Chain.Core
             WallBounce = 0.5f,
             Following = ChainFollow.StartsFollowing,
             Tuning = ChainTuning.Default,
+            Skins = LinkSkins.Plain,
             MaceIndex = 6,
             MinMaceIndex = 1,
             MaxMaceIndex = 12,
@@ -113,6 +116,39 @@ namespace MindAttic.Chain.Core
         public EnemyEntity HeldEnemy => Grapple.Target as EnemyEntity;
 
         /// <summary>
+        /// Whether Form1.vb's U has put the gems on this chain (<see cref="SkinLinks"/>). Off at the start; nothing
+        /// takes it off again: no reset, no retune, no second U.
+        /// </summary>
+        public bool HasGemSkins { get; private set; }
+
+        /// <summary>
+        /// The skin link <paramref name="link"/> is drawn with (<see cref="LinkSkins.Skin"/>), or null when it is not
+        /// drawn as a link: the mace's link, which stays the mace whatever skin it holds (BIBLE V25), and the parked
+        /// links past it. A gem stays on its link index, so a link the mace moves off shows its own skin again.
+        /// </summary>
+        public string LinkSkin(int link)
+        {
+            if (link < 0 || link >= Chain.ActiveLinkCount || link == MaceIndex)
+            {
+                return null;
+            }
+
+            return _setup.Skins.Skin(link, HasGemSkins);
+        }
+
+        /// <summary>Form1.vb's U: puts the gems on. Returns false if they were already on.</summary>
+        internal bool PutOnGems()
+        {
+            if (HasGemSkins)
+            {
+                return false;
+            }
+
+            HasGemSkins = true;
+            return true;
+        }
+
+        /// <summary>
         /// Retunes the player (live inspector tweaks, a resized view) without disturbing their state.
         /// A different link count rebuilds the chain at the hand.
         /// </summary>
@@ -167,7 +203,7 @@ namespace MindAttic.Chain.Core
 
         /// <summary>
         /// Back to the start (a reset): angel home, chain collapsed on the hand, grapple idle. The chain
-        /// length and the follow flag are kept (Root.vb's Reset touches neither).
+        /// length, the follow flag and the gem skins are kept (Root.vb's Reset touches none of them).
         /// </summary>
         internal void Restart()
         {
@@ -209,6 +245,7 @@ namespace MindAttic.Chain.Core
             setup.ThrowMultiplier = Calc.Max(0f, setup.ThrowMultiplier);
             setup.ContactRadius = Calc.Max(0f, setup.ContactRadius);
             setup.WallBounce = Calc.Clamp01(setup.WallBounce);
+            setup.Skins = setup.Skins ?? LinkSkins.Plain;
             return setup;
         }
     }

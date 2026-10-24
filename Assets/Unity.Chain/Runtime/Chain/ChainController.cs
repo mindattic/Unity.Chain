@@ -124,6 +124,13 @@ namespace MindAttic.Chain
         }
 
         /// <summary>
+        /// The U key: sends this chain's player a <see cref="Core.SkinLinks"/> command; the world puts the gems on
+        /// links 1 to 5 (chain.json's <c>skins</c>, drawn by <see cref="LinkSkinView"/>) and raises
+        /// <see cref="LinksSkinned"/>. Returns false if they were already on or the chain is not seated.
+        /// </summary>
+        public bool SkinLinks() => Session != null && Session.Submit(new Core.SkinLinks(Player));
+
+        /// <summary>
         /// Form1.vb's live-tuning keys: sends this chain's player a <see cref="TuneChain"/> command moving
         /// <paramref name="knob"/> by <paramref name="steps"/> of its step; the world holds it to chain.json's
         /// limits and raises <see cref="ChainTuned"/>. Returns false if nothing moved.

@@ -84,6 +84,20 @@ namespace MindAttic.Chain.Core
     }
 
     /// <summary>
+    /// Form1.vb's U for the player's chain: links 1 to 5 put on aqua, emerald, teardrop, tablet and pearl
+    /// (chain.json's <c>skins.keyU</c>), the rest stay link; the mace's link stays the mace. Works paused, as
+    /// Form1.vb's key handler does; nothing takes the gems off again, so a second U changes nothing.
+    /// </summary>
+    public sealed class SkinLinks : GameCommand
+    {
+        public SkinLinks(PlayerId player) : base(player)
+        {
+        }
+
+        public override string ToString() => $"SkinLinks {Player}";
+    }
+
+    /// <summary>
     /// Form1.vb's live-tuning keys for the player's chain: move <see cref="Knob"/> by <see cref="Steps"/> of its
     /// step (chain.json's <c>tuning</c>), held to its limits (<see cref="ChainTuning"/>). Insert/Delete are
     /// resistance +1/-1, Home/End gravity -1/+1, PageUp/PageDown spring +1/-1. Works paused too, as Form1.vb's

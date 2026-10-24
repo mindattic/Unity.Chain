@@ -159,6 +159,19 @@ namespace MindAttic.Chain.Core
         public override string ToString() => $"ChainLengthChanged {Player} mace {MaceIndex}";
     }
 
+    /// <summary>Form1.vb's U put the gems on the player's chain (<see cref="PlayerEntity.LinkSkin"/> now names them).</summary>
+    public sealed class LinksSkinned : GameEvent
+    {
+        public LinksSkinned(PlayerId player)
+        {
+            Player = player;
+        }
+
+        public PlayerId Player { get; }
+
+        public override string ToString() => $"LinksSkinned {Player}";
+    }
+
     /// <summary>The player's chain started or stopped following the hand (the F key, <see cref="ChainFollow"/>).</summary>
     public sealed class FollowChanged : GameEvent
     {

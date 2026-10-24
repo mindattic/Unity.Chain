@@ -28,6 +28,27 @@
     "springMin": 0.001,
     "springMax": 0.25
   },
+  "skins": {
+    "_source": "Textures.vb loads gfx/chain's link, aqua, emerald, teardrop, tablet and pearl at 16 x 16 (magenta colour-keyed); Chain.vb's loadChain gives every link texChain (link); Form1.vb's U sets link(1) to link(5) to texAqua, texEmerald, texTeardrop, texTablet and texPearl (UNI-T41). Nothing sets them back: no reset touches them and a second U changes nothing. The mace's link stays the mace whatever its index (BIBLE V25).",
+    "link": "link",
+    "keyU": {
+      "_about": "Link index to the skin U puts on it.",
+      "1": "aqua",
+      "2": "emerald",
+      "3": "teardrop",
+      "4": "tablet",
+      "5": "pearl"
+    },
+    "files": {
+      "_about": "Every link picture of gfx/chain, by name, as Assets/Unity.Chain/Art/Chain holds it (lowercased .png, the magenta baked to alpha).",
+      "link": "link.png",
+      "aqua": "aqua.png",
+      "emerald": "emerald.png",
+      "teardrop": "teardrop.png",
+      "tablet": "tablet.png",
+      "pearl": "pearl.png"
+    }
+  },
   "port": {
     "_about": "Not in the original; world units and seconds, never mapped.",
     "keepInArena": true,

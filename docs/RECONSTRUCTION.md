@@ -76,7 +76,7 @@ but unreachable or does nothing; not ported, recorded here), **n/a** (DirectX pl
 | Wall bounce | commented out | `LevelBounds` bounce 0.5 | deliberate deviation (UNI-T45) |
 | `followMouse` (F key) | starts `True`, never reset; when false `animateChain` leaves every spring force zero (gravity and drag still act, so the chain falls away from the hand) and `renderChain` skips the mace's 3.5x scale, offset and `rectMace`, which is left where it last was | `ChainSimulation.IsFollowing`, `ChainFollow` (Core: `ToggleFollowCommand` with a player id -> `FollowChangedEvent`, the 3.5x and 1x mace scales), F action on `ChainController`; off, the mace draws at link size and neither hits nor catches (BIBLE D17) | ported, UNI-T47 |
 | Live tuning | Ins/Del resistance +/-0.001, Home/End gravity -/+0.00001, PgUp/PgDn spring +/-0.001 (`changeResistance`, `changeGravity` on `gravity.Y`, `changeSpring` just add, no limits; works paused), `changeBounce` unused | Core `TuneChain` command (player id, `ChainKnob`, steps) -> `ChainTuned` event, `ChainTuning` (chain.json's `tuning`: the steps and the port's limits, BIBLE V19), the Player map's six actions through `SeatInput` and `ChainController.Tune`; the HUD's Res/Grav/Spring readout follows; `GameWorld.Reset` restores the data files' figures | ported, UNI-T51 |
-| Link skins | U key sets links 1-5 to aqua, emerald, teardrop, tablet, pearl | none | missing, UNI-T41 |
+| Link skins | `loadChain` gives every link `texChain` (link.png); U key sets `link(1)`..`link(5).texture` to aqua, emerald, teardrop, tablet, pearl (16x16, magenta-keyed); nothing sets them back | Core `SkinLinks` command (player id) -> `LinksSkinned`, `PlayerEntity.HasGemSkins` / `LinkSkin` from chain.json's `skins` (`LinkSkins`, `LinkSkinData`), drawn by `LinkSkinView` over the line one link wide; the mace link stays the mace (BIBLE V25); works paused, no reset touches it | ported, UNI-T41 |
 | `theMaceMode.Magnet` + `magnet.PNG` | declared, texture loaded, **never selected** | none | dead in original; README promised it, UNI-T43 |
 | `bRicochet`, `grappleMax` | `bRicochet` unused; `grappleMax` 1 | `grappleMax` honoured | ported |
 
@@ -136,7 +136,7 @@ Every binding of the original, with its state:
 | Minus / Equals | `gameSpeed` -/+0.01 per frame held (min 0, polled even paused); only displayed, never applied | ported (UNI-T52; GameSpeedDown/GameSpeedUp actions, read while held, -> `ChangeGameSpeed` -> `GameSpeedChanged`; game.json's `gameSpeedStep`; applied as the world's time scale, `TimeScale`, BIBLE D13, V20) |
 | Ins/Del, Home/End, PgUp/PgDn | tune resistance, gravity, spring | ported (UNI-T51; ResistanceUp/Down, GravityDown/Up, SpringUp/Down actions -> `TuneChain`, held to chain.json's limits, BIBLE V19) |
 | F | `followMouse` toggle | ported (UNI-T47; ToggleFollow action, gamepad Y, UNI-T34) |
-| U | gem link skins | missing, UNI-T41 |
+| U | gem link skins | ported (UNI-T41; the Player map's SkinLinks -> `SkinLinks` -> `LinksSkinned`, BIBLE V25) |
 | R | `Reset` | ported (Reset action sends `ResetGame`, gamepad Back, UNI-T34), restoring everything `Reset` does through the one `GameWorld.Reset` (UNI-T48) |
 | 0 | `shakeScreen(0.02)` | ported (UNI-T49; the Debug map's ShakeScreen, `CameraRig.ShakeScreen`); the draws are really random (BIBLE D19) |
 | L | lighting toggle | ported (`SceneLight`, the Debug map's ToggleLighting); off is unlit rather than frozen (BIBLE D16) |
@@ -203,7 +203,7 @@ no caller. Missing, UNI-T60, UNI-T61.
 | Group | Files | Used by the original | Status |
 |---|---|---|---|
 | `gfx\angel` | `angel_left1-4`, `angel_right1-4` (+ `angel_l`, `angel_r`, `angel_dev` unused) | flap frames | UNI-T19 |
-| `gfx\chain` | `link`, `aqua`, `emerald`, `teardrop`, `tablet`, `pearl`; `mace\mace`, `mace2`, `magnet` | link, U skins, mace/grapple; magnet loaded not used | UNI-T19, UNI-T41, UNI-T43 |
+| `gfx\chain` | `link`, `aqua`, `emerald`, `teardrop`, `tablet`, `pearl`; `mace\mace`, `mace2`, `magnet` | link, U skins, mace/grapple; magnet loaded not used | UNI-T19, UNI-T41 (the five gems imported under `Art/Chain`, magenta baked to alpha as UNI-T19's link.png, listed by name in chain.json's `skins.files`), UNI-T43 |
 | `gfx\enemy` | `Shadow\enemy1-7` (`enemy.PNG` duplicates 1) | 7-frame loop | UNI-T19 |
 | `gfx\item` | `heart` | pickup | UNI-T19, UNI-T22 |
 | `gfx\area` | `beach`, `utopia` used; `01`, `02`, `512`, `landscape`, `landscape2` unused (the `Copy of landscape.jpg` files are duplicates); `brick.jpg` | background, brick room | ported (UNI-T19 imported the area art, UNI-T40 `brick.jpg` under `Art/Room`); every picture listed by name in `area.json`'s `areas`, only beach and utopia shown |

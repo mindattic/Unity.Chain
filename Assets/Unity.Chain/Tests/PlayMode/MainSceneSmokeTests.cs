@@ -86,6 +86,14 @@ namespace MindAttic.Chain.Tests
                 Assert.IsNotNull(backdrop.SpriteFor(name), $"area.json's {name} has no picture wired.");
             }
 
+            // UNI-T41: Form1.vb's U gems, every gfx/chain link picture wired under its chain.json name.
+            var skins = chain.GetComponent<LinkSkinView>();
+            Assert.IsNotNull(skins, "LinkSkinView missing from the Chain.");
+            foreach (var name in session.Settings.Chain.Skins.Skins)
+            {
+                Assert.IsNotNull(skins.SpriteFor(name), $"chain.json's {name} skin has no picture wired.");
+            }
+
             var line = chain.GetComponent<LineRenderer>();
             Assert.IsNotNull(line, "Chain has no LineRenderer.");
             Assert.IsNotNull(line.sharedMaterial, "Chain's LineRenderer has no material.");
