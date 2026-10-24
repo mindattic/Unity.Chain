@@ -23,6 +23,8 @@ namespace MindAttic.Chain.EditorTools
         public const string SplashScenePath = "Assets/Scenes/Splash.unity";
         private const string LineMaterialPath = "Assets/Unity.Chain/Materials/ChainLine.mat";
         private const string ZoneMaterialPath = "Assets/Unity.Chain/Materials/ZoneLine.mat";
+        private const string SfxPath = "Assets/Unity.Chain/Audio/Sfx/";
+        private const string MusicClipPath = "Assets/Unity.Chain/Audio/Music/music.ogg";
 
         [MenuItem("MindAttic/Chain/Build Main Scene")]
         public static void BuildMainScene()
@@ -200,6 +202,19 @@ namespace MindAttic.Chain.EditorTools
             chainAudio.Chain = chain;
             chainAudio.SfxSource = audioSource;
 
+            // Sound.vb's DirectSound buffers (UNI-T20: sword_swing_1-7, sword_hit_1-3, death_1-4).
+            chainAudio.SetClips(ChainSound.Swing, LoadClips(SfxPath, "sword_swing_", 1, 7));
+            chainAudio.SetClips(ChainSound.Impact, LoadClips(SfxPath, "sword_hit_", 1, 3));
+            chainAudio.SetClips(ChainSound.EnemyDeath, LoadClips(SfxPath, "death_", 1, 4));
+
+            // GrappleCatch is defend.wav, as ChainSound's own doc comment says (UNI-T20). GrappleThrow
+            // has no source clip in the original set (BIBLE V10) and is left empty until one is chosen.
+            var defend = AssetDatabase.LoadAssetAtPath<AudioClip>(SfxPath + "defend.wav");
+            if (defend != null)
+            {
+                chainAudio.SetClips(ChainSound.GrappleCatch, new[] { defend });
+            }
+
             return (chain, grapple);
         }
 
@@ -292,7 +307,17 @@ namespace MindAttic.Chain.EditorTools
         {
             var go = new GameObject("MusicPlayer");
             go.AddComponent<AudioSource>();
-            go.AddComponent<MusicPlayer>().Session = session;
+            var music = go.AddComponent<MusicPlayer>();
+            music.Session = session;
+
+            // Sound.vb's playMusic track (UNI-T20); music.wma converted to .ogg, as Unity cannot
+            // import WMA (BIBLE V11). Set through the serialized field, not the Music property,
+            // which would try to Play() the source while the scene is only being built.
+            var clip = AssetDatabase.LoadAssetAtPath<AudioClip>(MusicClipPath);
+            if (clip != null)
+            {
+                SetPrivateField(music, "music", clip);
+            }
         }
 
         private static void CreateWindowAspectLock()
@@ -376,6 +401,22 @@ namespace MindAttic.Chain.EditorTools
             }
 
             return sprites.ToArray();
+        }
+
+        /// <summary>Loads "{folder}{prefix}{n}.wav" for n in [first, last], skipping any that are missing.</summary>
+        private static AudioClip[] LoadClips(string folder, string prefix, int first, int last)
+        {
+            var clips = new System.Collections.Generic.List<AudioClip>();
+            for (var n = first; n <= last; n++)
+            {
+                var clip = AssetDatabase.LoadAssetAtPath<AudioClip>($"{folder}{prefix}{n}.wav");
+                if (clip != null)
+                {
+                    clips.Add(clip);
+                }
+            }
+
+            return clips.ToArray();
         }
     }
 }

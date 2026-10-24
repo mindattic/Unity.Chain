@@ -46,6 +46,7 @@ namespace MindAttic.Chain.Tests
             Assert.IsNotNull(session, "GameSession missing from Main scene.");
             Assert.IsNotNull(hud, "GameHud missing from Main scene.");
             Assert.IsNotNull(music, "MusicPlayer missing from Main scene.");
+            Assert.IsNotNull(music.Music, "MusicPlayer has no track assigned (UNI-T20: music.wma converted to music.ogg).");
 
             // Presence is not enough: these are the references each component falls back to
             // silently skipping its work without, so a scene that merely contains the right
@@ -59,6 +60,12 @@ namespace MindAttic.Chain.Tests
             Assert.AreEqual(chain, grapple.Chain, "GrappleController is not beside the Chain.");
             Assert.AreEqual(chain, chainAudio.Chain, "ChainAudio is not wired to the Chain.");
             Assert.IsNotNull(chainAudio.SfxSource, "ChainAudio has no AudioSource to play through.");
+
+            // UNI-T20: the clip sets must actually hold the imported sfx, not just exist as empty arrays.
+            Assert.IsNotEmpty(chainAudio.GetClips(ChainSound.Swing), "ChainAudio has no swing clips (sword_swing_1-7).");
+            Assert.IsNotEmpty(chainAudio.GetClips(ChainSound.Impact), "ChainAudio has no impact clips (sword_hit_1-3).");
+            Assert.IsNotEmpty(chainAudio.GetClips(ChainSound.EnemyDeath), "ChainAudio has no death clips (death_1-4).");
+            Assert.IsNotEmpty(chainAudio.GetClips(ChainSound.GrappleCatch), "ChainAudio has no grapple-catch clip (defend.wav).");
             Assert.AreEqual(angel, session.Angel, "GameSession is not wired to the AngelController.");
             Assert.AreEqual(session, spawner.Session, "EnemySpawner is not wired to the GameSession.");
             Assert.AreEqual(session, hud.Session, "GameHud is not wired to the GameSession.");
