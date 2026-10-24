@@ -101,7 +101,7 @@ namespace MindAttic.Chain.Tests
 
             Assert.IsNull(loose.Simulation);
             Assert.DoesNotThrow(() => loose.RenderChain(1f));
-            Assert.AreEqual(25, loose.ActiveLinkCount);
+            Assert.AreEqual(26, loose.ActiveLinkCount, "chain.json's maxLinks 25: links 0..25");
         }
     }
 }

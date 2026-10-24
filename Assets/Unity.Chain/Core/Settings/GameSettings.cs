@@ -1,0 +1,674 @@
+using System;
+using System.Collections.Generic;
+
+namespace MindAttic.Chain.Core
+{
+    /// <summary>
+    /// The settings registry: every tuning figure of the game, loaded from the data files (StreamingAssets/Settings
+    /// in the build) through an <see cref="ISettingsSource"/> and validated on load.
+    ///
+    /// Two layers, kept apart on purpose:
+    /// <list type="number">
+    /// <item><b>The files</b> hold the original's own figures, named and valued exactly as its source has them, in
+    /// its own units (screen space, per frame): <see cref="Chain"/>, <see cref="Angel"/>, <see cref="Enemies"/>,
+    /// <see cref="Item"/>, <see cref="Game"/>, <see cref="Lighting"/>, <see cref="Camera"/>, <see cref="Audio"/>.
+    /// A figure the original never had (a circle radius where it tested rectangles, the camera rig's follow) sits in
+    /// that file's <c>port</c> object, in world units and seconds, and is never mapped.</item>
+    /// <item><b>The port's values</b> (<see cref="Player"/>, <see cref="World"/>, <see cref="Heart"/>,
+    /// <see cref="Light"/>, <see cref="CameraTuning"/>, <see cref="AudioTuning"/>, <see cref="MaceScale"/>) are
+    /// worked out once, here, by <see cref="OriginalSpace"/> (space.json), the one original-to-port mapping.</item>
+    /// </list>
+    /// </summary>
+    public sealed class GameSettings
+    {
+        /// <summary>The folder under StreamingAssets the data files live in.</summary>
+        public const string Folder = "Settings";
+
+        public const string SpaceFile = "space.json";
+        public const string ChainFile = "chain.json";
+        public const string AngelFile = "angel.json";
+        public const string EnemiesFile = "enemies.json";
+        public const string ItemFile = "item.json";
+        public const string GameFile = "game.json";
+        public const string LightingFile = "lighting.json";
+        public const string CameraFile = "camera.json";
+        public const string AudioFile = "audio.json";
+
+        /// <summary>Every data file the registry reads.</summary>
+        public static readonly string[] Files =
+        {
+            SpaceFile, ChainFile, AngelFile, EnemiesFile, ItemFile, GameFile, LightingFile, CameraFile, AudioFile,
+        };
+
+        private GameSettings()
+        {
+        }
+
+        public SpaceData Space { get; private set; }
+        public ChainData Chain { get; private set; }
+        public AngelData Angel { get; private set; }
+        public EnemyData Enemies { get; private set; }
+        public ItemData Item { get; private set; }
+        public GameData Game { get; private set; }
+        public LightingData Lighting { get; private set; }
+        public CameraData Camera { get; private set; }
+        public AudioData Audio { get; private set; }
+
+        /// <summary>The original-to-port mapping (space.json).</summary>
+        public OriginalSpace Mapping { get; private set; }
+
+        /// <summary>One player's angel, chain, mace and grapple, in world units and seconds. The angel's bounds are the
+        /// default arena inset by <see cref="AngelData.Port"/>'s margin; the authority sets them to its own arena.</summary>
+        public PlayerSetup Player { get; private set; }
+
+        /// <summary>The session rules and the enemies, in world units and seconds.</summary>
+        public GameWorld.Settings World { get; private set; }
+
+        /// <summary>The heart, in world units, still per original frame (<see cref="HeartFloat"/> steps frame by frame).</summary>
+        public HeartFloat.Settings Heart { get; private set; }
+
+        public LightingState.Settings Light { get; private set; }
+
+        public CameraTuning CameraTuning { get; private set; }
+
+        public AudioTuning AudioTuning { get; private set; }
+
+        /// <summary>The mace's draw size relative to a link while the chain follows (Chain.vb: 3.5).</summary>
+        public float MaceScale { get; private set; }
+
+        /// <summary>
+        /// Reads and validates every data file from <paramref name="source"/>, then maps them to the port. Throws a
+        /// <see cref="SettingsException"/> listing every problem (a missing file, bad JSON with its line, a missing or
+        /// unknown key, a value of the wrong type or out of range) if anything is wrong.
+        /// </summary>
+        public static GameSettings Load(ISettingsSource source)
+        {
+            if (source == null)
+            {
+                throw new ArgumentNullException(nameof(source));
+            }
+
+            var errors = new List<string>();
+            var settings = new GameSettings
+            {
+                Space = Read(source, SpaceFile, errors, SpaceData.Read),
+                Chain = Read(source, ChainFile, errors, ChainData.Read),
+                Angel = Read(source, AngelFile, errors, AngelData.Read),
+                Enemies = Read(source, EnemiesFile, errors, EnemyData.Read),
+                Item = Read(source, ItemFile, errors, ItemData.Read),
+                Game = Read(source, GameFile, errors, GameData.Read),
+                Lighting = Read(source, LightingFile, errors, LightingData.Read),
+                Camera = Read(source, CameraFile, errors, CameraData.Read),
+                Audio = Read(source, AudioFile, errors, AudioData.Read),
+            };
+
+            if (errors.Count > 0)
+            {
+                throw new SettingsException(errors, source.Describe);
+            }
+
+            settings.Map();
+            return settings;
+        }
+
+        private static T Read<T>(ISettingsSource source, string file, List<string> errors, Func<SettingsReader, T> read)
+        {
+            string text;
+            try
+            {
+                text = source.Read(file);
+            }
+            catch (Exception e) when (!(e is SettingsException))
+            {
+                errors.Add($"{file}: could not be read ({e.Message})");
+                return default;
+            }
+
+            if (text == null)
+            {
+                errors.Add($"{file}: not found");
+                return default;
+            }
+
+            JsonValue root;
+            try
+            {
+                root = Json.Parse(text);
+            }
+            catch (JsonException e)
+            {
+                errors.Add($"{file}: is not valid JSON ({e.Message})");
+                return default;
+            }
+
+            if (root.Kind != JsonKind.Object)
+            {
+                errors.Add($"{file}: must hold one JSON object {{ ... }}");
+                return default;
+            }
+
+            var before = errors.Count;
+            var reader = new SettingsReader(root, file, errors);
+            var data = read(reader);
+            reader.Done();
+            return errors.Count == before ? data : default;
+        }
+
+        /// <summary>The one place the original's figures become the port's (see <see cref="OriginalSpace"/>).</summary>
+        private void Map()
+        {
+            var m = Mapping = new OriginalSpace(Space.LengthScale, Space.FramesPerSecond);
+            var chain = Chain;
+            var angel = Angel;
+            var enemies = Enemies;
+            var item = Item;
+
+            var flight = new AngelFlight.Settings(
+                sensitivity: m.PerInput(angel.Ratio3D),
+                bounds: PlayArea.Inset(GameWorld.DefaultArena, angel.Port.BoundsMargin),
+                hoverAmplitude: m.Length(angel.HoverMax),
+                // Angel.vb's triangle wave climbs hoverMax, falls 2 x hoverMax and climbs back, hoverRate a frame.
+                hoverPeriod: m.Seconds(4f * angel.HoverMax / angel.HoverRate),
+                frameDuration: angel.FlapRate,
+                frameCount: angel.FlapFrames,
+                handOffset: angel.Port.HandOffset);
+
+            Player = new PlayerSetup
+            {
+                Start = Vec2.Zero,
+                Flight = flight,
+                // Chain.vb's links are 0..maxLinks.
+                LinkCount = chain.MaxLinks + 1,
+                Chain = new ChainSimulation.Settings(
+                    segmentLength: m.Length(chain.SegLength),
+                    springConstant: m.PerSecondSquared(chain.SpringK),
+                    resistance: m.PerSecond(chain.Resistance),
+                    gravity: m.Acceleration(chain.Gravity),
+                    stopVelocity: m.Speed(chain.StopVel),
+                    stopAcceleration: m.Acceleration(chain.StopAcc),
+                    overheadBoost: chain.OverheadBoost,
+                    // "Above the angel" is within one link size below link(0).
+                    overheadMargin: m.Length(chain.LinkSize)),
+                KeepChainInArena = chain.Port.KeepInArena,
+                WallBounce = chain.Port.WallBounce,
+                Following = chain.FollowMouse,
+                MaceIndex = chain.Mace,
+                MinMaceIndex = chain.MaceMin,
+                MaxMaceIndex = chain.MaceMax,
+                MaceMass = chain.LinkMass,
+                HitRadius = chain.Port.HitRadius,
+                DamagePerSpeed = chain.Port.DamagePerSpeed,
+                CatchRadius = chain.Port.CatchRadius,
+                ThrowMultiplier = chain.Port.ThrowMultiplier,
+                ContactRadius = angel.Port.ContactRadius,
+            };
+
+            var seekRate = m.PerSecond(enemies.SeekSpd);
+            World = new GameWorld.Settings
+            {
+                Session = new GameState.Settings
+                {
+                    MaxHp = angel.MaxHP,
+                    HurtDelay = angel.HurtDelay,
+                    ContactDamage = Game.ContactDamage,
+                    PointsPerDamage = Game.PointsPerDamage,
+                },
+                Enemies = new GameWorld.EnemySetup
+                {
+                    // Enemy.vb's enemies are 0..maxEnemy.
+                    Count = enemies.MaxEnemy + 1,
+                    Hp = enemies.ResetHP,
+                    MassMin = enemies.MassBase,
+                    MassMax = enemies.MassBase + enemies.MassRandom,
+                    Radius = enemies.Port.Radius,
+                    // checkFlocking visits each overlapping pair twice a frame.
+                    FlockSpeed = m.Speed(enemies.FlockSpd) * EnemyBrain.OriginalFlockPairVisits,
+                    Brain = new EnemyBrain.Settings
+                    {
+                        SeekRate = seekRate,
+                        HurtDeceleration = m.Acceleration(enemies.ResistSPD),
+                        // A_near_B(dX, 0, resistSPD): it recovers once both axes are within one step of still.
+                        RecoverSpeed = m.Speed(enemies.ResistSPD),
+                    },
+                    SeekCap = enemies.Port.SeekCap,
+                    CautiousSpeed = m.Speed(enemies.CautiousSeekMultiple * enemies.SeekSpd),
+                    AlignSpeed = m.Speed(enemies.SeekSpd),
+                },
+            };
+
+            Heart = new HeartFloat.Settings
+            {
+                ItemSize = m.Length(item.ItemSize),
+                // HeartFloat steps once per original frame, so its speeds stay per frame: only the length maps.
+                FallRate = m.Length(item.FallRate),
+                FloatMaxSpeed = m.Length(item.FloatMaxSPD),
+                FloatAcceleration = m.Length(item.FloatAcc),
+                StartFloatSpeed = m.Length(item.FloatSPD),
+                ResetFloatSpeed = m.Length(item.ResetFloatSPD),
+                StartX = m.Length(item.Start.X),
+                StartY = m.Length(item.Start.Y),
+                WrapBelow = m.Length(item.WrapBelow),
+                WrapTo = m.Length(item.WrapTo),
+                HealAmount = item.Heal,
+                AngelSize = m.Length(angel.AngelSize),
+                RectTopPad = m.Length(item.RectTopPad),
+                RectWidth = m.Length(item.RectWidth),
+                RectBottom = m.Length(item.RectBottom),
+                AngelRectWidth = m.Length(angel.RectWidth),
+                AngelRectBottom = m.Length(angel.RectBottom),
+            };
+
+            Light = new LightingState.Settings
+            {
+                DayLength = Lighting.DayLength,
+                TintRate = m.PerSecond(Lighting.TintStep),
+            };
+
+            CameraTuning = Camera.Port;
+            AudioTuning = new AudioTuning(
+                sfxVolume: AudioData.Linear(Audio.SfxVolume),
+                musicVolume: AudioData.Linear(Audio.MusicVolume),
+                randomMusicStart: Audio.RndMusicPos,
+                port: Audio.Port);
+            MaceScale = chain.MaceScale;
+        }
+    }
+
+    /// <summary>space.json: the original-to-port mapping (<see cref="OriginalSpace"/>).</summary>
+    public sealed class SpaceData
+    {
+        public float LengthScale { get; private set; }
+        public float FramesPerSecond { get; private set; }
+
+        internal static SpaceData Read(SettingsReader r) => new SpaceData
+        {
+            LengthScale = r.Positive("lengthScale"),
+            FramesPerSecond = r.Positive("framesPerSecond"),
+        };
+    }
+
+    /// <summary>chain.json: Chain.vb, in its own units (screen space, per frame), with the follow flag (UNI-T47).</summary>
+    public sealed class ChainData
+    {
+        public int MaxLinks { get; private set; }
+        public float SegLength { get; private set; }
+        public float SpringK { get; private set; }
+        public float Resistance { get; private set; }
+        public Vec2 Gravity { get; private set; }
+        public float StopVel { get; private set; }
+        public float StopAcc { get; private set; }
+        public float OverheadBoost { get; private set; }
+        public float LinkSize { get; private set; }
+        public float LinkMass { get; private set; }
+        public int Mace { get; private set; }
+        public int MaceMin { get; private set; }
+        public int MaceMax { get; private set; }
+        public bool FollowMouse { get; private set; }
+        public float MaceScale { get; private set; }
+        public ChainPort Port { get; private set; }
+
+        internal static ChainData Read(SettingsReader r)
+        {
+            var data = new ChainData
+            {
+                MaxLinks = r.Integer("maxLinks", 1, 1000),
+                SegLength = r.Number("segLength", 0f),
+                SpringK = r.Positive("springK"),
+                Resistance = r.Number("resistance", 0f),
+                Gravity = r.Pair("gravity"),
+                StopVel = r.Number("stopVel", 0f),
+                StopAcc = r.Number("stopAcc", 0f),
+                OverheadBoost = r.Number("overheadBoost", 1f),
+                LinkSize = r.Number("linkSize", 0f),
+                LinkMass = r.Positive("linkMass"),
+                Mace = r.Integer("Mace", 1),
+                MaceMin = r.Integer("maceMin", 1),
+                MaceMax = r.Integer("maceMax", 1),
+                FollowMouse = r.Flag("followMouse"),
+                MaceScale = r.Positive("maceScale"),
+            };
+
+            r.Check(data.MaceMin <= data.MaceMax, "maceMin", $"must not be above maceMax ({data.MaceMax})");
+            r.Check(data.MaceMax <= data.MaxLinks, "maceMax", $"must not be above maxLinks ({data.MaxLinks})");
+            r.Check(data.Mace >= data.MaceMin && data.Mace <= data.MaceMax, "Mace", $"must be between maceMin and maceMax ({data.MaceMin}-{data.MaceMax})");
+
+            var port = r.Section("port");
+            data.Port = new ChainPort(
+                keepInArena: port.Flag("keepInArena"),
+                wallBounce: port.Number("wallBounce", 0f, 1f),
+                hitRadius: port.Number("hitRadius", 0f),
+                damagePerSpeed: port.Number("damagePerSpeed", 0f),
+                catchRadius: port.Number("catchRadius", 0f),
+                throwMultiplier: port.Number("throwMultiplier", 0f));
+            port.Done();
+            return data;
+        }
+    }
+
+    /// <summary>chain.json's port-only figures, world units and seconds.</summary>
+    public readonly struct ChainPort
+    {
+        public ChainPort(bool keepInArena, float wallBounce, float hitRadius, float damagePerSpeed, float catchRadius, float throwMultiplier)
+        {
+            KeepInArena = keepInArena;
+            WallBounce = wallBounce;
+            HitRadius = hitRadius;
+            DamagePerSpeed = damagePerSpeed;
+            CatchRadius = catchRadius;
+            ThrowMultiplier = throwMultiplier;
+        }
+
+        /// <summary>Links bounce off the arena (V4; Chain.vb's checkBounds is commented out).</summary>
+        public bool KeepInArena { get; }
+        public float WallBounce { get; }
+        /// <summary>The mace's hit circle (D12: a swept circle for Chain.vb's rectMace).</summary>
+        public float HitRadius { get; }
+        /// <summary>Damage per world unit per second of mace speed (D11: speed for abs(dX + dY/2)).</summary>
+        public float DamagePerSpeed { get; }
+        public float CatchRadius { get; }
+        /// <summary>Launch velocity = mace velocity x this (the original throws at the mace's velocity: 1).</summary>
+        public float ThrowMultiplier { get; }
+    }
+
+    /// <summary>angel.json: Angel.vb, in its own units.</summary>
+    public sealed class AngelData
+    {
+        public float Ratio3D { get; private set; }
+        public float HoverMax { get; private set; }
+        public float HoverRate { get; private set; }
+        public float FlapRate { get; private set; }
+        public int FlapFrames { get; private set; }
+        public int MaxHP { get; private set; }
+        public float HurtDelay { get; private set; }
+        public float AngelSize { get; private set; }
+        public float RectWidth { get; private set; }
+        public float RectBottom { get; private set; }
+        public AngelPort Port { get; private set; }
+
+        internal static AngelData Read(SettingsReader r)
+        {
+            var data = new AngelData
+            {
+                Ratio3D = r.Positive("Ratio3D"),
+                HoverMax = r.Number("hoverMax", 0f),
+                HoverRate = r.Positive("hoverRate"),
+                FlapRate = r.Positive("flapRate"),
+                FlapFrames = r.Integer("flapFrames", 1, 64),
+                MaxHP = r.Integer("maxHP", 1),
+                HurtDelay = r.Number("hurtDelay", 0f),
+                AngelSize = r.Positive("angelSize"),
+                RectWidth = r.Positive("rectWidth"),
+                RectBottom = r.Number("rectBottom"),
+            };
+
+            var port = r.Section("port");
+            data.Port = new AngelPort(
+                handOffset: port.Pair("handOffset"),
+                boundsMargin: port.Pair("boundsMargin", 0f),
+                contactRadius: port.Number("contactRadius", 0f));
+            port.Done();
+            return data;
+        }
+    }
+
+    /// <summary>angel.json's port-only figures, world units.</summary>
+    public readonly struct AngelPort
+    {
+        public AngelPort(Vec2 handOffset, Vec2 boundsMargin, float contactRadius)
+        {
+            HandOffset = handOffset;
+            BoundsMargin = boundsMargin;
+            ContactRadius = contactRadius;
+        }
+
+        /// <summary>Where link 0 hangs from the body's centre facing right (the port's sprites are centred).</summary>
+        public Vec2 HandOffset { get; }
+        /// <summary>The angel's flight is kept this far inside the arena's edges.</summary>
+        public Vec2 BoundsMargin { get; }
+        /// <summary>The angel's contact circle (V5: a circle for Angel.vb's rectangle).</summary>
+        public float ContactRadius { get; }
+    }
+
+    /// <summary>enemies.json: Enemy.vb, in its own units, with the Seek cap for Cautious and Align (UNI-T65).</summary>
+    public sealed class EnemyData
+    {
+        public int MaxEnemy { get; private set; }
+        public float SeekSpd { get; private set; }
+        public float ResistSPD { get; private set; }
+        public float FlockSpd { get; private set; }
+        public float MassBase { get; private set; }
+        public float MassRandom { get; private set; }
+        public float LoadHP { get; private set; }
+        public float ResetHP { get; private set; }
+        public float CautiousSeekMultiple { get; private set; }
+        public EnemyPort Port { get; private set; }
+
+        internal static EnemyData Read(SettingsReader r)
+        {
+            var data = new EnemyData
+            {
+                MaxEnemy = r.Integer("maxEnemy", -1, 1000),
+                SeekSpd = r.Number("seekSpd", 0f),
+                ResistSPD = r.Number("resistSPD", 0f),
+                FlockSpd = r.Number("flockSpd", 0f),
+                MassBase = r.Positive("massBase"),
+                MassRandom = r.Number("massRandom", 0f),
+                LoadHP = r.Positive("loadHP"),
+                ResetHP = r.Positive("resetHP"),
+                CautiousSeekMultiple = r.Number("cautiousSeekMultiple", 0f),
+            };
+
+            var port = r.Section("port");
+            data.Port = new EnemyPort(
+                radius: port.Positive("radius"),
+                seekCap: port.Integer("seekCap", 0));
+            port.Check(data.Port.SeekCap <= data.MaxEnemy + 1, "seekCap", $"must not be above the enemy count, maxEnemy + 1 ({data.MaxEnemy + 1})");
+            port.Done();
+            return data;
+        }
+    }
+
+    /// <summary>enemies.json's port-only figures.</summary>
+    public readonly struct EnemyPort
+    {
+        public EnemyPort(float radius, int seekCap)
+        {
+            Radius = radius;
+            SeekCap = seekCap;
+        }
+
+        /// <summary>An enemy's collision circle, world units.</summary>
+        public float Radius { get; }
+        /// <summary>How many enemies may Seek at once (UNI-T65); the enemy count lets every one seek, as the original does.</summary>
+        public int SeekCap { get; }
+    }
+
+    /// <summary>item.json: Item.vb's Health10 heart, in its own units.</summary>
+    public sealed class ItemData
+    {
+        public float ItemSize { get; private set; }
+        public float FallRate { get; private set; }
+        public float FloatMaxSPD { get; private set; }
+        public float FloatAcc { get; private set; }
+        public float FloatSPD { get; private set; }
+        public float ResetFloatSPD { get; private set; }
+        public Vec2 Start { get; private set; }
+        public float WrapBelow { get; private set; }
+        public float WrapTo { get; private set; }
+        public int Heal { get; private set; }
+        public float RectTopPad { get; private set; }
+        public float RectWidth { get; private set; }
+        public float RectBottom { get; private set; }
+
+        internal static ItemData Read(SettingsReader r)
+        {
+            var data = new ItemData
+            {
+                ItemSize = r.Positive("itemSize"),
+                FallRate = r.Number("fallRate", 0f),
+                FloatMaxSPD = r.Number("floatMaxSPD", 0f),
+                FloatAcc = r.Number("floatAcc", 0f),
+                FloatSPD = r.Number("floatSPD", 0f),
+                ResetFloatSPD = r.Number("resetFloatSPD", 0f),
+                Start = r.Pair("start"),
+                WrapBelow = r.Number("wrapBelow"),
+                WrapTo = r.Number("wrapTo"),
+                Heal = r.Integer("heal", 0),
+                RectTopPad = r.Number("rectTopPad"),
+                RectWidth = r.Positive("rectWidth"),
+                RectBottom = r.Number("rectBottom"),
+            };
+
+            r.Check(data.WrapBelow < data.WrapTo, "wrapBelow", $"must be below wrapTo ({data.WrapTo})");
+            return data;
+        }
+    }
+
+    /// <summary>game.json: Engine.vb's session rules.</summary>
+    public sealed class GameData
+    {
+        public float PointsPerDamage { get; private set; }
+        public int ContactDamage { get; private set; }
+
+        internal static GameData Read(SettingsReader r) => new GameData
+        {
+            PointsPerDamage = r.Number("pointsPerDamage", 0f),
+            ContactDamage = r.Integer("contactDamage", 0),
+        };
+    }
+
+    /// <summary>lighting.json: Lights.vb, with the playable day length (BIBLE D6).</summary>
+    public sealed class LightingData
+    {
+        public float DayLength { get; private set; }
+        public float TintStep { get; private set; }
+
+        internal static LightingData Read(SettingsReader r) => new LightingData
+        {
+            DayLength = r.Number("dayLength", 1f),
+            TintStep = r.Number("tintStep", 0f),
+        };
+    }
+
+    /// <summary>camera.json: Camera.vb's perspective (kept as data for the debug camera, UNI-T57) and the port's rig.</summary>
+    public sealed class CameraData
+    {
+        public float Fov { get; private set; }
+        public float CamZ { get; private set; }
+        public CameraTuning Port { get; private set; }
+
+        internal static CameraData Read(SettingsReader r)
+        {
+            var data = new CameraData
+            {
+                Fov = r.Number("Fov", 0.01f, 3.1f),
+                CamZ = r.Number("camZ"),
+            };
+
+            var port = r.Section("port");
+            data.Port = new CameraTuning(
+                mode: port.Choice<CameraFramingMode>("mode"),
+                padding: port.Number("padding", 0f),
+                followSize: port.Number("followSize", 0.01f),
+                deadZone: port.Pair("deadZone", 0f),
+                sharpness: port.Number("sharpness", 0f));
+            port.Done();
+            return data;
+        }
+    }
+
+    /// <summary>The camera rig's framing (the port's; the original's camera never moved in play), world units.</summary>
+    public readonly struct CameraTuning
+    {
+        public CameraTuning(CameraFramingMode mode, float padding, float followSize, Vec2 deadZone, float sharpness)
+        {
+            Mode = mode;
+            Padding = padding;
+            FollowSize = followSize;
+            DeadZone = deadZone;
+            Sharpness = sharpness;
+        }
+
+        public CameraFramingMode Mode { get; }
+        public float Padding { get; }
+        public float FollowSize { get; }
+        public Vec2 DeadZone { get; }
+        public float Sharpness { get; }
+    }
+
+    /// <summary>audio.json: Sound.vb's volumes (hundredths of a decibel, DirectSound's scale) and the port's swing sound.</summary>
+    public sealed class AudioData
+    {
+        public int MusicVolume { get; private set; }
+        public int SfxVolume { get; private set; }
+        public int AmbientVolume { get; private set; }
+        public bool RndMusicPos { get; private set; }
+        public AudioPort Port { get; private set; }
+
+        /// <summary>A DirectSound volume (0 full, -10000 silent, hundredths of a dB) as a 0-1 gain.</summary>
+        public static float Linear(int hundredthsOfDb) => hundredthsOfDb <= -10000 ? 0f : (float)Math.Pow(10d, hundredthsOfDb / 2000d);
+
+        internal static AudioData Read(SettingsReader r)
+        {
+            var data = new AudioData
+            {
+                MusicVolume = r.Integer("musicVolume", -10000, 0),
+                SfxVolume = r.Integer("sfxVolume", -10000, 0),
+                AmbientVolume = r.Integer("ambientVolume", -10000, 0),
+                RndMusicPos = r.Flag("rndMusicPos"),
+            };
+
+            var port = r.Section("port");
+            data.Port = new AudioPort(
+                swingSpeed: port.Number("swingSpeed", 0f),
+                swingRearmSpeed: port.Number("swingRearmSpeed", 0f),
+                swingCooldown: port.Number("swingCooldown", 0f),
+                swingRepeatInterval: port.Number("swingRepeatInterval", 0f),
+                fullVolumeSpeed: port.Number("fullVolumeSpeed", 0f),
+                minSpeedVolume: port.Number("minSpeedVolume", 0f, 1f));
+            port.Check(data.Port.SwingRearmSpeed <= data.Port.SwingSpeed, "swingRearmSpeed", $"must not be above swingSpeed ({data.Port.SwingSpeed})");
+            port.Done();
+            return data;
+        }
+    }
+
+    /// <summary>audio.json's port-only figures: when the swing whoosh fires (V10), world units per second.</summary>
+    public readonly struct AudioPort
+    {
+        public AudioPort(float swingSpeed, float swingRearmSpeed, float swingCooldown, float swingRepeatInterval, float fullVolumeSpeed, float minSpeedVolume)
+        {
+            SwingSpeed = swingSpeed;
+            SwingRearmSpeed = swingRearmSpeed;
+            SwingCooldown = swingCooldown;
+            SwingRepeatInterval = swingRepeatInterval;
+            FullVolumeSpeed = fullVolumeSpeed;
+            MinSpeedVolume = minSpeedVolume;
+        }
+
+        public float SwingSpeed { get; }
+        public float SwingRearmSpeed { get; }
+        public float SwingCooldown { get; }
+        public float SwingRepeatInterval { get; }
+        public float FullVolumeSpeed { get; }
+        public float MinSpeedVolume { get; }
+    }
+
+    /// <summary>The audio the port plays with: Sound.vb's volumes as gains, and the swing sound's tuning.</summary>
+    public readonly struct AudioTuning
+    {
+        public AudioTuning(float sfxVolume, float musicVolume, bool randomMusicStart, AudioPort port)
+        {
+            SfxVolume = sfxVolume;
+            MusicVolume = musicVolume;
+            RandomMusicStart = randomMusicStart;
+            Swing = port;
+        }
+
+        /// <summary>sfxVolume -1000 is -10 dB, a gain of about 0.32.</summary>
+        public float SfxVolume { get; }
+        public float MusicVolume { get; }
+        /// <summary>Sound.vb's rndMusicPos: the music starts at a random point.</summary>
+        public bool RandomMusicStart { get; }
+        public AudioPort Swing { get; }
+    }
+}

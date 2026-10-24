@@ -6,8 +6,9 @@ namespace MindAttic.Chain
 {
     /// <summary>
     /// Draws one player's chain. The chain itself (<see cref="ChainSimulation"/>, link 0 pinned to the
-    /// angel's hand) lives in the <see cref="GameWorld"/> and is stepped by the authority; this
-    /// component holds the chain's tuning, which the world takes when the player is seated, and each
+    /// angel's hand) lives in the <see cref="GameWorld"/> and is stepped by the authority, tuned from
+    /// chain.json (the session's <see cref="GameSettings"/>); this component can override a few of those
+    /// figures at run time (live tuning, tests), which the world takes when the player is seated, and each
     /// frame writes the live links into a world-space <see cref="LineRenderer"/>, interpolating between
     /// the last two physics steps so the chain stays smooth when the render rate and the fixed timestep
     /// differ. Seating it also binds the mace, grapple and audio components beside it.
@@ -16,44 +17,19 @@ namespace MindAttic.Chain
     [RequireComponent(typeof(LineRenderer))]
     public sealed class ChainController : MonoBehaviour
     {
-        [Header("Chain")]
-        [Min(2)]
-        [SerializeField] private int linkCount = 25;
-        [Min(0f)]
-        [SerializeField] private float segmentLength = 0.2f;
-        [Min(0f)]
-        [SerializeField] private float springConstant = 60f;
-        [Min(0f)]
-        [SerializeField] private float resistance = 4f;
-        [SerializeField] private Vector2 gravity = new Vector2(0f, -9.8f);
-        [Min(0f)]
-        [SerializeField] private float stopVelocity = 0.0005f;
-        [Min(0f)]
-        [SerializeField] private float stopAcceleration = 0.0005f;
-
-        [Header("Overhead swing")]
-        [Tooltip("Multiplier on a link's upward spring pull while it is above the hand (Chain.vb doubles it). 1 = off.")]
-        [Min(1f)]
-        [SerializeField] private float overheadBoost = 2f;
-        [Tooltip("How far below the hand a link still counts as overhead (Chain.vb: one link size).")]
-        [Min(0f)]
-        [SerializeField] private float overheadMargin = 0.25f;
-
-        [Header("Level bounds")]
-        [Tooltip("Bounce links off the level's walls (Elastic Trail's wall bounce) so the mace cannot be swung out of the play space.")]
-        [SerializeField] private bool keepInLevel = true;
-        [Tooltip("Fraction of a link's speed into a wall kept after the bounce.")]
-        [Range(0f, 1f)]
-        [SerializeField] private float wallBounce = 0.5f;
-
         [Header("Follow (F key)")]
-        [Tooltip("Chain.vb's followMouse at the start: off, every spring force is zero and the chain falls under gravity.")]
-        [SerializeField] private bool following = ChainFollow.StartsFollowing;
         [SerializeField] private InputAction toggleFollow = new InputAction("Toggle Follow", InputActionType.Button, "<Keyboard>/f");
 
         [Header("Rendering")]
         [Tooltip("Blend between the previous and current physics step when drawing.")]
         [SerializeField] private bool interpolate = true;
+
+        // Run-time overrides of chain.json (null: the data file's figure).
+        private int? _linkCount;
+        private float? _overheadBoost;
+        private float? _overheadMargin;
+        private bool? _keepInLevel;
+        private float? _wallBounce;
 
         private LineRenderer _line;
         private ChainSimulation _captured;
@@ -74,27 +50,32 @@ namespace MindAttic.Chain
         /// <summary>The world's chain for this player (null until seated). Read only.</summary>
         public ChainSimulation Simulation => Entity?.Chain;
 
-        public int LinkCount => linkCount;
+        /// <summary>The settings this chain is tuned from: its session's, or the data files' before it is seated.</summary>
+        public GameSettings Settings => Session != null ? Session.Settings : SettingsStore.Current;
+
+        private PlayerSetup Data => Settings.Player;
+
+        public int LinkCount => _linkCount ?? Data.LinkCount;
 
         /// <summary>How many links (anchor included) are live: the mace's link + 1.</summary>
-        public int ActiveLinkCount => Simulation != null ? Simulation.ActiveLinkCount : linkCount;
+        public int ActiveLinkCount => Simulation != null ? Simulation.ActiveLinkCount : LinkCount;
 
         public bool KeepInLevel
         {
-            get => keepInLevel;
+            get => _keepInLevel ?? Data.KeepChainInArena;
             set
             {
-                keepInLevel = value;
+                _keepInLevel = value;
                 Retune();
             }
         }
 
         public float WallBounce
         {
-            get => wallBounce;
+            get => _wallBounce ?? Data.WallBounce;
             set
             {
-                wallBounce = Mathf.Clamp01(value);
+                _wallBounce = Mathf.Clamp01(value);
                 Retune();
             }
         }
@@ -107,20 +88,20 @@ namespace MindAttic.Chain
 
         public float OverheadBoost
         {
-            get => overheadBoost;
+            get => _overheadBoost ?? Data.Chain.OverheadBoost;
             set
             {
-                overheadBoost = Mathf.Max(1f, value);
+                _overheadBoost = Mathf.Max(1f, value);
                 Retune();
             }
         }
 
         public float OverheadMargin
         {
-            get => overheadMargin;
+            get => _overheadMargin ?? Data.Chain.OverheadMargin;
             set
             {
-                overheadMargin = Mathf.Max(0f, value);
+                _overheadMargin = Mathf.Max(0f, value);
                 Retune();
             }
         }
@@ -130,7 +111,7 @@ namespace MindAttic.Chain
         /// springs at zero so the chain falls under gravity and the mace neither hits nor catches
         /// (see <see cref="ChainFollow"/>). The world's flag once seated, else the starting one.
         /// </summary>
-        public bool IsFollowing => Simulation != null ? Simulation.IsFollowing : following;
+        public bool IsFollowing => Simulation != null ? Simulation.IsFollowing : Data.Following;
 
         /// <summary>
         /// The F key: sends this chain's player a <see cref="Core.ToggleFollow"/> command; the world
@@ -146,15 +127,23 @@ namespace MindAttic.Chain
             return IsFollowing;
         }
 
-        public ChainSimulation.Settings CurrentSettings => new ChainSimulation.Settings(
-            segmentLength,
-            springConstant,
-            resistance,
-            gravity.ToCore(),
-            stopVelocity,
-            stopAcceleration,
-            overheadBoost,
-            overheadMargin);
+        /// <summary>chain.json's spring figures (in world units and seconds) with this chain's overrides.</summary>
+        public ChainSimulation.Settings CurrentSettings
+        {
+            get
+            {
+                var data = Data.Chain;
+                return new ChainSimulation.Settings(
+                    data.SegmentLength,
+                    data.SpringConstant,
+                    data.Resistance,
+                    data.Gravity,
+                    data.StopVelocity,
+                    data.StopAcceleration,
+                    OverheadBoost,
+                    OverheadMargin);
+            }
+        }
 
         public Vector2 GetLinkPosition(int index) => Simulation.GetPosition(index).ToUnity();
 
@@ -191,14 +180,21 @@ namespace MindAttic.Chain
             RenderChain(1f);
         }
 
-        /// <summary>Hands this chain's tuning (and the mace's and grapple's) to the world's player setup.</summary>
+        /// <summary>Puts this chain's overrides (and the mace's and grapple's) over the data files' player setup.</summary>
         public void Contribute(ref PlayerSetup setup)
         {
-            setup.LinkCount = Mathf.Max(2, linkCount);
-            setup.Chain = CurrentSettings;
-            setup.KeepChainInArena = keepInLevel;
-            setup.WallBounce = wallBounce;
-            setup.Following = following;
+            setup.LinkCount = Mathf.Max(2, _linkCount ?? setup.LinkCount);
+            setup.Chain = new ChainSimulation.Settings(
+                setup.Chain.SegmentLength,
+                setup.Chain.SpringConstant,
+                setup.Chain.Resistance,
+                setup.Chain.Gravity,
+                setup.Chain.StopVelocity,
+                setup.Chain.StopAcceleration,
+                _overheadBoost ?? setup.Chain.OverheadBoost,
+                _overheadMargin ?? setup.Chain.OverheadMargin);
+            setup.KeepChainInArena = _keepInLevel ?? setup.KeepChainInArena;
+            setup.WallBounce = _wallBounce ?? setup.WallBounce;
 
             var mace = GetComponent<MaceController>();
             if (mace != null)
@@ -216,7 +212,7 @@ namespace MindAttic.Chain
         /// <summary>Changes the link count; the world rebuilds the chain at the hand.</summary>
         public void SetLinkCount(int count)
         {
-            linkCount = Mathf.Max(2, count);
+            _linkCount = Mathf.Max(2, count);
             Retune();
         }
 
@@ -329,10 +325,5 @@ namespace MindAttic.Chain
             RenderChain(blend);
         }
 
-        private void OnValidate()
-        {
-            linkCount = Mathf.Max(2, linkCount);
-            Retune();
-        }
     }
 }

@@ -28,43 +28,10 @@ namespace MindAttic.Chain
         [Tooltip("The play space: where enemies spawn and the chains bounce. Falls back to the scene's LevelBounds.")]
         [SerializeField] private LevelBounds level;
 
-        [Header("Health")]
-        [Min(1)]
-        [SerializeField] private int maxHp = 30;
-        [Tooltip("Seconds after a hurt before the angel can be hurt again (Angel.vb: 0.25).")]
-        [Min(0f)]
-        [SerializeField] private float hurtDelay = 0.25f;
-        [Min(0)]
-        [SerializeField] private int contactDamage = 1;
-        [Tooltip("Radius around the angel that counts as an enemy touching it, world units.")]
-        [Min(0f)]
-        [SerializeField] private float contactRadius = 0.35f;
+        // The tuning lives in the data files (GameSettings); this overrides angel.json's port.contactRadius once set.
+        private float _contactRadiusOverride = -1f;
 
-        [Header("Score")]
-        [Tooltip("Score per point of mace damage (Engine.vb: 1000).")]
-        [Min(0f)]
-        [SerializeField] private float pointsPerDamage = 1000f;
-
-        [Header("Enemies (Enemy.vb loadEnemy)")]
-        [Tooltip("Enemies per wave (maxEnemy 13, so 14).")]
-        [Min(0)]
-        [SerializeField] private int enemyCount = 14;
-        [Min(0.0001f)]
-        [SerializeField] private float enemyHp = 1f;
-        [Tooltip("Random mass range (Enemy.vb: 1-2). Knockback is divided by mass.")]
-        [SerializeField] private Vector2 enemyMassRange = new Vector2(1f, 2f);
-        [Tooltip("Collision radius of an enemy, world units.")]
-        [Min(0.01f)]
-        [SerializeField] private float enemyRadius = 0.3f;
-        [Min(0f)]
-        [SerializeField] private float seekRate = 0.36f;
-        [Min(0f)]
-        [SerializeField] private float hurtDeceleration = 6f;
-        [Min(0f)]
-        [SerializeField] private float recoverSpeed = 0.05f;
-        [Tooltip("Engine.vb flockSpd 0.0005/frame, converted at 60 fps and for the original's double visit of each pair (0.06): speed (units/s, per axis, per overlapping neighbour) at which overlapping live, non-grabbed enemies push each other apart. 0 turns separation off.")]
-        [Min(0f)]
-        [SerializeField] private float flockSpeed = EnemyBrain.DefaultFlockSpeed;
+        private GameSettings _settings;
 
         private readonly List<Seat> _seats = new List<Seat>();
         private GameWorld _world;
@@ -98,6 +65,16 @@ namespace MindAttic.Chain
             }
         }
 
+        /// <summary>
+        /// The settings registry this authority seats its players and runs its world from: the data files
+        /// (<see cref="SettingsStore.Current"/>) unless set. Set it before the world is first used.
+        /// </summary>
+        public GameSettings Settings
+        {
+            get => _settings ?? (_settings = SettingsStore.Current);
+            set => _settings = value;
+        }
+
         /// <summary>HP, score, pause and game over, for the HUD.</summary>
         public GameState State => World.State;
 
@@ -120,12 +97,13 @@ namespace MindAttic.Chain
             }
         }
 
+        /// <summary>The angel's contact radius: angel.json's unless overridden here (live tuning, tests).</summary>
         public float ContactRadius
         {
-            get => contactRadius;
+            get => _contactRadiusOverride >= 0f ? _contactRadiusOverride : Settings.Player.ContactRadius;
             set
             {
-                contactRadius = Mathf.Max(0f, value);
+                _contactRadiusOverride = Mathf.Max(0f, value);
                 RetuneAll();
             }
         }
@@ -223,11 +201,12 @@ namespace MindAttic.Chain
             return gained;
         }
 
+        /// <summary>A player's setup: the data files' (<see cref="GameSettings.Player"/>), then what the player's own components override.</summary>
         private PlayerSetup BuildSetup(AngelController angel, ChainController chain)
         {
-            var setup = PlayerSetup.Default;
-            setup.ContactRadius = contactRadius;
-            angel.Contribute(ref setup);
+            var setup = Settings.Player;
+            setup.ContactRadius = ContactRadius;
+            angel.Contribute(ref setup, Settings);
             if (chain != null)
             {
                 chain.Contribute(ref setup);
@@ -236,31 +215,7 @@ namespace MindAttic.Chain
             return setup;
         }
 
-        private GameWorld.Settings BuildSettings() => new GameWorld.Settings
-        {
-            Session = new GameState.Settings
-            {
-                MaxHp = maxHp,
-                HurtDelay = hurtDelay,
-                ContactDamage = contactDamage,
-                PointsPerDamage = pointsPerDamage,
-            },
-            Enemies = new GameWorld.EnemySetup
-            {
-                Count = enemyCount,
-                Hp = enemyHp,
-                MassMin = enemyMassRange.x,
-                MassMax = enemyMassRange.y,
-                Radius = enemyRadius,
-                FlockSpeed = flockSpeed,
-                Brain = new EnemyBrain.Settings
-                {
-                    SeekRate = seekRate,
-                    HurtDeceleration = hurtDeceleration,
-                    RecoverSpeed = recoverSpeed,
-                },
-            },
-        };
+        private GameWorld.Settings BuildSettings() => Settings.World;
 
         private LevelBounds ResolveLevel()
         {
@@ -370,19 +325,6 @@ namespace MindAttic.Chain
 
         private void OnDisable() => ReleaseTimeScale();
 
-        private void OnValidate()
-        {
-            if (_world == null)
-            {
-                return;
-            }
-
-            var settings = BuildSettings();
-            _world.Config = settings;
-            _world.State.Config = settings.Session;
-            RetuneAll();
-        }
-
         private void OnDrawGizmosSelected()
         {
             if (angel == null)
@@ -391,7 +333,7 @@ namespace MindAttic.Chain
             }
 
             Gizmos.color = Color.red;
-            Gizmos.DrawWireSphere(angel.transform.position, contactRadius);
+            Gizmos.DrawWireSphere(angel.transform.position, ContactRadius);
         }
     }
 }

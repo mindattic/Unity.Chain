@@ -3,14 +3,6 @@ using UnityEngine;
 
 namespace MindAttic.Chain
 {
-    public enum CameraFramingMode
-    {
-        /// <summary>Static camera that shows the whole level, letterboxed to any aspect (the original's fixed view).</summary>
-        FitLevel,
-        /// <summary>Fixed zoom that follows the target with a dead zone, never showing past the level's edges.</summary>
-        Follow,
-    }
-
     /// <summary>
     /// Frames the play space with this orthographic camera. In <see cref="CameraFramingMode.FitLevel"/>
     /// the view is sized and centered to show all of <see cref="LevelBounds"/> on any aspect
@@ -24,33 +16,26 @@ namespace MindAttic.Chain
     [DefaultExecutionOrder(200)]
     public sealed class CameraRig : MonoBehaviour
     {
-        [SerializeField] private CameraFramingMode mode = CameraFramingMode.FitLevel;
         [Tooltip("The play space to frame. Falls back to the scene's LevelBounds.")]
         [SerializeField] private LevelBounds level;
 
-        [Header("Fit level")]
-        [Tooltip("Extra world units shown around the level on every side.")]
-        [Min(0f)]
-        [SerializeField] private float padding = 0f;
-
-        [Header("Follow")]
         [Tooltip("What to follow. Falls back to the scene's AngelController.")]
         [SerializeField] private Transform target;
-        [Tooltip("Orthographic size (half the view height) while following.")]
-        [Min(0.01f)]
-        [SerializeField] private float followSize = 4.5f;
-        [Tooltip("Half size of the box around the view center the target can move in without moving the camera.")]
-        [SerializeField] private Vector2 deadZone = new Vector2(1.5f, 1f);
-        [Tooltip("How quickly the camera catches up, per second. 0 = snaps.")]
-        [Min(0f)]
-        [SerializeField] private float sharpness = 6f;
+
+        // camera.json's port figures, read on first use; the properties override them at run time.
+        private bool _tuned;
+        private CameraFramingMode mode;
+        private float padding;
+        private float followSize;
+        private Vector2 deadZone;
+        private float sharpness;
 
         private Camera _camera;
 
         public CameraFramingMode Mode
         {
-            get => mode;
-            set => mode = value;
+            get => Tuned().mode;
+            set => Tuned().mode = value;
         }
 
         public LevelBounds Level
@@ -65,28 +50,49 @@ namespace MindAttic.Chain
             set => target = value;
         }
 
+        /// <summary>Orthographic size (half the view height) while following.</summary>
         public float FollowSize
         {
-            get => followSize;
-            set => followSize = Mathf.Max(0.01f, value);
+            get => Tuned().followSize;
+            set => Tuned().followSize = Mathf.Max(0.01f, value);
         }
 
+        /// <summary>Half size of the box around the view center the target can move in without moving the camera.</summary>
         public Vector2 DeadZoneHalf
         {
-            get => deadZone;
-            set => deadZone = value;
+            get => Tuned().deadZone;
+            set => Tuned().deadZone = value;
         }
 
+        /// <summary>How quickly the camera catches up, per second. 0 = snaps.</summary>
         public float Sharpness
         {
-            get => sharpness;
-            set => sharpness = Mathf.Max(0f, value);
+            get => Tuned().sharpness;
+            set => Tuned().sharpness = Mathf.Max(0f, value);
         }
 
+        /// <summary>Extra world units shown around the level on every side.</summary>
         public float Padding
         {
-            get => padding;
-            set => padding = Mathf.Max(0f, value);
+            get => Tuned().padding;
+            set => Tuned().padding = Mathf.Max(0f, value);
+        }
+
+        /// <summary>Reads camera.json's framing the first time it is needed.</summary>
+        private CameraRig Tuned()
+        {
+            if (!_tuned)
+            {
+                var tuning = SettingsStore.Current.CameraTuning;
+                mode = tuning.Mode;
+                padding = tuning.Padding;
+                followSize = tuning.FollowSize;
+                deadZone = tuning.DeadZone.ToUnity();
+                sharpness = tuning.Sharpness;
+                _tuned = true;
+            }
+
+            return this;
         }
 
         public Camera Camera => _camera != null ? _camera : _camera = GetComponent<Camera>();
@@ -109,6 +115,7 @@ namespace MindAttic.Chain
 
         private void Frame(float deltaTime, bool snap)
         {
+            Tuned();
             var cam = Camera;
             cam.orthographic = true;
             var levelRect = ResolveLevel(out var hasLevel);
@@ -179,7 +186,7 @@ namespace MindAttic.Chain
 
         private void Start()
         {
-            if (mode == CameraFramingMode.Follow)
+            if (Mode == CameraFramingMode.Follow)
             {
                 // Start centered on the target rather than easing in from wherever the camera was placed.
                 var follow = ResolveTarget();
@@ -197,7 +204,7 @@ namespace MindAttic.Chain
 
         private void OnDrawGizmosSelected()
         {
-            if (mode != CameraFramingMode.Follow)
+            if (Mode != CameraFramingMode.Follow)
             {
                 return;
             }

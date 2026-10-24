@@ -1,0 +1,27 @@
+{
+  "_source": "Chain.vb (and Form1.vb for the [ ] mace range). Screen units, per frame. The F key's followMouse is UNI-T47.",
+  "maxLinks": 25,
+  "segLength": 0.002,
+  "springK": 0.1,
+  "resistance": 0.25,
+  "gravity": [0, -0.0025],
+  "stopVel": 0.0000001,
+  "stopAcc": 0.0000001,
+  "overheadBoost": 2,
+  "linkSize": 0.025,
+  "linkMass": 1,
+  "Mace": 6,
+  "maceMin": 1,
+  "maceMax": 12,
+  "followMouse": true,
+  "maceScale": 3.5,
+  "port": {
+    "_about": "Not in the original; world units and seconds, never mapped.",
+    "keepInArena": true,
+    "wallBounce": 0.5,
+    "hitRadius": 0.25,
+    "damagePerSpeed": 0.05,
+    "catchRadius": 0.3,
+    "throwMultiplier": 1
+  }
+}

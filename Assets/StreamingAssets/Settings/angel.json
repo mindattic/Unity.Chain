@@ -1,0 +1,19 @@
+{
+  "_source": "Angel.vb. Screen units, per frame; flapRate and hurtDelay are seconds. rectWidth and rectBottom are the angel's hit rectangle (X..X+0.06 by Y+0.03..Y+angelSize/2), used by the heart.",
+  "Ratio3D": 0.00171,
+  "hoverMax": 0.01,
+  "hoverRate": 0.001,
+  "flapRate": 0.1,
+  "flapFrames": 4,
+  "maxHP": 30,
+  "hurtDelay": 0.25,
+  "angelSize": 0.3,
+  "rectWidth": 0.06,
+  "rectBottom": 0.03,
+  "port": {
+    "_about": "Not in the original; world units, never mapped.",
+    "handOffset": [0.25, -0.1],
+    "boundsMargin": [0.5, 0.6],
+    "contactRadius": 0.35
+  }
+}

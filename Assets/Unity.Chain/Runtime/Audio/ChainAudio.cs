@@ -42,33 +42,10 @@ namespace MindAttic.Chain
         [Tooltip("Plays the one-shots. Defaults to an AudioSource on this object (added if missing).")]
         [SerializeField] private AudioSource sfxSource;
 
-        [Tooltip("Index of the mace link. Ignored when the chain has a MaceController.")]
-        [Min(1)]
-        [SerializeField] private int maceIndex = 6;
-
-        [Header("Volume")]
-        [Tooltip("Master SFX volume (Sound.vb: sfxVolume -1000 mB, about 0.3).")]
-        [Range(0f, 1f)]
-        [SerializeField] private float volume = 0.8f;
         [SerializeField] private bool muted;
 
         [Header("Swing")]
         [SerializeField] private AudioClip[] swingClips = Array.Empty<AudioClip>();
-        [Tooltip("Mace speed, world units per second, that triggers a swing sound.")]
-        [Min(0f)]
-        [SerializeField] private float swingSpeed = 6f;
-        [Tooltip("The mace must slow below this before another swing can fire.")]
-        [Min(0f)]
-        [SerializeField] private float swingRearmSpeed = 3f;
-        [Tooltip("While the mace keeps whirling above the swing speed, repeat the swing this often, seconds. 0 = once per swing.")]
-        [Min(0f)]
-        [SerializeField] private float swingRepeatInterval = 0.6f;
-        [Tooltip("Mace speed at which swings and impacts reach full volume.")]
-        [Min(0f)]
-        [SerializeField] private float fullVolumeSpeed = 14f;
-        [Tooltip("Volume of the softest swing or impact.")]
-        [Range(0f, 1f)]
-        [SerializeField] private float minSpeedVolume = 0.35f;
 
         [Header("Impact")]
         [SerializeField] private AudioClip[] impactClips = Array.Empty<AudioClip>();
@@ -77,6 +54,18 @@ namespace MindAttic.Chain
         [Header("Grapple")]
         [SerializeField] private AudioClip[] catchClips = Array.Empty<AudioClip>();
         [SerializeField] private AudioClip[] throwClips = Array.Empty<AudioClip>();
+
+        // audio.json: Sound.vb's sfxVolume as a gain and the port's swing figures, read on first use; the
+        // properties override them at run time. maceIndex is used only when the chain has no MaceController.
+        private bool _tuned;
+        private int maceIndex;
+        private float volume;
+        private float swingSpeed;
+        private float swingRearmSpeed;
+        private float swingCooldown;
+        private float swingRepeatInterval;
+        private float fullVolumeSpeed;
+        private float minSpeedVolume;
 
         private readonly ClipPicker[] _pickers = new ClipPicker[Enum.GetValues(typeof(ChainSound)).Length];
         private SwingSoundTrigger _swing;
@@ -110,8 +99,8 @@ namespace MindAttic.Chain
 
         public float Volume
         {
-            get => volume;
-            set => volume = Mathf.Clamp01(value);
+            get => Tuned().volume;
+            set => Tuned().volume = Mathf.Clamp01(value);
         }
 
         public bool Muted
@@ -122,26 +111,26 @@ namespace MindAttic.Chain
 
         public float SwingSpeed
         {
-            get => swingSpeed;
-            set => swingSpeed = Mathf.Max(0f, value);
+            get => Tuned().swingSpeed;
+            set => Tuned().swingSpeed = Mathf.Max(0f, value);
         }
 
         public float SwingRearmSpeed
         {
-            get => swingRearmSpeed;
-            set => swingRearmSpeed = Mathf.Max(0f, value);
+            get => Tuned().swingRearmSpeed;
+            set => Tuned().swingRearmSpeed = Mathf.Max(0f, value);
         }
 
         public float SwingRepeatInterval
         {
-            get => swingRepeatInterval;
-            set => swingRepeatInterval = Mathf.Max(0f, value);
+            get => Tuned().swingRepeatInterval;
+            set => Tuned().swingRepeatInterval = Mathf.Max(0f, value);
         }
 
         public float FullVolumeSpeed
         {
-            get => fullVolumeSpeed;
-            set => fullVolumeSpeed = Mathf.Max(0f, value);
+            get => Tuned().fullVolumeSpeed;
+            set => Tuned().fullVolumeSpeed = Mathf.Max(0f, value);
         }
 
         /// <summary>The mace link: the chain's <see cref="MaceController"/> index if it has one, else this component's.</summary>
@@ -149,6 +138,7 @@ namespace MindAttic.Chain
         {
             get
             {
+                Tuned();
                 if (chain == null)
                 {
                     return maceIndex;
@@ -157,13 +147,40 @@ namespace MindAttic.Chain
                 var mace = chain.GetComponent<MaceController>();
                 return mace != null ? mace.MaceIndex : Mathf.Clamp(maceIndex, 1, Mathf.Max(1, chain.LinkCount - 1));
             }
-            set => maceIndex = Mathf.Max(1, value);
+            set => Tuned().maceIndex = Mathf.Max(1, value);
         }
 
         /// <summary>The mace's speed relative to the hand measured by the last <see cref="Step"/>, world units per second.</summary>
         public float LastSwingSpeed { get; private set; }
 
-        public SwingSoundTrigger Swing => _swing ?? (_swing = new SwingSoundTrigger(swingSpeed, swingRearmSpeed, 0.15f, swingRepeatInterval));
+        public SwingSoundTrigger Swing => _swing ?? (_swing = NewSwing());
+
+        private SwingSoundTrigger NewSwing()
+        {
+            Tuned();
+            return new SwingSoundTrigger(swingSpeed, swingRearmSpeed, swingCooldown, swingRepeatInterval);
+        }
+
+        /// <summary>Reads audio.json's figures the first time they are needed.</summary>
+        private ChainAudio Tuned()
+        {
+            if (!_tuned)
+            {
+                var settings = SettingsStore.Current;
+                var audio = settings.AudioTuning;
+                maceIndex = settings.Player.MaceIndex;
+                volume = audio.SfxVolume;
+                swingSpeed = audio.Swing.SwingSpeed;
+                swingRearmSpeed = audio.Swing.SwingRearmSpeed;
+                swingCooldown = audio.Swing.SwingCooldown;
+                swingRepeatInterval = audio.Swing.SwingRepeatInterval;
+                fullVolumeSpeed = audio.Swing.FullVolumeSpeed;
+                minSpeedVolume = audio.Swing.MinSpeedVolume;
+                _tuned = true;
+            }
+
+            return this;
+        }
 
         /// <summary>The clip set for <paramref name="sound"/>; assign to replace it.</summary>
         public AudioClip[] GetClips(ChainSound sound)
@@ -203,7 +220,7 @@ namespace MindAttic.Chain
             var picker = _pickers[(int)sound] ?? (_pickers[(int)sound] = new ClipPicker());
             var index = picker.Next(clips != null ? clips.Length : 0);
             var clip = index >= 0 ? clips[index] : null;
-            var finalVolume = muted ? 0f : Mathf.Clamp01(relativeVolume) * volume;
+            var finalVolume = muted ? 0f : Mathf.Clamp01(relativeVolume) * Tuned().volume;
 
             if (clip != null && finalVolume > 0f && sfxSource != null && Application.isPlaying)
             {
@@ -226,6 +243,7 @@ namespace MindAttic.Chain
             }
 
             var swing = Swing;
+            Tuned();
             swing.SwingSpeed = swingSpeed;
             swing.RearmSpeed = swingRearmSpeed;
             swing.RepeatInterval = swingRepeatInterval;
@@ -255,7 +273,7 @@ namespace MindAttic.Chain
         }
 
         private float SpeedVolume(float speed) =>
-            SwingSoundTrigger.VolumeForSpeed(speed, swingSpeed, fullVolumeSpeed, minSpeedVolume);
+            SwingSoundTrigger.VolumeForSpeed(speed, Tuned().swingSpeed, fullVolumeSpeed, minSpeedVolume);
 
         /// <summary>Called when the chain's player is seated: listen to that player's events.</summary>
         public void Bind(ChainController boundChain)
@@ -354,10 +372,5 @@ namespace MindAttic.Chain
         }
 
         private void FixedUpdate() => Step(Time.fixedDeltaTime);
-
-        private void OnValidate()
-        {
-            swingRearmSpeed = Mathf.Min(swingRearmSpeed, swingSpeed);
-        }
     }
 }

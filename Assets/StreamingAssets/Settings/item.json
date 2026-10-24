@@ -1,0 +1,16 @@
+{
+  "_source": "Item.vb, the one Health10 heart. Screen units, per frame (the heart steps once per original frame). floatSPD is loadItem's, resetFloatSPD Root.vb Reset's. rectTopPad, rectWidth and rectBottom are its hit rectangle: X..X+0.045 by Y-0.02..Y+itemSize/2+0.005.",
+  "itemSize": 0.05,
+  "fallRate": 0.001,
+  "floatMaxSPD": 0.001,
+  "floatAcc": 0.00001,
+  "floatSPD": 0.002,
+  "resetFloatSPD": 0.001,
+  "start": [0, 0.4],
+  "wrapBelow": -0.5,
+  "wrapTo": 0.5,
+  "heal": 10,
+  "rectTopPad": 0.005,
+  "rectWidth": 0.045,
+  "rectBottom": 0.02
+}

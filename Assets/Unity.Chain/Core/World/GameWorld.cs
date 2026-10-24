@@ -35,6 +35,15 @@ namespace MindAttic.Chain.Core
             /// <summary>Per-neighbour flocking push, units/s per axis (Engine.vb checkFlocking). 0 turns it off.</summary>
             public float FlockSpeed;
             public EnemyBrain.Settings Brain;
+            /// <summary>
+            /// How many enemies may Seek at once (UNI-T65, not yet applied: until then every enemy seeks, as in
+            /// the original). The rest would hang back in Cautious or stalk in Align.
+            /// </summary>
+            public int SeekCap;
+            /// <summary>Enemy.vb Cautious: the speed it backs away at before its mass divides it (6 x seekSpd), units/s.</summary>
+            public float CautiousSpeed;
+            /// <summary>Enemy.vb Align: the fixed speed it stalks at on each axis (seekSpd), units/s.</summary>
+            public float AlignSpeed;
 
             public static EnemySetup Default => new EnemySetup
             {
@@ -45,6 +54,9 @@ namespace MindAttic.Chain.Core
                 Radius = 0.3f,
                 FlockSpeed = EnemyBrain.DefaultFlockSpeed,
                 Brain = EnemyBrain.Settings.Default,
+                SeekCap = 14,
+                CautiousSpeed = 6f * 0.006f * EnemyBrain.OriginalFrameRate,
+                AlignSpeed = 0.006f * EnemyBrain.OriginalFrameRate,
             };
         }
 

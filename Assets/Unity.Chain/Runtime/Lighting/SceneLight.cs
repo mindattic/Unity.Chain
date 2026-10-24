@@ -24,14 +24,6 @@ namespace MindAttic.Chain
         [Tooltip("The global 2D light this drives. Falls back to one on this GameObject, added if missing.")]
         [SerializeField] private Light2D globalLight;
 
-        [Header("Day cycle")]
-        [Tooltip("Seconds in one Day, Dusk, Night, Morning cycle. The original's 1e10 s never moved (BIBLE D6); 1440 s is its own clock's 24-minute day.")]
-        [Min(1f)]
-        [SerializeField] private float dayLength = 1440f;
-        [Tooltip("Tint units (of 255) a channel moves per second (Lights.vb: 1 a frame, 60 at 60 fps).")]
-        [Min(0f)]
-        [SerializeField] private float tintRate = 60f;
-
         // The time of day survives the scene reload a new round makes (Root.vb's Reset left it running).
         private static LightingState s_carried;
 
@@ -111,7 +103,8 @@ namespace MindAttic.Chain
 
         private LightingState TakeState()
         {
-            var settings = new LightingState.Settings { DayLength = dayLength, TintRate = tintRate };
+            // lighting.json: the 1440 s day (BIBLE D6) and the tint's 1 a frame.
+            var settings = (session != null ? session.Settings : SettingsStore.Current).Light;
             if (!Application.isPlaying)
             {
                 return new LightingState(settings);
@@ -192,14 +185,6 @@ namespace MindAttic.Chain
             if (keyboard != null && keyboard.lKey.wasPressedThisFrame)
             {
                 ToggleLighting();
-            }
-        }
-
-        private void OnValidate()
-        {
-            if (_state != null)
-            {
-                _state.Config = new LightingState.Settings { DayLength = dayLength, TintRate = tintRate };
             }
         }
     }

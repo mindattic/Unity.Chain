@@ -1,0 +1,16 @@
+{
+  "_source": "Sound.vb: volumes in DirectSound's hundredths of a decibel (0 full, -10000 silent); sfxVolume -1000 is -10 dB, a gain of about 0.32. rndMusicPos: the music starts at a random point (at init and on Reset). ambientVolume is set but nothing plays on it.",
+  "musicVolume": 0,
+  "sfxVolume": -1000,
+  "ambientVolume": -1500,
+  "rndMusicPos": true,
+  "port": {
+    "_about": "The swing whoosh, not in the original (it never called playSFX, BIBLE D2, V10); mace speeds in world units per second.",
+    "swingSpeed": 6,
+    "swingRearmSpeed": 3,
+    "swingCooldown": 0.15,
+    "swingRepeatInterval": 0.6,
+    "fullVolumeSpeed": 14,
+    "minSpeedVolume": 0.35
+  }
+}

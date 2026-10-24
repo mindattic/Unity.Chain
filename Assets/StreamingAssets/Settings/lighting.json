@@ -1,0 +1,5 @@
+{
+  "_source": "Lights.vb. The original's dayLength is 1e10 s, so its day never moves (BIBLE D6); 1440 s is its own clock's 24-minute day (UNI-T46). tintStep is r/g/b units of 255 per frame.",
+  "dayLength": 1440,
+  "tintStep": 1
+}

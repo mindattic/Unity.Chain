@@ -9,11 +9,11 @@ namespace MindAttic.Chain
     /// the authority as a <see cref="SteerAngel"/> command with this player's id, and P or Escape as
     /// <see cref="TogglePause"/>; then it draws the angel where the world's <see cref="AngelFlight"/>
     /// says (position, facing, wing-flap frame) and moves the optional hand-socket transform to the
-    /// hand. It never moves the angel itself. Its tuning (sensitivity, bounds, hover, flap) is handed
-    /// to the world when the session seats it (<see cref="GameSession.Join(AngelController)"/>):
-    /// bounds come from the level's <see cref="LevelBounds"/> (assigned, or found in the scene) inset by
-    /// <see cref="boundsMargin"/>; with no level they fall back to the camera's orthographic view,
-    /// then to <see cref="fallbackBounds"/>.
+    /// hand. It never moves the angel itself. Its tuning (sensitivity, hover, flap, hand offset: angel.json)
+    /// comes from the data files through the session's <see cref="GameSettings"/>; what this component adds
+    /// when the session seats it (<see cref="GameSession.Join(AngelController)"/>) is where it starts and its
+    /// bounds: the level's <see cref="LevelBounds"/> (assigned, or found in the scene) inset by angel.json's
+    /// <c>port.boundsMargin</c>; with no level, the camera's orthographic view, then the default arena.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class AngelController : MonoBehaviour
@@ -26,8 +26,6 @@ namespace MindAttic.Chain
         [SerializeField] private ChainController chain;
 
         [Header("Flight")]
-        [Tooltip("World units moved per pixel of mouse motion.")]
-        [SerializeField] private float sensitivity = 0.01f;
         [Tooltip("Lock and hide the OS cursor while playing, so the mouse steers the angel only.")]
         [SerializeField] private bool lockCursor = true;
 
@@ -36,14 +34,6 @@ namespace MindAttic.Chain
         [SerializeField] private LevelBounds levelBounds;
         [Tooltip("Derive bounds from this camera's orthographic view. Falls back to Camera.main.")]
         [SerializeField] private Camera boundsCamera;
-        [Tooltip("Inset from the level (or camera) edges, world units, so the sprite stays fully inside.")]
-        [SerializeField] private Vector2 boundsMargin = new Vector2(0.5f, 0.6f);
-        [Tooltip("Used when there is no orthographic camera.")]
-        [SerializeField] private Rect fallbackBounds = new Rect(-8f, -4.5f, 16f, 9f);
-
-        [Header("Hover")]
-        [SerializeField] private float hoverAmplitude = 0.08f;
-        [SerializeField] private float hoverPeriod = 1.6f;
 
         [Header("Animation")]
         [SerializeField] private SpriteRenderer spriteRenderer;
@@ -51,11 +41,8 @@ namespace MindAttic.Chain
         [SerializeField] private Sprite[] rightFrames = new Sprite[0];
         [Tooltip("Wing-flap frames facing left. Leave empty to mirror the right frames with flipX.")]
         [SerializeField] private Sprite[] leftFrames = new Sprite[0];
-        [SerializeField] private float frameDuration = 0.1f;
 
         [Header("Chain")]
-        [Tooltip("Hand socket offset from the body when facing right; mirrored when facing left.")]
-        [SerializeField] private Vector2 handOffset = new Vector2(0.25f, -0.1f);
         [Tooltip("Optional transform moved to the hand socket every frame (link 0 of the chain hangs from the hand).")]
         [SerializeField] private Transform handSocketTransform;
 
@@ -101,7 +88,9 @@ namespace MindAttic.Chain
         }
 
         /// <summary>The rect the flight position is clamped to.</summary>
-        public Rect Bounds => ComputeBounds();
+        public Rect Bounds => Flight != null ? Flight.Config.Bounds.ToUnity() : ComputeBounds(Settings.Angel.Port.BoundsMargin.ToUnity());
+
+        private GameSettings Settings => Session != null ? Session.Settings : SettingsStore.Current;
 
         public Vector2 HandSocket => Flight != null ? Flight.HandSocket.ToUnity() : (Vector2)transform.position;
 
@@ -113,11 +102,23 @@ namespace MindAttic.Chain
             Apply();
         }
 
-        /// <summary>Hands this angel's tuning to the world's player setup.</summary>
-        public void Contribute(ref PlayerSetup setup)
+        /// <summary>
+        /// Adds this angel's place to the world's player setup (the rest is <paramref name="settings"/>' angel.json):
+        /// where it starts, its bounds, and as many flap frames as it has sprites for (angel.json's flapFrames without art).
+        /// </summary>
+        public void Contribute(ref PlayerSetup setup, GameSettings settings)
         {
+            var flight = setup.Flight;
+            var sprites = Mathf.Max(rightFrames.Length, leftFrames.Length);
             setup.Start = transform.position.ToCore();
-            setup.Flight = BuildSettings();
+            setup.Flight = new AngelFlight.Settings(
+                flight.Sensitivity,
+                ComputeBounds(settings.Angel.Port.BoundsMargin.ToUnity()).ToCore(),
+                flight.HoverAmplitude,
+                flight.HoverPeriod,
+                flight.FrameDuration,
+                sprites > 0 ? sprites : flight.FrameCount,
+                flight.HandOffset);
         }
 
         /// <summary>
@@ -184,20 +185,7 @@ namespace MindAttic.Chain
             }
         }
 
-        private AngelFlight.Settings BuildSettings()
-        {
-            var frameCount = Mathf.Max(rightFrames.Length, leftFrames.Length);
-            return new AngelFlight.Settings(
-                sensitivity,
-                ComputeBounds().ToCore(),
-                hoverAmplitude,
-                hoverPeriod,
-                frameDuration,
-                Mathf.Max(1, frameCount),
-                handOffset.ToCore());
-        }
-
-        private Rect ComputeBounds()
+        private Rect ComputeBounds(Vector2 boundsMargin)
         {
             if (levelBounds == null && !_levelSearched)
             {
@@ -213,7 +201,7 @@ namespace MindAttic.Chain
             var cam = boundsCamera != null ? boundsCamera : Camera.main;
             if (cam == null || !cam.orthographic)
             {
-                return fallbackBounds;
+                return PlayArea.Inset(GameWorld.DefaultArena, boundsMargin.ToCore()).ToUnity();
             }
 
             var halfHeight = cam.orthographicSize;
@@ -260,7 +248,7 @@ namespace MindAttic.Chain
 
         private void OnDrawGizmosSelected()
         {
-            var b = Flight != null ? Flight.Config.Bounds.ToUnity() : ComputeBounds();
+            var b = Bounds;
             Gizmos.color = Color.cyan;
             Gizmos.DrawWireCube(b.center, b.size);
             Gizmos.color = Color.yellow;

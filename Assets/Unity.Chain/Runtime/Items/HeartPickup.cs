@@ -23,7 +23,8 @@ namespace MindAttic.Chain
 
         private HeartFloat _rules;
 
-        public HeartFloat Rules => _rules ?? (_rules = new HeartFloat());
+        /// <summary>The heart's rules, tuned from item.json (in world units, through the settings registry's mapping).</summary>
+        public HeartFloat Rules => _rules ?? (_rules = new HeartFloat(SettingsStore.Current.Heart));
 
         public int HealAmount => Rules.HealAmount;
 
@@ -73,6 +74,13 @@ namespace MindAttic.Chain
             if (sprite != null)
             {
                 sprite.enabled = !Rules.PickedUp;
+
+                // Drawn itemSize wide, whatever the sprite's import size (16 px is 0.05 at the 1:1 mapping).
+                var width = sprite.sprite != null ? sprite.sprite.bounds.size.x : 0f;
+                if (width > 0f)
+                {
+                    transform.localScale = Vector3.one * (Rules.Config.ItemSize / width);
+                }
             }
         }
 

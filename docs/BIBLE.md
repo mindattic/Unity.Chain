@@ -118,11 +118,11 @@ Unity.
 
 | Assembly | Folder | Contents | Status |
 |---|---|---|---|
-| `Unity.Chain.Runtime` | `Assets/Unity.Chain/Runtime/` | Presentation and input: `UI/GameSession` (the one authority: holds and steps the `GameWorld`, seats players, takes their commands, raises the world's events), `Player/AngelController` (mouse and pause keys as commands; draws the angel), `Chain/` (ChainController draws the chain, MaceController sends the `[`/`]` commands and draws the mace), `Grapple/GrappleController` (the grapple button as commands), `Enemies/` (Enemy views, EnemySpawner making them from events), `Items/` (HeartPickup), `Lighting/` (SceneLight), `Level/` (LevelBounds, CameraRig), `UI/` (GameHud, HudText), `Audio/` (ChainAudio plays the world's events), `Adapters/CoreConvert` (the one place Vector2/Rect become Core's Vec2/Rect2) | References Core one way; holds no rule that Core could own, and changes the world only by commands |
+| `Unity.Chain.Runtime` | `Assets/Unity.Chain/Runtime/` | Presentation and input: `UI/GameSession` (the one authority: holds and steps the `GameWorld`, seats players, takes their commands, raises the world's events), `Player/AngelController` (mouse and pause keys as commands; draws the angel), `Chain/` (ChainController draws the chain, MaceController sends the `[`/`]` commands and draws the mace), `Grapple/GrappleController` (the grapple button as commands), `Enemies/` (Enemy views, EnemySpawner making them from events), `Items/` (HeartPickup), `Lighting/` (SceneLight), `Level/` (LevelBounds, CameraRig), `UI/` (GameHud, HudText), `Audio/` (ChainAudio plays the world's events), `Adapters/CoreConvert` (the one place Vector2/Rect become Core's Vec2/Rect2), `Settings/SettingsStore` (loads the registry from StreamingAssets) | References Core one way; holds no rule that Core could own, and changes the world only by commands |
 | `Unity.Chain.Editor` | `Assets/Unity.Chain/Editor/` | `SceneBuilder` (generates `Main.unity` and the build settings), `PlayerBuilder` (Windows player) | in place |
 | `Unity.Chain.EditMode.Tests` | `Assets/Unity.Chain/Tests/EditMode/` | NUnit tests of the rules and components | in place; the component tests stay here, the pure rule tests now live in `Tests/Core.Tests` (`dotnet test`) |
 | `Unity.Chain.PlayMode.Tests` | `Assets/Unity.Chain/Tests/PlayMode/` | `MainSceneSmokeTests` | in place |
-| `Unity.Chain.Core` | `Assets/Unity.Chain/Core/` | `noEngineReferences`: `World/` (GameWorld, GameCommand, GameEvent, PlayerId, EnemyId, PlayerEntity, EnemyEntity, Sweep), `Maths/` (Vec2, Rect2, Calc), `Chain/` (ChainSimulation, ChainFollow), `Player/` (AngelFlight), `Enemies/` (EnemyBrain), `Grapple/` (Grapple, IGrappleTarget, GrappleState), `Items/` (HeartFloat), `Game/` (GameState), `Level/` (CameraFraming, PlayArea), `Lighting/` (LightingState), `Audio/` (SwingSoundTrigger, ClipPicker) | Its rules are tested by `Tests/Core.Tests` with `dotnet test` |
+| `Unity.Chain.Core` | `Assets/Unity.Chain/Core/` | `noEngineReferences`: `World/` (GameWorld, GameCommand, GameEvent, PlayerId, EnemyId, PlayerEntity, EnemyEntity, Sweep), `Maths/` (Vec2, Rect2, Calc), `Chain/` (ChainSimulation, ChainFollow), `Player/` (AngelFlight), `Enemies/` (EnemyBrain), `Grapple/` (Grapple, IGrappleTarget, GrappleState), `Items/` (HeartFloat), `Game/` (GameState), `Level/` (CameraFraming, PlayArea), `Lighting/` (LightingState), `Audio/` (SwingSoundTrigger, ClipPicker), `Settings/` (GameSettings, the registry and its data records; OriginalSpace, the one mapping; ISettingsSource; SettingsReader, the validation; Json) | Its rules are tested by `Tests/Core.Tests` with `dotnet test` |
 
 The Input System action asset is planned in UNI-T34, URP assets in UNI-T18, Unity.Shared settings in UNI-T36, the
 UI Toolkit HUD in UNI-T37 and the multiplayer kit in UNI-T26.
@@ -151,8 +151,9 @@ their `AngelFlight`, `ChainSimulation`, mace link and `Grapple`) and every enemy
 - **No current player.** Each seat is a `PlayerId`; `GameSession.Join` seats an angel and its chain, and each of
   those components holds its own id. Nothing looks up "the" player. Two seats already play side by side in the
   world (each with its own angel, chain and grapple; a hit is credited to the mace that landed it).
-- **Tuning** still lives on the components (`[SerializeField]`) and goes to the world when a player is seated or a
-  value changes in the inspector; UNI-T33 moves it to data files.
+- **Tuning** is data (§6): the authority seats each player from the settings registry (`GameSession.Settings`,
+  loaded from `StreamingAssets/Settings`), and a component can only override a figure at run time (live tuning,
+  tests), which goes to the world through `GameSession.Retune`.
 
 Where the world departs from the earlier component wiring: pausing now freezes the angel too (Engine.vb renders and
 moves the angel only while not paused; the port had kept flying it), and a finished game resets the world in place
@@ -164,21 +165,40 @@ instead of reloading the scene (V15).
 every number is a field in code. The only persisted data is the registry (`HKCU\Software\MindAttic\Engine` read,
 `...\War` written) with Width, Height, ColorDepth and Fullscreen.
 
-**The rebuild today** keeps its tuning as `[SerializeField]` defaults on components and as `Config`/`Settings`
-structs on the pure rule classes, each carrying the original's figure converted to world units per fixed step.
+**The rebuild** (UNI-T33) keeps every tuning figure in JSON files in `Assets/StreamingAssets/Settings/`, one per
+concern, read by Core's settings registry (`Core/Settings/GameSettings`) through an interface (`ISettingsSource`;
+the build reads the folder with `DirectorySettingsSource`, Runtime's `SettingsStore` holds the loaded registry).
+Nothing tunes the game from the Inspector any more.
 
-**The target (planned, UNI-T33):** one validated data file per concern, loaded by Core and rejected on load with a
-message if any value is out of range:
+- **The files hold the original's figures in its own units**, named as its source names them (`segLength`,
+  `springK`, `Ratio3D`, `seekSpd`, `floatSPD`, ...): screen space, where -0.5..0.5 is the screen height, and per
+  frame. A figure the original never had (a circle radius where it tested rectangles, the camera rig, the swing
+  whoosh) sits in that file's `port` object, in world units and seconds, and is never mapped. Keys starting with
+  `_` are notes.
+- **One mapping** turns them into the port's: `space.json` (`lengthScale`, `framesPerSecond`) read into
+  `OriginalSpace`, which `GameSettings.Map` applies to each figure by kind (length, speed, acceleration, rate,
+  frames). It is the only place a figure changes units. `lengthScale` is 1 today, the 1:1 copy the port has always
+  made; UNI-T66 sets the real mapping there and every figure moves with it.
+- **Validated on load**: every key must be present, of its type and in range, unknown keys are reported (a typo is
+  not silently ignored), and cross-checks hold (`Mace` within `maceMin..maceMax`, `seekCap` no more than the
+  enemies). One load reports every problem, each with its file, key and line (`SettingsException`); the game logs
+  them and does not start on bad data. `Tests/Core.Tests/GameSettingsTests` loads the shipped files.
 
-| Data | Holds | Original source |
+| File | Holds | Original source |
 |---|---|---|
-| chain tuning | link count, segment length, spring, drag, gravity, jitter stop, overhead boost, mace index range and scale, bounce | `Chain.vb` |
-| angel | steer ratio, bounds, hover bob, flap rate, hand offsets, max HP, hurt delay | `Angel.vb`, `Engine.vb` |
-| enemies | count, HP, mass range, seek rate, hurt deceleration, flocking push, frame rate | `Enemy.vb`, `Engine.vb` |
-| heart | fall, sway, heal, cap | `Item.vb` |
-| game | score multiplier, game-over fade step, clock, live-tuning key steps, game speed | `Engine.vb`, `Root.vb` |
-| lighting | day length (1440 s, D6), tint rate (60 a second) | `Lights.vb` |
-| assets | sprite sets, link skins, backgrounds, sound sets, music | `Textures.vb`, `Sound.vb` |
+| `space.json` | the original-to-port mapping (length scale, frame rate) | (the port; D9) |
+| `chain.json` | `maxLinks`, `segLength`, `springK`, `resistance`, `gravity`, `stopVel`/`stopAcc`, overhead boost and `linkSize`, link mass, `Mace` and its 1-12 range, `followMouse` and the 3.5x mace scale (UNI-T47); port: wall bounce, hit, catch and throw, damage per speed | `Chain.vb`, `Form1.vb` |
+| `angel.json` | `Ratio3D`, `hoverMax`/`hoverRate`, `flapRate` and frames, `maxHP`, `hurtDelay`, `angelSize` and its hit rectangle; port: hand offset, bounds margin, contact radius | `Angel.vb` |
+| `enemies.json` | `maxEnemy`, `seekSpd`, `resistSPD`, `flockSpd`, mass range, load and reset HP, Cautious's 6 x seekSpd; port: radius, the Seek cap (UNI-T65, every enemy until then) | `Enemy.vb`, `Root.vb` |
+| `item.json` | the heart's size, fall, sway (`floatSPD`, `floatAcc`, `floatMaxSPD`), start, wrap, heal and hit rectangle | `Item.vb` |
+| `game.json` | score per damage, HP per contact | `Engine.vb` |
+| `lighting.json` | day length (1440 s, D6), tint step | `Lights.vb` |
+| `camera.json` | `Fov`, `camZ` (for UNI-T57); port: the rig's mode, padding, follow size, dead zone, sharpness | `Camera.vb` |
+| `audio.json` | `musicVolume`, `sfxVolume`, `ambientVolume` (hundredths of a dB), `rndMusicPos`; port: the swing whoosh | `Sound.vb` |
+
+Still in code, for later tickets: the game-over fade step and floor (`GameState`), the live-tuning key steps
+(UNI-T51), game speed (UNI-T52), asset lists (UNI-T19, UNI-T20), the HUD layout (UNI-T50) and the arena size
+(`LevelBounds`, UNI-T66).
 
 Player options (resolution, window mode, volumes, mutes) replace the registry with a Unity.Shared profile
 (planned, UNI-T36, UNI-T59).
@@ -222,7 +242,7 @@ Working behaviour of the original the rebuild does differently, and why. Status:
 | # | Original | Rebuild | Why | Status |
 |---|---|---|---|---|
 | V1 | 45 degree perspective camera at z -1, fixed 4:3 | orthographic `CameraRig` that fits the whole level on any aspect, or follows through a dead zone | 2D in Unity, any screen shape without stretching or showing past the arena | kept; perspective data and the debug camera, UNI-T57 |
-| V2 | Units are the camera's NDC-like plane (half-height 0.414) | world units; every figure converted, mostly as fractions of the play area | Unity physics, sprites and cameras work in world units | kept |
+| V2 | Units are the camera's NDC-like plane (half-height 0.414) | world units: the data files hold the original's figures and one mapping (`space.json`, `OriginalSpace`) converts them; it is 1:1 today, so the chain, the angel's steering and hover and the enemies' recovery are the original's own figures in a 16 x 9 arena (UNI-T33; before it the chain and angel used guessed world-unit figures) | Unity physics, sprites and cameras work in world units | to settle: the mapping, UNI-T66 |
 | V3 | All 25 links simulate; only 0..`Mace` are drawn | only 0..`Mace` simulate; the rest park on the mace and pay out from it when lengthened | with both-neighbour pull (D7) an undrawn tail would drag the mace | kept, follows D7 |
 | V4 | Chain wall bounce commented out | links bounce off `LevelBounds` at 0.5 (`keepInLevel` turns it off) | *Elastic Trail* bounced; keeps the mace on screen | to settle, UNI-T45 |
 | V5 | Angel contact rectangle X..X+0.06 by Y+0.03..Y+0.15 | a circle (contact radius plus the enemy's radius), tested in Core | fits the sprite at any scale; runs outside Unity | kept |
@@ -237,6 +257,7 @@ Working behaviour of the original the rebuild does differently, and why. Status:
 | V14 | F1-F3 switch D3D wireframe, textures and culling | the nearest URP equivalents | the D3D render states do not exist in URP | planned, UNI-T56 |
 | V15 | Game over then `Reset` in place | the same fade, then the world resets itself in place (`GameWorld.Reset`: angels home, chains on the hand, a fresh flock) | matches | matches (UNI-T32) |
 | V16 | The ambient and tint light D3D materials | a URP 2D global light carries ambient x tint (`SceneLight`); until the 2D pipeline is committed the light renders nothing, so the HUD draws the game-over fade as an overlay, and stops once the light shows it | there is no D3D material lighting in URP | temporary, UNI-T18 |
+| V17 | SFX at `sfxVolume` -1000 (-10 dB), music at 0 dB, music from a random point (`rndMusicPos`) | the same, from `audio.json` (the port had played SFX at 0.8 and music at 0.6 from the top) | matches | matches (UNI-T33) |
 
 ### Keeping these tables current
 

@@ -1,0 +1,5 @@
+{
+  "_source": "Engine.vb: checkMaceImpact (Score += damage * 1000) and checkAngelHit (HP -= 1).",
+  "pointsPerDamage": 1000,
+  "contactDamage": 1
+}

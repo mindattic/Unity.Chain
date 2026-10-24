@@ -229,7 +229,7 @@ Checked against `AGENTS.md` (the owner's rebuild standard) and the reference rep
 | Engine-free Core | Absent. `ChainSimulation`, `AngelFlight`, `EnemyBrain`, `GameState` are mostly pure but sit in Runtime and use `UnityEngine` types | UNI-T30 |
 | Tests outside Unity | Done: `Tests/Core.Tests`, run by `run-core-tests.ps1` | UNI-T31 |
 | Commands and events | Done: one `GameWorld` in Core, stepped only by `GameSession`; players send `GameCommand`s with a `PlayerId`, presentation plays `GameEvent`s (BIBLE §5.3) | UNI-T32 |
-| Data-driven content | Tuning is `[SerializeField]` constants on components; no data files, no validation | UNI-T33 |
+| Data-driven content | Done: JSON data files in `StreamingAssets/Settings` holding the original's figures, validated on load and read by Core's `GameSettings` through `ISettingsSource`, one mapping (`space.json`) to the port's units (BIBLE §6) | UNI-T33 |
 | Input System | Package installed and `activeInputHandler` is Input System only, but input is read by polling `Keyboard.current` and `Mouse.current`; no action asset, no gamepad | UNI-T34 |
 | URP | Package installed, `GraphicsSettings` points at a pipeline asset that is not in the repo (UNI-T18) | UNI-T18 |
 | Unity.Shared profiles and settings | Package not referenced; no profile, volumes are per-component fields | UNI-T36 |

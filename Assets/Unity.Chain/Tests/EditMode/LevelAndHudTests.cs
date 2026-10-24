@@ -72,6 +72,11 @@ namespace MindAttic.Chain.Tests
             using (var rig = new TestRig(levelSize: new Vector2(4f, 2f)))
             {
                 rig.MoveAngelTo(new Vector2(0f, 0.9f));
+                // The longest chain (12 links) hangs about two units at chain.json's figures, past the floor.
+                while (rig.Mace.Lengthen())
+                {
+                }
+
                 for (var i = 0; i < 200; i++)
                 {
                     rig.Step();
@@ -214,8 +219,10 @@ namespace MindAttic.Chain.Tests
 
             Assert.IsTrue(_rig.Angel.SendInput(new Vector2(100f, -50f), 0f));
 
-            Assert.AreEqual(new Vec2(1f, -0.5f), _rig.Player.Flight.Position);
-            Assert.AreEqual(new Vector2(1f, -0.5f), (Vector2)_rig.Angel.transform.position);
+            var flown = new Vector2(100f, -50f) * _rig.Player.Setup.Flight.Sensitivity; // angel.json's Ratio3D
+            Assert.AreEqual(flown.x, _rig.Player.Flight.Position.X, 1e-5f);
+            Assert.AreEqual(flown.y, _rig.Player.Flight.Position.Y, 1e-5f);
+            Assert.AreEqual(flown, (Vector2)_rig.Angel.transform.position);
             Assert.Throws<System.ArgumentException>(() => Session.Join(_rig.Angel), "a seat is taken once");
         }
 
@@ -319,7 +326,7 @@ namespace MindAttic.Chain.Tests
         {
             Session.State.Config.HurtDelay = 0f;
             _rig.SpawnEnemy(new Vector2(-0.5f, 0f));
-            for (var i = 0; i < 60 && !Session.State.IsGameOver; i++) { _rig.Step(0.1f); }
+            for (var i = 0; i < 300 && !Session.State.IsGameOver; i++) { _rig.Step(); }
             Assert.IsTrue(Session.State.IsGameOver);
             Assert.IsTrue(_events.Exists(e => e is GameOver));
 

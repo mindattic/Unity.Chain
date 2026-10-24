@@ -76,6 +76,16 @@ namespace MindAttic.Chain.Core
             public int HealAmount;
             /// <summary><c>angelSize</c>, which sizes the angel's hit rectangle.</summary>
             public float AngelSize;
+            /// <summary>Item.vb: the heart's rectangle reaches this far above <c>itemSize / 2</c> (0.005).</summary>
+            public float RectTopPad;
+            /// <summary>Item.vb: the heart's rectangle width from X (0.045).</summary>
+            public float RectWidth;
+            /// <summary>Item.vb: the heart's rectangle bottom below Y (0.02).</summary>
+            public float RectBottom;
+            /// <summary>Angel.vb: the angel's rectangle width from X (0.06).</summary>
+            public float AngelRectWidth;
+            /// <summary>Angel.vb: the angel's rectangle bottom above Y (0.03).</summary>
+            public float AngelRectBottom;
 
             public static Settings Default => new Settings
             {
@@ -91,6 +101,11 @@ namespace MindAttic.Chain.Core
                 WrapTo = 0.5f,
                 HealAmount = 10,
                 AngelSize = 0.3f,
+                RectTopPad = 0.005f,
+                RectWidth = 0.045f,
+                RectBottom = 0.02f,
+                AngelRectWidth = 0.06f,
+                AngelRectBottom = 0.03f,
             };
         }
 
@@ -244,7 +259,7 @@ namespace MindAttic.Chain.Core
 
         /// <summary>Angel.vb: Left X, Right X + 0.06, Top Y + angelSize / 2, Bottom Y + 0.03.</summary>
         public HeartRect AngelRect(float angelX, float angelY) =>
-            new HeartRect(angelX, angelY + _settings.AngelSize / 2f, angelX + 0.06f, angelY + 0.03f);
+            new HeartRect(angelX, angelY + _settings.AngelSize / 2f, angelX + _settings.AngelRectWidth, angelY + _settings.AngelRectBottom);
 
         /// <summary>Root.vb's <c>rectIntersect</c>: a's top or bottom edge lies within b's, and a's left or right edge lies within b's.</summary>
         public static bool RectIntersect(HeartRect a, HeartRect b) =>
@@ -256,6 +271,6 @@ namespace MindAttic.Chain.Core
 
         // Item.vb: Left X, Top Y + itemSize / 2 + 0.005, Right X + 0.045, Bottom Y - 0.02.
         private HeartRect BuildRect() =>
-            new HeartRect(X, Y + _settings.ItemSize / 2f + 0.005f, X + 0.045f, Y - 0.02f);
+            new HeartRect(X, Y + _settings.ItemSize / 2f + _settings.RectTopPad, X + _settings.RectWidth, Y - _settings.RectBottom);
     }
 }

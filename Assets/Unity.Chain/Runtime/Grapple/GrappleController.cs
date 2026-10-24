@@ -10,25 +10,19 @@ namespace MindAttic.Chain
     /// player's id; the world arms the mace, catches the nearest enemy inside
     /// <see cref="CatchRadius"/> while armed, carries it on the mace, and on release throws it with
     /// the mace's velocity x <see cref="ThrowMultiplier"/> (the <see cref="Grabbed"/> and
-    /// <see cref="Thrown"/> events). The catch and throw tuning lives here and goes to the world when
-    /// the player is seated. Sits beside the player's <see cref="ChainController"/>.
+    /// <see cref="Thrown"/> events). The catch and throw tuning is chain.json's; this component can
+    /// override it at run time, and the overrides go to the world when the player is seated or retuned. Sits beside the player's <see cref="ChainController"/>.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class GrappleController : MonoBehaviour
     {
-        [Header("Catch")]
-        [Tooltip("Radius around the mace link that catches a target while armed, world units.")]
-        [Min(0f)]
-        [SerializeField] private float catchRadius = 0.3f;
-
-        [Header("Throw")]
-        [Tooltip("Launch velocity = mace velocity x this.")]
-        [Min(0f)]
-        [SerializeField] private float throwMultiplier = 1f;
-
         [Header("Input")]
         [Tooltip("Read the left mouse button as the grapple button. Turn off to drive SetButtonHeld yourself.")]
         [SerializeField] private bool useMouseButton = true;
+
+        // Run-time overrides of chain.json (null: the data file's figure).
+        private float? _catchRadius;
+        private float? _throwMultiplier;
 
         private ChainController _chain;
         private bool _buttonHeld;
@@ -43,25 +37,29 @@ namespace MindAttic.Chain
         /// <summary>The enemy in the mace's grip, or null.</summary>
         public EnemyEntity HeldEnemy => Chain != null ? Chain.Entity?.HeldEnemy : null;
 
+        /// <summary>Radius around the mace link that catches a target while armed, world units.</summary>
         public float CatchRadius
         {
-            get => catchRadius;
+            get => _catchRadius ?? Data.CatchRadius;
             set
             {
-                catchRadius = Mathf.Max(0f, value);
+                _catchRadius = Mathf.Max(0f, value);
                 Retune();
             }
         }
 
+        /// <summary>Launch velocity = mace velocity x this.</summary>
         public float ThrowMultiplier
         {
-            get => throwMultiplier;
+            get => _throwMultiplier ?? Data.ThrowMultiplier;
             set
             {
-                throwMultiplier = Mathf.Max(0f, value);
+                _throwMultiplier = Mathf.Max(0f, value);
                 Retune();
             }
         }
+
+        private PlayerSetup Data => Chain != null ? Chain.Settings.Player : SettingsStore.Current.Player;
 
         public bool UseMouseButton
         {
@@ -72,11 +70,11 @@ namespace MindAttic.Chain
         /// <summary>Called when the chain's player is seated.</summary>
         public void Bind(ChainController chain) => _chain = chain;
 
-        /// <summary>Hands the grapple's tuning to the world's player setup.</summary>
+        /// <summary>Puts the grapple's overrides over the data files' player setup.</summary>
         public void Contribute(ref PlayerSetup setup)
         {
-            setup.CatchRadius = catchRadius;
-            setup.ThrowMultiplier = throwMultiplier;
+            setup.CatchRadius = _catchRadius ?? setup.CatchRadius;
+            setup.ThrowMultiplier = _throwMultiplier ?? setup.ThrowMultiplier;
         }
 
         /// <summary>Sets the grapple button state, for custom input or tests: a change is sent as a command.</summary>
@@ -119,8 +117,6 @@ namespace MindAttic.Chain
         // Never leave an enemy held by a button nobody can let go of.
         private void OnDisable() => SetButtonHeld(false);
 
-        private void OnValidate() => Retune();
-
         private void OnDrawGizmosSelected()
         {
             var player = Chain != null ? Chain.Entity : null;
@@ -130,7 +126,7 @@ namespace MindAttic.Chain
             }
 
             Gizmos.color = IsArmed ? Color.green : Color.gray;
-            Gizmos.DrawWireSphere(player.MacePosition.ToUnity(), catchRadius);
+            Gizmos.DrawWireSphere(player.MacePosition.ToUnity(), player.Setup.CatchRadius);
         }
     }
 }

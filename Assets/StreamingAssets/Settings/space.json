@@ -1,0 +1,6 @@
+{
+  "_about": "The one original-to-port mapping. Every other file holds the original's figures in its own units: screen space (-0.5..0.5 is the screen height) and per frame (it had no time step). Core multiplies lengths by lengthScale and converts per-frame figures at framesPerSecond (BIBLE D9), here and nowhere else (OriginalSpace).",
+  "_open": "lengthScale 1 copies the original's screen units 1:1 into the 16 x 9 world-unit arena, as the port did before the data files. UNI-T66 sets the real mapping (screen height 1.0 to the arena's height, and the original's aspect).",
+  "lengthScale": 1,
+  "framesPerSecond": 60
+}

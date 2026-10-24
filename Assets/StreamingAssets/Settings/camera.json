@@ -1,0 +1,13 @@
+{
+  "_source": "Camera.vb: Fov (Math.PI / 4) and cam z, kept as data for the debug camera (UNI-T57); the port draws with an orthographic rig (BIBLE V1).",
+  "Fov": 0.7853982,
+  "camZ": -1,
+  "port": {
+    "_about": "The camera rig, not in the original; world units and seconds. mode is FitLevel or Follow.",
+    "mode": "FitLevel",
+    "padding": 0,
+    "followSize": 4.5,
+    "deadZone": [1.5, 1],
+    "sharpness": 6
+  }
+}

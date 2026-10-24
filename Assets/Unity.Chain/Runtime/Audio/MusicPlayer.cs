@@ -6,19 +6,21 @@ namespace MindAttic.Chain
     /// Background music (Sound.vb's <c>playMusic</c>): one looping track on its own 2D
     /// <see cref="AudioSource"/>, started on play, optionally from a random point in the track
     /// (Sound.vb's <c>rndMusicPos</c>) so every run does not open on the same bar. Volume and
-    /// mute are separate from <see cref="ChainAudio"/>'s SFX volume, as bMusic/bSound were.
+    /// mute are separate from <see cref="ChainAudio"/>'s SFX volume, as bMusic/bSound were. The volume
+    /// and the random start are audio.json's (Sound.vb's musicVolume and rndMusicPos), overridable at run time.
     /// </summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(AudioSource))]
     public sealed class MusicPlayer : MonoBehaviour
     {
         [SerializeField] private AudioClip music;
-        [Range(0f, 1f)]
-        [SerializeField] private float volume = 0.6f;
         [SerializeField] private bool muted;
         [SerializeField] private bool playOnStart = true;
-        [Tooltip("Start each run from a random point in the track (Sound.vb's rndMusicPos).")]
-        [SerializeField] private bool randomStartPosition;
+
+        // audio.json, read on first use; the properties override it at run time.
+        private bool _tuned;
+        private float volume;
+        private bool randomStartPosition;
 
         private AudioSource _source;
 
@@ -46,10 +48,10 @@ namespace MindAttic.Chain
 
         public float Volume
         {
-            get => volume;
+            get => Tuned().volume;
             set
             {
-                volume = Mathf.Clamp01(value);
+                Tuned().volume = Mathf.Clamp01(value);
                 Apply();
             }
         }
@@ -72,8 +74,21 @@ namespace MindAttic.Chain
 
         public bool RandomStartPosition
         {
-            get => randomStartPosition;
-            set => randomStartPosition = value;
+            get => Tuned().randomStartPosition;
+            set => Tuned().randomStartPosition = value;
+        }
+
+        private MusicPlayer Tuned()
+        {
+            if (!_tuned)
+            {
+                var audio = SettingsStore.Current.AudioTuning;
+                volume = audio.MusicVolume;
+                randomStartPosition = audio.RandomMusicStart;
+                _tuned = true;
+            }
+
+            return this;
         }
 
         public bool IsPlaying => Source.isPlaying;
@@ -90,7 +105,7 @@ namespace MindAttic.Chain
             source.loop = true;
             source.playOnAwake = false;
             source.spatialBlend = 0f;
-            source.volume = volume;
+            source.volume = Tuned().volume;
             source.mute = muted;
         }
 
@@ -106,7 +121,7 @@ namespace MindAttic.Chain
                 return -1f;
             }
 
-            var start = randomStartPosition ? RandomStart(music.length, Random.value) : 0f;
+            var start = Tuned().randomStartPosition ? RandomStart(music.length, Random.value) : 0f;
             Source.time = start;
             if (Application.isPlaying)
             {

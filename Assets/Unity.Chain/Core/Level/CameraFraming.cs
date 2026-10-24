@@ -1,5 +1,13 @@
 namespace MindAttic.Chain.Core
 {
+    public enum CameraFramingMode
+    {
+        /// <summary>Static camera that shows the whole level, letterboxed to any aspect (the original's fixed view).</summary>
+        FitLevel,
+        /// <summary>Fixed zoom that follows the target with a dead zone, never showing past the level's edges.</summary>
+        Follow,
+    }
+
     /// <summary>
     /// Pure 2D orthographic camera math used by the camera rig: how big the view must
     /// be to show (or stay inside) the level, where its center may sit so it never shows past
