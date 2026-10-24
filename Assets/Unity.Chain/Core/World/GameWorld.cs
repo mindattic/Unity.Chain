@@ -15,8 +15,14 @@ namespace MindAttic.Chain.Core
     /// components ran it: each chain swings from its angel's hand (Chain.vb), each enemy seeks, flocks and,
     /// thrown, knocks the enemies it touches (Enemy.vb, checkFlocking, checkThrowImpact), each grapple arms,
     /// catches, carries or throws, each mace hits what its swept circle touched (checkMaceImpact), enemies
-    /// touching an angel cost HP (checkAngelHit), and a finished game fades out and resets itself
-    /// (GameOver, Root.vb Reset). While paused nothing moves.
+    /// touching an angel cost HP (checkAngelHit), each heart falls and sways and heals the angel that touches it
+    /// (Item.vb renderItem, checkItemCollect), and a finished game fades out and resets itself (GameOver,
+    /// Root.vb Reset). While paused nothing moves.
+    ///
+    /// <see cref="Reset"/> is the one place a round starts over, whether a player sent
+    /// <see cref="ResetGame"/> (the R key) or the game-over fade finished: everything Root.vb's Reset
+    /// restores that the world holds is restored there, and the presentation that holds the rest (the
+    /// camera, the music, the light) follows its <see cref="WorldReset"/> event.
     /// </summary>
     public sealed class GameWorld
     {
@@ -59,11 +65,17 @@ namespace MindAttic.Chain.Core
         {
             public GameState.Settings Session;
             public EnemySetup Enemies;
+            /// <summary>Every heart the world holds (Item.vb's Health10), in world units, per original frame.</summary>
+            public HeartFloat.Settings Heart;
+            /// <summary>The game speed every round starts at (Root.vb Reset: <c>gameSpeed = 1.0</c>).</summary>
+            public float GameSpeed;
 
             public static Settings Default => new Settings
             {
                 Session = GameState.Settings.Default,
                 Enemies = EnemySetup.Default,
+                Heart = HeartFloat.Settings.Default,
+                GameSpeed = 1f,
             };
         }
 
@@ -72,6 +84,7 @@ namespace MindAttic.Chain.Core
 
         private readonly List<PlayerEntity> _players = new List<PlayerEntity>();
         private readonly List<EnemyEntity> _enemies = new List<EnemyEntity>();
+        private readonly List<HeartFloat> _hearts = new List<HeartFloat>();
         private readonly List<GameEvent> _events = new List<GameEvent>();
         private readonly List<EnemyEntity> _touched = new List<EnemyEntity>();
         private readonly List<float> _touchedAt = new List<float>();
@@ -88,6 +101,7 @@ namespace MindAttic.Chain.Core
             Config = settings;
             _random = random ?? new Random();
             State = new GameState(settings.Session);
+            GameSpeed = Calc.Max(0f, settings.GameSpeed);
         }
 
         public Settings Config;
@@ -100,6 +114,27 @@ namespace MindAttic.Chain.Core
 
         /// <summary>Seconds of play stepped so far (paused time does not count).</summary>
         public float Time { get; private set; }
+
+        /// <summary>
+        /// Seconds of play this round: Gui.vb's <c>timerMin:timerSec</c> clock, which <see cref="Reset"/> sets
+        /// back to 0:00. The HUD's m:ss readout is UNI-T53.
+        /// </summary>
+        public float RoundTime { get; private set; }
+
+        /// <summary>
+        /// Root.vb's <c>gameSpeed</c>: <see cref="Settings.GameSpeed"/> (1.0) at the start of every round,
+        /// never below 0 (Input.vb). The Minus/Equals keys and applying it to the step are UNI-T52.
+        /// </summary>
+        public float GameSpeed
+        {
+            get => _gameSpeed;
+            internal set => _gameSpeed = Calc.Max(0f, value);
+        }
+
+        private float _gameSpeed;
+
+        /// <summary>The hearts in the world (Item.vb's items 0..maxItem: the one Health10 heart).</summary>
+        public IReadOnlyList<HeartFloat> Hearts => _hearts;
 
         public IReadOnlyList<PlayerEntity> Players => _players;
 
@@ -311,20 +346,78 @@ namespace MindAttic.Chain.Core
             return points;
         }
 
+        // --- Hearts --------------------------------------------------------------------------
+
+        /// <summary>
+        /// Puts a heart in the world, tuned from <see cref="Settings.Heart"/>: at its start, swaying left at
+        /// loadItem's <c>floatSPD</c> (Item.vb loadItem). A reset puts it back at Reset's figures.
+        /// </summary>
+        public HeartFloat AddHeart()
+        {
+            var heart = new HeartFloat(Config.Heart);
+            _hearts.Add(heart);
+            return heart;
+        }
+
+        /// <summary>
+        /// Engine.vb checkItemCollect: each heart not yet picked up that a seated angel touches is consumed
+        /// and heals that player (<see cref="CollectHeart"/>). Only while play runs; every step runs it.
+        /// Returns the HP gained.
+        /// </summary>
+        public int CheckHearts()
+        {
+            if (!State.IsPlaying)
+            {
+                return 0;
+            }
+
+            var gained = 0;
+            foreach (var heart in _hearts)
+            {
+                foreach (var player in _players)
+                {
+                    var angel = player.AngelPosition;
+                    if (heart.TryCollect(angel.X, angel.Y))
+                    {
+                        gained += CollectHeart(player.Id, heart.HealAmount);
+                        break;
+                    }
+                }
+            }
+
+            return gained;
+        }
+
         // --- The session ---------------------------------------------------------------------
 
         /// <summary>
-        /// Starts the game over (Root.vb Reset): full HP, no score, unpaused, full light, every angel home
-        /// with its chain collapsed on its hand and its grapple idle, and a fresh wave of enemies. The
-        /// authority calls this once to begin; a finished game calls it itself when the fade is done.
+        /// Starts the round over: Root.vb's Reset, in one place, for the R key (<see cref="ResetGame"/>) and
+        /// the end of the game-over fade alike. Score 0, the clock at 0:00, the fade back at full light
+        /// (Reset's <c>fadeOut = 255</c> and white ambient), game speed 1.0, unpaused; each angel at full HP
+        /// and home at its start, flying, its chain collapsed on its hand with the chain's spring, resistance
+        /// and gravity back at the data files' figures (whatever live tuning changed them) and its grapple
+        /// idle; every enemy replaced by a fresh wave at Reset's HP, seeking, each at a real random point in
+        /// the arena (the original's integer random put them all in the corners, BIBLE D1); every heart back
+        /// at its start, swaying left at Reset's <c>floatSPD</c>, drawn again. The chain length, the follow
+        /// flag and the heart's <c>turnAround</c> are kept, as Root.vb's Reset touches none of them. Then
+        /// <see cref="WorldReset"/> has presentation recentre the camera (Reset's cam and target at the
+        /// origin), jump the music to a random point (<c>rndMusicPos</c>) and switch lighting back on
+        /// (<c>bLighting = True</c>; the time of day runs on). The authority calls this once to begin.
         /// </summary>
         public void Reset()
         {
             ClearEnemies();
             State.Reset();
+            RoundTime = 0f;
+            GameSpeed = Config.GameSpeed;
             foreach (var player in _players)
             {
                 player.Restart();
+            }
+
+            foreach (var heart in _hearts)
+            {
+                heart.Reset();
             }
 
             Emit(new WorldReset());
@@ -332,8 +425,8 @@ namespace MindAttic.Chain.Core
         }
 
         /// <summary>
-        /// The authority's heart check found <paramref name="player"/>'s angel touching a heart worth
-        /// <paramref name="amount"/> HP (Engine.vb checkItemCollect). Heals up to max HP. Returns the HP gained.
+        /// <paramref name="player"/>'s angel touched a heart worth <paramref name="amount"/> HP
+        /// (Engine.vb checkItemCollect). Heals up to max HP. Returns the HP gained.
         /// </summary>
         public int CollectHeart(PlayerId player, int amount)
         {
@@ -453,6 +546,13 @@ namespace MindAttic.Chain.Core
             }
 
             Time += deltaTime;
+            RoundTime += deltaTime;
+
+            // Item.vb renderItem: the hearts move first; checkItemCollect runs after the contacts.
+            foreach (var heart in _hearts)
+            {
+                heart.Advance(deltaTime);
+            }
 
             foreach (var player in _players)
             {
@@ -476,6 +576,7 @@ namespace MindAttic.Chain.Core
                 CheckContact(player);
             }
 
+            CheckHearts();
             StepGameOver();
         }
 

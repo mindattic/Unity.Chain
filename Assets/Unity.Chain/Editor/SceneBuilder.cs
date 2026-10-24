@@ -38,15 +38,17 @@ namespace MindAttic.Chain.EditorTools
 
             var levelBounds = CreateLevelBounds();
             var angel = CreateAngel(levelBounds);
-            CreateCamera(levelBounds);
+            var rig = CreateCamera(levelBounds);
             var (chain, grapple) = CreateChain();
             angel.Chain = chain;
             var session = CreateGameSession(angel, levelBounds);
+            // Root.vb's Reset recentres the camera and jumps the music: both follow the session's resets.
+            rig.Session = session;
             var sceneLight = CreateSceneLight(session);
             CreateGameHud(session, grapple, sceneLight);
             CreateEnemySpawner(session);
-            CreateHeart();
-            CreateMusicPlayer();
+            CreateHeart(session);
+            CreateMusicPlayer(session);
 
             Directory.CreateDirectory(Path.GetDirectoryName(ScenePath) !);
             EditorSceneManager.SaveScene(scene, ScenePath);
@@ -83,7 +85,7 @@ namespace MindAttic.Chain.EditorTools
             return angel;
         }
 
-        private static void CreateCamera(LevelBounds levelBounds)
+        private static CameraRig CreateCamera(LevelBounds levelBounds)
         {
             var go = new GameObject("Main Camera") { tag = "MainCamera" };
             var camera = go.AddComponent<Camera>();
@@ -93,6 +95,7 @@ namespace MindAttic.Chain.EditorTools
 
             var rig = go.AddComponent<CameraRig>();
             rig.Level = levelBounds;
+            return rig;
         }
 
         private static (ChainController chain, GrappleController grapple) CreateChain()
@@ -159,7 +162,7 @@ namespace MindAttic.Chain.EditorTools
 
         private const string HeartSpritePath = "Assets/Unity.Chain/Art/Items/heart.png";
 
-        private static void CreateHeart()
+        private static void CreateHeart(GameSession session)
         {
             var go = new GameObject("Heart");
             var renderer = go.AddComponent<SpriteRenderer>();
@@ -167,13 +170,15 @@ namespace MindAttic.Chain.EditorTools
             renderer.sprite = AssetDatabase.LoadAssetAtPath<Sprite>(HeartSpritePath);
             var heart = go.AddComponent<HeartPickup>();
             heart.Renderer = renderer;
+            // The heart lives in this session's world; it joins it when play starts.
+            heart.Session = session;
         }
 
-        private static void CreateMusicPlayer()
+        private static void CreateMusicPlayer(GameSession session)
         {
             var go = new GameObject("MusicPlayer");
             go.AddComponent<AudioSource>();
-            go.AddComponent<MusicPlayer>();
+            go.AddComponent<MusicPlayer>().Session = session;
         }
 
         private static Material LoadOrCreateLineMaterial()

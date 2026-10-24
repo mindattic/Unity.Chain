@@ -643,6 +643,193 @@ namespace MindAttic.Chain.Tests
             Assert.AreEqual(1, Events().OfType<WorldReset>().Count());
         }
 
+        // --- Root.vb Reset, in full (UNI-T48) -----------------------------------------------
+
+        /// <summary>A world with a full wave, a heart and one player, mid-round: everything Reset restores is changed.</summary>
+        private GameWorld DirtyWorld(out PlayerEntity player, out HeartFloat heart)
+        {
+            var world = NewWorld(enemies: 14, enemyRadius: 0.3f, seed: 7);
+            player = world.AddPlayer(P0, PlayerSetup.Default);
+            heart = world.AddHeart();
+            world.Reset();
+
+            Swing(world, P0, 5);
+            world.AddHitScoreForTest(2f);
+            world.State.TryHurt(world.Time);
+            world.GameSpeed = 2.5f;
+            var chain = player.Chain.Config;
+            // Ins/Del, Home/End, PgUp/PgDn's live tuning (UNI-T51) changes the chain's figures.
+            player.Chain.Config = new ChainSimulation.Settings(
+                chain.SegmentLength, chain.SpringConstant * 2f, chain.Resistance + 1f, chain.Gravity * 3f,
+                chain.StopVelocity, chain.StopAcceleration, chain.OverheadBoost, chain.OverheadMargin);
+            foreach (var enemy in world.Enemies)
+            {
+                enemy.Brain.Hit(new Vec2(1f, 0f), 0.1f);
+                enemy.Position = new Vec2(1f, 1f);
+            }
+
+            for (var i = 0; i < 90; i++)
+            {
+                heart.Frame();
+            }
+
+            Assert.IsTrue(heart.TryCollect(heart.X, heart.Y - heart.Config.AngelRectBottom), "the heart is picked up");
+            world.Submit(new Pause(P0, true));
+            world.TakeEvents();
+            return world;
+        }
+
+        [Test]
+        public void ResetGame_RestoresEverythingRootVbsResetDoes()
+        {
+            var world = DirtyWorld(out var player, out var heart);
+            Assert.Greater(world.State.Score, 0);
+            Assert.Greater(world.RoundTime, 0f);
+
+            Assert.IsTrue(world.Submit(new ResetGame(P0)), "R works while paused");
+
+            // Score, timer, fadeOut and ambient, gameSpeed, bPause.
+            Assert.AreEqual(0, world.State.Score);
+            Assert.AreEqual(0f, world.RoundTime, "the clock is back at 0:00");
+            Assert.AreEqual(GameState.FullAmbient, world.State.Ambient);
+            Assert.AreEqual(1f, world.GameSpeed);
+            Assert.IsFalse(world.State.IsPaused);
+            Assert.IsTrue(world.State.IsPlaying);
+
+            // springK, resistance, gravity back at the data figures; Angel(0) at full HP, home.
+            var setup = player.Setup.Chain;
+            Assert.AreEqual(setup.SpringConstant, player.Chain.Config.SpringConstant);
+            Assert.AreEqual(setup.Resistance, player.Chain.Config.Resistance);
+            Assert.AreEqual(setup.Gravity, player.Chain.Config.Gravity);
+            Assert.AreEqual(30, world.State.Hp);
+            Assert.AreEqual(Vec2.Zero, player.Flight.Position);
+            Assert.AreEqual(GrappleState.Idle, player.Grapple.State);
+
+            // Every enemy: HP 1.0, Seek, somewhere new.
+            Assert.AreEqual(14, world.Enemies.Count);
+            foreach (var enemy in world.Enemies)
+            {
+                Assert.AreEqual(1f, enemy.Brain.Hp);
+                Assert.AreEqual(EnemyState.Seek, enemy.State);
+                Assert.AreNotEqual(new Vec2(1f, 1f), enemy.Position);
+            }
+
+            // The heart: x 0, y 0.4, swaying left at floatSPD 0.001, drawn again.
+            Assert.IsFalse(heart.PickedUp);
+            Assert.AreEqual(heart.Config.StartX, heart.X);
+            Assert.AreEqual(heart.Config.StartY, heart.Y);
+            Assert.AreEqual(HeartSway.Left, heart.Sway);
+            Assert.AreEqual(heart.Config.ResetFloatSpeed, heart.FloatSpeed);
+        }
+
+        [Test]
+        public void GameOver_ResetsThroughTheSameReset()
+        {
+            var world = DirtyWorld(out var player, out var heart);
+            world.Submit(new Pause(P0, false));
+            world.State.Config.HurtDelay = 0f;
+            world.SpawnEnemy(player.AngelPosition, 1f, 100f);
+            var steps = 0;
+            while (!world.State.IsGameOver)
+            {
+                world.Step(Dt);
+                Assert.Less(++steps, 200);
+            }
+
+            while (world.State.IsGameOver)
+            {
+                world.Step(Dt);
+                Assert.Less(++steps, 400);
+            }
+
+            Assert.AreEqual(0f, world.RoundTime);
+            Assert.AreEqual(1f, world.GameSpeed);
+            Assert.AreEqual(player.Setup.Chain.SpringConstant, player.Chain.Config.SpringConstant);
+            Assert.IsFalse(heart.PickedUp);
+            Assert.AreEqual(heart.Config.ResetFloatSpeed, heart.FloatSpeed);
+            Assert.AreEqual(14, world.Enemies.Count);
+        }
+
+        [Test]
+        public void Reset_SpawnsEnemiesAtRealRandomPoints_NotTheFourCorners()
+        {
+            var world = NewWorld(enemies: 14, seed: 3);
+            world.AddPlayer(P0, PlayerSetup.Default);
+            world.Reset();
+
+            var arena = GameWorld.DefaultArena;
+            var positions = world.Enemies.Select(e => e.Position).ToList();
+            Assert.AreEqual(14, positions.Distinct().Count(), "no two stacked (BIBLE D1)");
+            foreach (var p in positions)
+            {
+                Assert.That(p.X, Is.InRange(arena.XMin, arena.XMin + arena.Width));
+                Assert.That(p.Y, Is.InRange(arena.YMin, arena.YMin + arena.Height));
+            }
+
+            var corners = new[]
+            {
+                new Vec2(arena.XMin, arena.YMin), new Vec2(arena.XMin + arena.Width, arena.YMin),
+                new Vec2(arena.XMin, arena.YMin + arena.Height), new Vec2(arena.XMin + arena.Width, arena.YMin + arena.Height),
+            };
+            Assert.Greater(positions.Count(p => corners.All(c => Vec2.Distance(p, c) > 2f)), 0, "not every enemy is in a corner");
+
+            world.Reset();
+            Assert.IsFalse(positions.SequenceEqual(world.Enemies.Select(e => e.Position)), "a new wave lands elsewhere");
+        }
+
+        [Test]
+        public void Reset_KeepsTheHeartsTurnAround()
+        {
+            var world = NewWorld();
+            var heart = world.AddHeart();
+            while (!heart.TurnAround)
+            {
+                heart.Frame();
+            }
+
+            world.Reset();
+
+            Assert.IsTrue(heart.TurnAround, "Root.vb's Reset does not touch turnAround");
+        }
+
+        // --- Hearts -------------------------------------------------------------------------
+
+        [Test]
+        public void Heart_FallsWithTheWorld_AndHealsTheAngelThatTouchesIt()
+        {
+            var heart = _world.AddHeart();
+            Assert.AreEqual(heart.Config.StartFloatSpeed, heart.FloatSpeed, "loadItem's floatSPD until the first reset");
+
+            for (var i = 0; i < 50; i++)
+            {
+                _world.Step(Dt);
+            }
+
+            Assert.AreEqual(heart.Config.StartY - 60 * heart.Config.FallRate, heart.Y, heart.Config.FallRate * 1.5f, "it falls 0.001 a frame as the world steps");
+            Assert.IsFalse(heart.PickedUp);
+
+            _world.State.TryHurt(_world.Time);
+            // The angel's rectangle (built from where it is drawn, hover included) laid on the heart's.
+            var goal = new Vec2(heart.X, heart.Y - heart.Config.AngelRectBottom);
+            _world.Submit(new SteerAngel(P0, (goal - _player.AngelPosition) * 100f, 0f));
+            Assert.AreEqual(1, _world.CheckHearts());
+
+            Assert.IsTrue(heart.PickedUp);
+            Assert.AreEqual(30, _world.State.Hp);
+            Assert.AreEqual(1, Events().OfType<AngelHealed>().Count());
+            Assert.AreEqual(0, _world.CheckHearts(), "a picked-up heart is gone until a reset");
+        }
+
+        [Test]
+        public void Heart_HoldsStillWhilePaused()
+        {
+            var heart = _world.AddHeart();
+            _world.Submit(new Pause(P0, true));
+            _world.Step(1f);
+
+            Assert.AreEqual(heart.Config.StartY, heart.Y);
+        }
+
         // --- Follow (F key) -----------------------------------------------------------------
 
         [Test]

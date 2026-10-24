@@ -9,7 +9,7 @@ namespace MindAttic.Chain
     /// ratio; in <see cref="CameraFramingMode.Follow"/> it keeps a fixed orthographic size and
     /// follows the target (the angel by default) through a dead zone with smoothing, clamped so
     /// the view stays inside the level. Runs in <c>LateUpdate</c>, after the angel has moved.
-    /// The math is in <see cref="CameraFraming"/>.
+    /// The math is in <see cref="CameraFraming"/>. Each reset of the session recentres it (<see cref="Recenter"/>).
     /// </summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(Camera))]
@@ -21,6 +21,11 @@ namespace MindAttic.Chain
 
         [Tooltip("What to follow. Falls back to the scene's AngelController.")]
         [SerializeField] private Transform target;
+
+        [Tooltip("Whose resets recentre the camera (Root.vb's Reset). Falls back to the scene's GameSession.")]
+        [SerializeField] private GameSession session;
+
+        private GameSession _subscribed;
 
         // camera.json's port figures, read on first use; the properties override them at run time.
         private bool _tuned;
@@ -48,6 +53,21 @@ namespace MindAttic.Chain
         {
             get => target;
             set => target = value;
+        }
+
+        /// <summary>The session whose resets recentre the camera.</summary>
+        public GameSession Session
+        {
+            get => session;
+            set
+            {
+                Unsubscribe();
+                session = value;
+                if (isActiveAndEnabled)
+                {
+                    Subscribe();
+                }
+            }
         }
 
         /// <summary>Orthographic size (half the view height) while following.</summary>
@@ -109,6 +129,16 @@ namespace MindAttic.Chain
 
         /// <summary>Jumps straight to the framing with no smoothing (scene start, restart).</summary>
         public void Snap() => Frame(0f, snap: true);
+
+        /// <summary>
+        /// Root.vb's Reset for the camera: <c>cam</c> and <c>target</c> back at the origin (x 0, y 0, where
+        /// every angel starts again), so a shake or a debug pan is undone, then framed with no smoothing.
+        /// </summary>
+        public void Recenter()
+        {
+            transform.position = new Vector3(0f, 0f, transform.position.z);
+            Snap();
+        }
 
         /// <summary>One framing update. Called from <c>LateUpdate</c>; public so tests can drive it.</summary>
         public void Frame(float deltaTime) => Frame(deltaTime, snap: false);
@@ -197,6 +227,42 @@ namespace MindAttic.Chain
             }
 
             Snap();
+        }
+
+        private void Awake()
+        {
+            if (session == null)
+            {
+                session = FindAnyObjectByType<GameSession>();
+            }
+        }
+
+        private void OnEnable() => Subscribe();
+
+        private void OnDisable() => Unsubscribe();
+
+        private void Subscribe()
+        {
+            if (_subscribed == session)
+            {
+                return;
+            }
+
+            Unsubscribe();
+            if (session != null)
+            {
+                session.Restarted += Recenter;
+                _subscribed = session;
+            }
+        }
+
+        private void Unsubscribe()
+        {
+            if (_subscribed != null)
+            {
+                _subscribed.Restarted -= Recenter;
+                _subscribed = null;
+            }
         }
 
         // Scaled time: while paused (timeScale 0) the camera holds still with the game.

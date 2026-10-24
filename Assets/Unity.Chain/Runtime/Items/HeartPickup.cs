@@ -4,31 +4,37 @@ using UnityEngine;
 namespace MindAttic.Chain
 {
     /// <summary>
-    /// Item.vb's one Health10 heart in the scene: it shows <see cref="HeartFloat"/>'s state (its
-    /// position in the original's own units, drawn with the original's heart sprite whose left edge
-    /// sits on X), disappears when the angel picks it up and stays gone until <see cref="ResetHeart"/>
-    /// (Root.vb's Reset). <see cref="GameSession"/> does the touch check and the healing.
+    /// Shows one of the world's hearts (Item.vb's Health10): its <see cref="HeartFloat"/> position in the
+    /// original's own units, drawn with the original's heart sprite whose left edge sits on X, hidden
+    /// once picked up until the world resets (Root.vb's Reset). The heart itself lives in the
+    /// <see cref="GameWorld"/>, which moves it, checks the touch, heals and resets it; this only reads it.
+    /// It joins its session's world when play starts (or when the session adds it, <see cref="GameSession.AddHeart"/>).
     /// </summary>
     [DisallowMultipleComponent]
-    [DefaultExecutionOrder(-200)] // moves before GameSession (-100) checks the touch, as the original moves then collects
+    [DefaultExecutionOrder(-200)] // joins the world before GameSession's Start resets it
     public sealed class HeartPickup : MonoBehaviour
     {
-        /// <summary>True once a round has been reset: scene reloads then start the heart as Root.vb's Reset does.</summary>
-        public static bool AfterReset { get; set; }
-
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        private static void ClearStatics() => AfterReset = false;
-
+        [Tooltip("The authority whose world holds this heart. Falls back to the scene's GameSession.")]
+        [SerializeField] private GameSession session;
         [SerializeField] private SpriteRenderer spriteRenderer;
 
-        private HeartFloat _rules;
+        private HeartFloat _heart;
 
-        /// <summary>The heart's rules, tuned from item.json (in world units, through the settings registry's mapping).</summary>
-        public HeartFloat Rules => _rules ?? (_rules = new HeartFloat(SettingsStore.Current.Heart));
+        /// <summary>The world's heart this shows; an unseated heart shows a heart of its own at the data files' figures.</summary>
+        public HeartFloat Rules => _heart ?? (_heart = new HeartFloat(SettingsStore.Current.Heart));
+
+        /// <summary>True once the session has put this heart in its world.</summary>
+        public bool IsInWorld { get; private set; }
 
         public int HealAmount => Rules.HealAmount;
 
         public bool IsCollected => Rules.PickedUp;
+
+        public GameSession Session
+        {
+            get => session;
+            set => session = value;
+        }
 
         public SpriteRenderer Renderer
         {
@@ -36,64 +42,49 @@ namespace MindAttic.Chain
             set => spriteRenderer = value;
         }
 
-        /// <summary>Picks the heart up if the angel at <paramref name="angelPosition"/> touches it (Item.vb's checkItemCollect).</summary>
-        public bool TryCollect(Vector2 angelPosition)
+        /// <summary>Called by <see cref="GameSession.AddHeart"/>: from now on this shows <paramref name="heart"/>.</summary>
+        internal void Bind(GameSession owner, HeartFloat heart)
         {
-            if (!Rules.TryCollect(angelPosition.x, angelPosition.y))
-            {
-                return false;
-            }
-
-            Apply();
-            return true;
+            session = owner;
+            _heart = heart;
+            IsInWorld = true;
+            Refresh();
         }
 
-        /// <summary>Root.vb's Reset for the heart: back to the start and drawn again.</summary>
-        public void ResetHeart()
+        /// <summary>Draws the heart where the world has it, hidden once picked up. Runs every frame; public so tests can drive it.</summary>
+        public void Refresh()
         {
-            Rules.Reset();
-            Apply();
-        }
-
-        /// <summary>Runs <paramref name="deltaTime"/> seconds of original frames; public so tests can drive it.</summary>
-        public int Step(float deltaTime)
-        {
-            var frames = Rules.Advance(deltaTime);
-            if (frames > 0)
-            {
-                Apply();
-            }
-
-            return frames;
-        }
-
-        private void Apply()
-        {
-            transform.position = new Vector3(Rules.X, Rules.Y, transform.position.z);
+            var rules = Rules;
+            transform.position = new Vector3(rules.X, rules.Y, transform.position.z);
             var sprite = Renderer;
             if (sprite != null)
             {
-                sprite.enabled = !Rules.PickedUp;
+                sprite.enabled = !rules.PickedUp;
 
-                // Drawn itemSize wide, whatever the sprite's import size (16 px is 0.05 at the 1:1 mapping).
+                // Drawn itemSize wide, whatever the sprite's import size.
                 var width = sprite.sprite != null ? sprite.sprite.bounds.size.x : 0f;
                 if (width > 0f)
                 {
-                    transform.localScale = Vector3.one * (Rules.Config.ItemSize / width);
+                    transform.localScale = Vector3.one * (rules.Config.ItemSize / width);
                 }
             }
         }
 
         private void Awake()
         {
-            if (AfterReset)
+            if (session == null)
             {
-                Rules.Reset();
+                session = FindAnyObjectByType<GameSession>();
             }
 
-            Apply();
+            if (session != null && !IsInWorld)
+            {
+                session.AddHeart(this);
+            }
+
+            Refresh();
         }
 
-        private void FixedUpdate() => Step(Time.fixedDeltaTime);
+        private void LateUpdate() => Refresh();
     }
 }

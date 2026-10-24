@@ -136,7 +136,7 @@ Every binding of the original, with its state:
 | Ins/Del, Home/End, PgUp/PgDn | tune resistance, gravity, spring | missing, UNI-T51 |
 | F | `followMouse` toggle | ported (UNI-T47; ToggleFollow action, gamepad Y, UNI-T34) |
 | U | gem link skins | missing, UNI-T41 |
-| R | `Reset` | bound (Reset action sends `ResetGame`, gamepad Back, UNI-T34); what it restores, UNI-T48 |
+| R | `Reset` | ported (Reset action sends `ResetGame`, gamepad Back, UNI-T34), restoring everything `Reset` does through the one `GameWorld.Reset` (UNI-T48) |
 | 0 | `shakeScreen(0.02)` | missing, UNI-T49 |
 | L | lighting toggle | ported (`SceneLight`, the Debug map's ToggleLighting); off is unlit rather than frozen (BIBLE D16) |
 | B / N | beach / utopia background (a second `Case Keys.B` for the background toggle is unreachable) | missing, UNI-T40 |
@@ -157,11 +157,11 @@ Every binding of the original, with its state:
 | Behaviour | Original | Status / ticket |
 |---|---|---|
 | HUD text | `HP : ` as `|` per point, `Score : `, `Grappled: <hp>`, `Res/Grav/Spring`, game speed, FPS. **In the final source `Root.Write` has its `DrawText` commented out, so no text is drawn at all**; the earlier backups drew it. The rebuild follows the intent | partial (IMGUI), UNI-T50 |
-| Clock | `m:ss`, one count per second at (300, 5), reset by `Reset` | missing, UNI-T53 |
+| Clock | `m:ss`, one count per second at (300, 5), reset by `Reset` | counted and reset (`GameWorld.RoundTime`, UNI-T48); the readout, UNI-T53 |
 | Status box | `status_box.png` 96x48 at the top left | missing, UNI-T50 |
 | Pause | stops everything, draws `- PAUSE -` | ported (P/Esc), UNI-T54 |
 | Game over | HP < 0: fade the ambient light 5 per frame, then `Reset` with no click | missing, UNI-T28 |
-| `Reset` | score, timer, fade, ambient, speed, flags, camera, spring/bounce/resistance/gravity, angel HP and position, all enemies (HP 1.0, Seek, corners), the heart, music start | partial, UNI-T48 |
+| `Reset` | score, timer, fade, ambient, speed, flags, camera, spring/bounce/resistance/gravity, angel HP and position, all enemies (HP 1.0, Seek, corners), the heart, music start | ported, UNI-T48: one `GameWorld.Reset` for R and game over restores score, `RoundTime`, the fade, game speed (`game.json`), pause, the chain's spring/resistance/gravity, angel HP 30 and home, a fresh wave (HP 1.0, Seek, real random points, BIBLE D1) and the world's hearts (y 0.4, sway left, `floatSPD` 0.001; `turnAround` kept); its `WorldReset` recentres the camera, jumps the music (`rndMusicPos`) and turns lighting on (the time of day runs on, the stray `b = True` is not ported, BIBLE D16). The render flags wait on their own tickets; `Bounce` is only read by commented-out code (BIBLE V15) |
 | `renderTime`, `renderDate`, `levelText` | never called, or only move a matrix (no text drawn) | dead |
 | `Score` | += damage * 1000 | ported |
 | `SetupLights` | never called | dead |

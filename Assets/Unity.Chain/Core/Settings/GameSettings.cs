@@ -251,6 +251,7 @@ namespace MindAttic.Chain.Core
                     },
                     SeekCap = enemies.Port.SeekCap,
                 },
+                GameSpeed = Game.GameSpeed,
             };
 
             Heart = new HeartFloat.Settings
@@ -275,7 +276,12 @@ namespace MindAttic.Chain.Core
                 AngelRectBottom = m.Length(angel.RectBottom),
             };
 
-            Light = new LightingState.Settings
+            // The world holds the hearts (it moves them, checks them and resets them with everything else).
+            var world = World;
+            world.Heart = Heart;
+            World = world;
+
+            Light =new LightingState.Settings
             {
                 DayLength = Lighting.DayLength,
                 TintRate = m.PerSecond(Lighting.TintStep),
@@ -554,16 +560,19 @@ namespace MindAttic.Chain.Core
         }
     }
 
-    /// <summary>game.json: Engine.vb's session rules.</summary>
+    /// <summary>game.json: Engine.vb's session rules and the game speed Root.vb's Reset starts a round at.</summary>
     public sealed class GameData
     {
         public float PointsPerDamage { get; private set; }
         public int ContactDamage { get; private set; }
+        /// <summary>Root.vb's <c>gameSpeed</c>: 1.0, set again by every Reset.</summary>
+        public float GameSpeed { get; private set; }
 
         internal static GameData Read(SettingsReader r) => new GameData
         {
             PointsPerDamage = r.Number("pointsPerDamage", 0f),
             ContactDamage = r.Integer("contactDamage", 0),
+            GameSpeed = r.Number("gameSpeed", 0f),
         };
     }
 

@@ -15,8 +15,8 @@ namespace MindAttic.Chain
     /// Players are seated with <see cref="Join"/>: each seat is a <see cref="PlayerId"/> with its own
     /// angel and chain components, which hold that id and send commands with it. There is no
     /// current-player singleton; a networked player's NetEntity would carry its seat's commands here
-    /// the same way (UNI-T26). The session also runs the authority's own heart check
-    /// (<see cref="CheckPickups"/>) and freezes time while the world is paused.
+    /// the same way (UNI-T26). The scene's hearts are put in the world (<see cref="AddHeart"/>), which
+    /// moves, checks and resets them; the session freezes time while the world is paused.
     /// </summary>
     [DisallowMultipleComponent]
     [DefaultExecutionOrder(-100)] // the world steps before any view reads it
@@ -47,7 +47,10 @@ namespace MindAttic.Chain
         /// <summary>Every event the world produced, in order, after each command and step.</summary>
         public event Action<GameEvent> EventRaised;
 
-        /// <summary>Raised after the world resets (its <see cref="WorldReset"/> event), once the hearts are back.</summary>
+        /// <summary>
+        /// Raised after the world resets (its <see cref="WorldReset"/> event): the R key or the end of the
+        /// game-over fade. The camera, the music and the light restore their part of Root.vb's Reset here.
+        /// </summary>
         public event Action Restarted;
 
         /// <summary>The world this session is the authority for. Read it; change it only through <see cref="Submit"/>.</summary>
@@ -116,12 +119,27 @@ namespace MindAttic.Chain
             return applied;
         }
 
-        /// <summary>One authority step: the world, then the heart check. Called from <c>FixedUpdate</c>; public so tests can drive it.</summary>
+        /// <summary>One authority step of the world (hearts included). Called from <c>FixedUpdate</c>; public so tests can drive it.</summary>
         public void Step(float deltaTime)
         {
             World.Step(deltaTime);
-            CheckPickups();
             Flush();
+        }
+
+        /// <summary>
+        /// Puts a heart in the world, shown by <paramref name="view"/> from then on (a scene heart does this
+        /// itself when play starts). Returns the world's heart.
+        /// </summary>
+        public HeartFloat AddHeart(HeartPickup view)
+        {
+            if (view == null)
+            {
+                throw new ArgumentNullException(nameof(view));
+            }
+
+            var heart = World.AddHeart();
+            view.Bind(this, heart);
+            return heart;
         }
 
         /// <summary>
@@ -170,34 +188,13 @@ namespace MindAttic.Chain
         }
 
         /// <summary>
-        /// Item.vb's checkItemCollect, run by the authority: a heart an angel touches is consumed (it
-        /// stays gone until a reset) and heals that player +10 HP, capped at max HP. Returns the HP gained.
+        /// Item.vb's checkItemCollect now, outside a step (every step runs it): a heart an angel touches is
+        /// consumed (gone until a reset) and heals that player +10 HP, capped at max HP. Returns the HP gained.
         /// </summary>
         public int CheckPickups()
         {
-            if (!State.IsPlaying || World.Players.Count == 0)
-            {
-                return 0;
-            }
-
-            var gained = 0;
-            foreach (var heart in FindObjectsByType<HeartPickup>(FindObjectsSortMode.None))
-            {
-                if (!heart.isActiveAndEnabled)
-                {
-                    continue;
-                }
-
-                foreach (var player in World.Players)
-                {
-                    if (heart.TryCollect(player.AngelPosition.ToUnity()))
-                    {
-                        gained += World.CollectHeart(player.Id, heart.HealAmount);
-                        break;
-                    }
-                }
-            }
-
+            var gained = World.CheckHearts();
+            Flush();
             return gained;
         }
 
@@ -255,26 +252,11 @@ namespace MindAttic.Chain
                     ApplyTimeScale();
                 }
 
-                if (gameEvent is WorldReset)
-                {
-                    ResetHearts();
-                }
-
                 EventRaised?.Invoke(gameEvent);
                 if (gameEvent is WorldReset)
                 {
                     Restarted?.Invoke();
                 }
-            }
-        }
-
-        /// <summary>Root.vb's Reset for the hearts: back at their start, drawn again.</summary>
-        private static void ResetHearts()
-        {
-            HeartPickup.AfterReset = true;
-            foreach (var heart in FindObjectsByType<HeartPickup>(FindObjectsSortMode.None))
-            {
-                heart.ResetHeart();
             }
         }
 

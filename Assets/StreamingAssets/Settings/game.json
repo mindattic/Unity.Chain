@@ -1,5 +1,6 @@
 {
-  "_source": "Engine.vb: checkMaceImpact (Score += damage * 1000) and checkAngelHit (HP -= 1).",
+  "_source": "Engine.vb: checkMaceImpact (Score += damage * 1000) and checkAngelHit (HP -= 1). Root.vb: gameSpeed, 1.0 at the start and again on every Reset (Minus/Equals and applying it are UNI-T52).",
   "pointsPerDamage": 1000,
-  "contactDamage": 1
+  "contactDamage": 1,
+  "gameSpeed": 1.0
 }

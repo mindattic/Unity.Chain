@@ -288,6 +288,22 @@ namespace MindAttic.Chain.Tests
         }
 
         [Test]
+        public void Shipped_ResetFigures_AreRootVbs_ThroughTheOneMapping()
+        {
+            var settings = Load();
+
+            Assert.AreEqual(1f, settings.World.GameSpeed, "gameSpeed = 1.0");
+            Assert.AreEqual(30, settings.World.Session.MaxHp, "Angel(0).HP = maxHP");
+            Assert.AreEqual(1f, settings.World.Enemies.Hp, "Enemy(n).HP = 1.0");
+            Assert.AreEqual(settings.Heart.StartY, settings.World.Heart.StartY, "the world's hearts are item.json's");
+            Assert.AreEqual(0.4f * 9f, settings.World.Heart.StartY, 1e-5f, "item(n).Y = 0.4");
+            Assert.AreEqual(0.001f * 9f, settings.World.Heart.ResetFloatSpeed, 1e-6f, "floatSPD = 0.001");
+            Assert.AreEqual(0.1f * 3600f, settings.Player.Chain.SpringConstant, 1e-2f, "springK = 0.1 a frame");
+            Assert.AreEqual(0.25f * 60f, settings.Player.Chain.Resistance, 1e-4f, "resistance = 0.25 a frame");
+            Assert.AreEqual(-0.0025f * 9f * 3600f, settings.Player.Chain.Gravity.Y, 1e-2f, "gravity.Y = -0.0025");
+        }
+
+        [Test]
         public void Shipped_FeedsAWorld()
         {
             var settings = Load();

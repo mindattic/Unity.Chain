@@ -9,7 +9,9 @@ namespace MindAttic.Chain
     /// mute are the player profile's music volume and mute (<see cref="PlayerProfile"/>:
     /// <c>Profiles.Current.Settings.Common</c>, stock Sound.vb's full musicVolume), separate from
     /// <see cref="ChainAudio"/>'s sound-effect ones as bMusic/bSound were, and follow them when they change.
-    /// The random start is audio.json's rndMusicPos, overridable at run time.
+    /// The random start is audio.json's rndMusicPos, overridable at run time. Every reset of the session
+    /// jumps the playing track to a new random point, as Root.vb's Reset calls <c>rndMusicPos</c>
+    /// (<see cref="JumpToRandomPoint"/>).
     /// </summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(AudioSource))]
@@ -17,6 +19,10 @@ namespace MindAttic.Chain
     {
         [SerializeField] private AudioClip music;
         [SerializeField] private bool playOnStart = true;
+        [Tooltip("Whose resets jump the music to a random point (Root.vb's Reset). Falls back to the scene's GameSession.")]
+        [SerializeField] private GameSession session;
+
+        private GameSession _subscribed;
 
         // audio.json, read on first use; the property overrides it at run time.
         private bool _tuned;
@@ -74,6 +80,21 @@ namespace MindAttic.Chain
         {
             get => playOnStart;
             set => playOnStart = value;
+        }
+
+        /// <summary>The session whose resets jump the music.</summary>
+        public GameSession Session
+        {
+            get => session;
+            set
+            {
+                Unsubscribe();
+                session = value;
+                if (isActiveAndEnabled)
+                {
+                    Subscribe();
+                }
+            }
         }
 
         public bool RandomStartPosition
@@ -136,6 +157,65 @@ namespace MindAttic.Chain
 
         public void Stop() => Source.Stop();
 
+        /// <summary>
+        /// Root.vb's Reset: <c>rndMusicPos</c> moves the track to a random point without restarting it.
+        /// Does nothing unless <see cref="RandomStartPosition"/> (audio.json's rndMusicPos) is on or there
+        /// is no track. Returns the new position in seconds, or -1 if it did not move.
+        /// </summary>
+        public float JumpToRandomPoint()
+        {
+            if (music == null || !Tuned().randomStartPosition)
+            {
+                return -1f;
+            }
+
+            var at = RandomStart(music.length, Random.value);
+            Source.time = at;
+            LastRandomPoint = at;
+            return at;
+        }
+
+        /// <summary>Where the last <see cref="JumpToRandomPoint"/> sent the track, in seconds (-1 before any).</summary>
+        public float LastRandomPoint { get; private set; } = -1f;
+
+        private void OnRestarted() => JumpToRandomPoint();
+
+        private void Subscribe()
+        {
+            if (_subscribed == session)
+            {
+                return;
+            }
+
+            Unsubscribe();
+            if (session != null)
+            {
+                session.Restarted += OnRestarted;
+                _subscribed = session;
+            }
+        }
+
+        private void Unsubscribe()
+        {
+            if (_subscribed != null)
+            {
+                _subscribed.Restarted -= OnRestarted;
+                _subscribed = null;
+            }
+        }
+
+        private void OnEnable()
+        {
+            PlayerProfile.Changed += Apply;
+            Subscribe();
+        }
+
+        private void OnDisable()
+        {
+            PlayerProfile.Changed -= Apply;
+            Unsubscribe();
+        }
+
         /// <summary>A start point <paramref name="t"/> (0-1) of the way into a track of <paramref name="length"/> seconds, kept clear of its very end.</summary>
         public static float RandomStart(float length, float t)
         {
@@ -147,11 +227,15 @@ namespace MindAttic.Chain
             return Mathf.Clamp01(t) * length * 0.999f;
         }
 
-        private void Awake() => Apply();
+        private void Awake()
+        {
+            if (session == null)
+            {
+                session = FindAnyObjectByType<GameSession>();
+            }
 
-        private void OnEnable() => PlayerProfile.Changed += Apply;
-
-        private void OnDisable() => PlayerProfile.Changed -= Apply;
+            Apply();
+        }
 
         private void Start()
         {

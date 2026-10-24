@@ -210,6 +210,60 @@ namespace MindAttic.Chain.Tests
         }
 
         [Test]
+        public void JumpToRandomPoint_IsRndMusicPos_AndOnlyWhenItIsOn()
+        {
+            _go = new GameObject("Music");
+            var player = _go.AddComponent<MusicPlayer>();
+            var clip = AudioClip.Create("track", 44100 * 10, 1, 44100, false);
+            try
+            {
+                player.Music = clip;
+                player.RandomStartPosition = true;
+                var at = player.JumpToRandomPoint();
+                Assert.GreaterOrEqual(at, 0f);
+                Assert.Less(at, clip.length);
+
+                player.RandomStartPosition = false;
+                Assert.AreEqual(-1f, player.JumpToRandomPoint(), "audio.json's rndMusicPos off");
+            }
+            finally
+            {
+                Object.DestroyImmediate(clip);
+            }
+        }
+
+        [Test]
+        public void SessionReset_JumpsTheMusic()
+        {
+            _go = new GameObject("Music");
+            var player = _go.AddComponent<MusicPlayer>();
+            var sessionGo = new GameObject("Session");
+            var clip = AudioClip.Create("track", 44100 * 10, 1, 44100, false);
+            try
+            {
+                var session = sessionGo.AddComponent<GameSession>();
+                player.Music = clip;
+                player.RandomStartPosition = true;
+                player.Session = session;
+                var times = new HashSet<float>();
+                for (var i = 0; i < 5; i++)
+                {
+                    session.Restart();
+                    times.Add(player.LastRandomPoint);
+                }
+
+                Assert.IsFalse(times.Contains(-1f), "every reset jumped the track");
+                Assert.Greater(times.Count, 1, "each reset lands somewhere new in the track");
+                player.Session = null;
+            }
+            finally
+            {
+                Object.DestroyImmediate(sessionGo);
+                Object.DestroyImmediate(clip);
+            }
+        }
+
+        [Test]
         public void RandomStart_StaysInsideTheTrack()
         {
             Assert.AreEqual(0f, MusicPlayer.RandomStart(120f, 0f));

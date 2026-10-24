@@ -167,6 +167,25 @@ namespace MindAttic.Chain.Tests
             Assert.Greater(x, 0f);
             Assert.Less(x, 6f, "eases in rather than snapping");
         }
+
+        [Test]
+        public void CameraRig_SessionReset_RecentresIt()
+        {
+            using (var testRig = new TestRig())
+            {
+                var rig = MakeCamera(16f / 9f);
+                rig.Level = testRig.Level;
+                rig.Target = testRig.Angel.transform;
+                rig.Mode = CameraFramingMode.Follow;
+                rig.Session = testRig.Session;
+                rig.transform.position = new Vector3(6f, -3f, -10f); // a shake or a debug pan
+
+                testRig.Session.Submit(new ResetGame(testRig.Id));
+
+                Assert.AreEqual(new Vector3(0f, 0f, -10f), rig.transform.position, "Root.vb's Reset: cam and target at the origin");
+                rig.Session = null;
+            }
+        }
     }
 
     public class HudTextTests
