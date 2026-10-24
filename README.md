@@ -78,8 +78,18 @@ $unity = "C:\Program Files\Unity\Hub\Editor\6000.4.3f1\Editor\Unity.exe"
 & $unity -batchmode -projectPath . -runTests -testPlatform PlayMode -testResults TestResults-PlayMode.xml -logFile -
 ```
 
-`build.bat`, `test.bat` and `deploy.bat` like the reference repos' are planned (UNI-T39). The engine-free rules are
-tested by `Tests/Core.Tests` (`dotnet test Tests/Core.Tests`, or `./run-core-tests.ps1`).
+Or, from the repo root (each wraps a `tools/*.ps1` script, same shape as Unity.SpaceGod's and
+Unity.GridGame's):
+
+```
+build.bat     # tools/build.ps1: the three -executeMethod calls above, logged to Logs/build-*.log
+test.bat      # tools/test.ps1: Core.Tests, then EditMode and PlayMode (includes MainSceneSmokeTests)
+deploy.bat    # tools/deploy.ps1: build.bat if Assets/Packages/ProjectSettings changed, then
+              # publish to C:\Apps\Unity.Chain, refresh the Desktop shortcut, and launch it
+```
+
+The engine-free rules are tested by `Tests/Core.Tests` (`dotnet test Tests/Core.Tests`, or
+`./run-core-tests.ps1`).
 
 ## Controls
 
