@@ -68,6 +68,7 @@ namespace MindAttic.Chain.Tests
             Assert.AreEqual(3, chainAudio.GetClips(ChainSound.Impact).Length, "ChainAudio does not have all 3 impact clips (sword_hit_1-3).");
             Assert.AreEqual(4, chainAudio.GetClips(ChainSound.EnemyDeath).Length, "ChainAudio does not have all 4 death clips (death_1-4).");
             Assert.AreEqual(1, chainAudio.GetClips(ChainSound.GrappleCatch).Length, "ChainAudio has no grapple-catch clip (defend.wav).");
+            Assert.AreEqual(1, chainAudio.GetClips(ChainSound.GrappleThrow).Length, "ChainAudio has no grapple-throw clip (throw.wav, UNI-T71).");
             Assert.AreEqual(angel, session.Angel, "GameSession is not wired to the AngelController.");
             Assert.AreEqual(session, spawner.Session, "EnemySpawner is not wired to the GameSession.");
             Assert.AreEqual(session, hud.Session, "GameHud is not wired to the GameSession.");

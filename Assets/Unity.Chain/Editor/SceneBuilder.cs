@@ -234,10 +234,11 @@ namespace MindAttic.Chain.EditorTools
             chainAudio.SetClips(ChainSound.Impact, LoadClips(SfxPath, "sword_hit_", 1, 3));
             chainAudio.SetClips(ChainSound.EnemyDeath, LoadClips(SfxPath, "death_", 1, 4));
 
-            // GrappleCatch is defend.wav, as ChainSound's own doc comment says (UNI-T20). GrappleThrow
-            // has no source clip in the original set (BIBLE V10, UNI-T71) and is left empty until one
-            // is chosen; that is the one clip set this method does not require.
+            // GrappleCatch is defend.wav, as ChainSound's own doc comment says (UNI-T20). The original
+            // has no throw sound to port, so GrappleThrow is throw.wav, a synthesized whoosh (BIBLE
+            // V10, UNI-T71).
             chainAudio.SetClips(ChainSound.GrappleCatch, new[] { LoadClip(SfxPath + "defend.wav") });
+            chainAudio.SetClips(ChainSound.GrappleThrow, new[] { LoadClip(SfxPath + "throw.wav") });
 
             return (chain, grapple);
         }
