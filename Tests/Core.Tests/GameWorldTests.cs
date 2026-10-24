@@ -705,14 +705,16 @@ namespace MindAttic.Chain.Tests
             Assert.AreEqual(Vec2.Zero, player.Flight.Position);
             Assert.AreEqual(GrappleState.Idle, player.Grapple.State);
 
-            // Every enemy: HP 1.0, Seek, somewhere new.
+            // Every enemy: HP 1.0, Seek (up to the Seek cap, BIBLE D18: the rest wait for a slot), somewhere new.
             Assert.AreEqual(14, world.Enemies.Count);
             foreach (var enemy in world.Enemies)
             {
                 Assert.AreEqual(1f, enemy.Brain.Hp);
-                Assert.AreEqual(EnemyState.Seek, enemy.State);
+                Assert.IsTrue(enemy.State == EnemyState.Seek || enemy.Brain.IsWaiting, enemy.State.ToString());
                 Assert.AreNotEqual(new Vec2(1f, 1f), enemy.Position);
             }
+
+            Assert.AreEqual(Math.Min(world.Config.Enemies.SeekCap, world.Enemies.Count), world.SeekerCount());
 
             // The heart: x 0, y 0.4, swaying left at floatSPD 0.001, drawn again.
             Assert.IsFalse(heart.PickedUp);
