@@ -10,6 +10,9 @@ namespace MindAttic.Chain
     /// follows the target (the angel by default) through a dead zone with smoothing, clamped so
     /// the view stays inside the level. Runs in <c>LateUpdate</c>, after the angel has moved.
     /// The math is in <see cref="CameraFraming"/>. Each reset of the session recentres it (<see cref="Recenter"/>).
+    /// 0 (the Debug map's ShakeScreen, <see cref="ChainControls"/>) is Root.vb's <c>shakeScreen</c>: the
+    /// <see cref="ScreenShake"/> offset, laid on top of the framing and taken off again before the next one, so the
+    /// shake never feeds the follow or its smoothing.
     /// </summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(Camera))]
@@ -36,6 +39,11 @@ namespace MindAttic.Chain
         private float sharpness;
 
         private Camera _camera;
+
+        private ScreenShake _shake;
+        // The shake offset on the transform now, taken off before each framing so the base view is what is framed.
+        private Vector2 _appliedShake;
+        private ChainControls _controls;
 
         public CameraFramingMode Mode
         {
@@ -98,6 +106,20 @@ namespace MindAttic.Chain
             set => Tuned().padding = Mathf.Max(0f, value);
         }
 
+        /// <summary>The 0 key's screen shake (camera.json's <c>shakeAmount</c>, in world units).</summary>
+        public ScreenShake Shake => _shake ?? (_shake = new ScreenShake(SettingsStore.Current.ShakeAmount));
+
+        /// <summary>The shake offset on the camera now, world units.</summary>
+        public Vector2 ShakeOffset => _appliedShake;
+
+        /// <summary>0: Root.vb's <c>shakeScreen</c>, the view jumps or is put back, at once. Returns the new offset.</summary>
+        public Vector2 ShakeScreen()
+        {
+            Shake.Shake();
+            ApplyShake();
+            return _appliedShake;
+        }
+
         /// <summary>Reads camera.json's framing the first time it is needed.</summary>
         private CameraRig Tuned()
         {
@@ -136,6 +158,8 @@ namespace MindAttic.Chain
         /// </summary>
         public void Recenter()
         {
+            Shake.Recenter();
+            _appliedShake = Vector2.zero;
             transform.position = new Vector3(0f, 0f, transform.position.z);
             Snap();
         }
@@ -149,13 +173,14 @@ namespace MindAttic.Chain
             var cam = Camera;
             cam.orthographic = true;
             var levelRect = ResolveLevel(out var hasLevel);
-            var current = (Vector2)transform.position;
+            var current = (Vector2)transform.position - _appliedShake;
             Vector2 next;
 
             if (mode == CameraFramingMode.FitLevel)
             {
                 if (!hasLevel)
                 {
+                    PlaceAt(current);
                     return;
                 }
 
@@ -186,8 +211,18 @@ namespace MindAttic.Chain
                 next = smoothed.ToUnity();
             }
 
-            transform.position = new Vector3(next.x, next.y, transform.position.z);
+            PlaceAt(next);
         }
+
+        /// <summary>Puts the camera at <paramref name="center"/> plus the shake.</summary>
+        private void PlaceAt(Vector2 center)
+        {
+            _appliedShake = _shake != null ? _shake.Offset.ToUnity() : Vector2.zero;
+            transform.position = new Vector3(center.x + _appliedShake.x, center.y + _appliedShake.y, transform.position.z);
+        }
+
+        /// <summary>Moves the camera from the old shake to the new one, keeping its framed centre.</summary>
+        private void ApplyShake() => PlaceAt((Vector2)transform.position - _appliedShake);
 
         private Rect ResolveLevel(out bool hasLevel)
         {
@@ -237,9 +272,31 @@ namespace MindAttic.Chain
             }
         }
 
-        private void OnEnable() => Subscribe();
+        private void OnEnable()
+        {
+            Subscribe();
+            (_controls ?? (_controls = new ChainControls())).Debug.Enable();
+        }
 
-        private void OnDisable() => Unsubscribe();
+        private void OnDisable()
+        {
+            Unsubscribe();
+            _controls?.Debug.Disable();
+        }
+
+        private void OnDestroy()
+        {
+            _controls?.Dispose();
+            _controls = null;
+        }
+
+        private void Update()
+        {
+            if (_controls != null && _controls.ShakeScreen.WasPressedThisFrame())
+            {
+                ShakeScreen();
+            }
+        }
 
         private void Subscribe()
         {

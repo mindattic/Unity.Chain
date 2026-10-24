@@ -74,6 +74,9 @@ namespace MindAttic.Chain.Core
 
         public CameraTuning CameraTuning { get; private set; }
 
+        /// <summary>The 0 key's screen shake: the most one draw moves the view, world units (<see cref="ScreenShake"/>).</summary>
+        public float ShakeAmount { get; private set; }
+
         public AudioTuning AudioTuning { get; private set; }
 
         /// <summary>The mace's draw size relative to a link while the chain follows (Chain.vb: 3.5).</summary>
@@ -288,6 +291,7 @@ namespace MindAttic.Chain.Core
             };
 
             CameraTuning = Camera.Port;
+            ShakeAmount = m.Length(Camera.ShakeAmount);
             AudioTuning = new AudioTuning(
                 sfxVolume: AudioData.Linear(Audio.SfxVolume),
                 musicVolume: AudioData.Linear(Audio.MusicVolume),
@@ -594,6 +598,10 @@ namespace MindAttic.Chain.Core
     {
         public float Fov { get; private set; }
         public float CamZ { get; private set; }
+
+        /// <summary>Form1.vb's 0 key: <c>shakeScreen(0.02)</c>, the most one draw moves the look target, screen units.</summary>
+        public float ShakeAmount { get; private set; }
+
         public CameraTuning Port { get; private set; }
 
         internal static CameraData Read(SettingsReader r)
@@ -602,6 +610,7 @@ namespace MindAttic.Chain.Core
             {
                 Fov = r.Number("Fov", 0.01f, 3.1f),
                 CamZ = r.Number("camZ"),
+                ShakeAmount = r.Number("shakeAmount", 0f),
             };
 
             var port = r.Section("port");

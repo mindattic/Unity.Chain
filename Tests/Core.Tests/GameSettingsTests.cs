@@ -243,6 +243,14 @@ namespace MindAttic.Chain.Tests
         }
 
         [Test]
+        public void Shipped_ShakeAmount_IsForm1sZeroKeyMapped()
+        {
+            Assert.AreEqual(0.02f, Load().Camera.ShakeAmount, 1e-7f, "Form1.vb: shakeScreen(0.02)");
+            Assert.AreEqual(0.02f, AtScale(1f).ShakeAmount, 1e-7f);
+            Assert.AreEqual(0.18f, Load().ShakeAmount, 1e-6f, "0.02 of the screen x 9");
+        }
+
+        [Test]
         public void Shipped_HeartIsHeartFloatsDefault()
         {
             var heart = AtScale(1f).Heart;

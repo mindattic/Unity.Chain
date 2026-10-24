@@ -90,12 +90,13 @@ tested by `Tests/Core.Tests` (`dotnet test Tests/Core.Tests`, or `./run-core-tes
 | R | Back (Select) | start over |
 | J | | gamepad stick steering on / off |
 | L | | lighting on / off |
+| 0 | | screen shake: the view jumps, the next press puts it back |
 
 The bindings live in one `InputActionAsset` built in code (`Runtime/Input/ChainControls`); the stick's speed and
 dead zone are in `input.json`.
 
 The original's other keys (live spring, drag and gravity tuning, game speed, gem skins, backgrounds,
-shake, debug views, the script console) are listed with their tickets in
+debug views, the script console) are listed with their tickets in
 [docs/RECONSTRUCTION.md §3.5](docs/RECONSTRUCTION.md).
 
 ## Project layout

@@ -1,7 +1,8 @@
 {
-  "_source": "Camera.vb: Fov (Math.PI / 4) and cam z, kept as data for the debug camera (UNI-T57); the port draws with an orthographic rig (BIBLE V1).",
+  "_source": "Camera.vb: Fov (Math.PI / 4) and cam z, kept as data for the debug camera (UNI-T57); the port draws with an orthographic rig (BIBLE V1). Form1.vb: shakeAmount, the 0 key's shakeScreen(0.02), screen units (UNI-T49).",
   "Fov": 0.7853982,
   "camZ": -1,
+  "shakeAmount": 0.02,
   "port": {
     "_about": "The camera rig, not in the original; world units and seconds. mode is FitLevel or Follow.",
     "mode": "FitLevel",

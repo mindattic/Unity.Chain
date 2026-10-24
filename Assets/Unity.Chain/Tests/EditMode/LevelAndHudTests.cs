@@ -187,6 +187,61 @@ namespace MindAttic.Chain.Tests
                 rig.Session = null;
             }
         }
+
+        [Test]
+        public void CameraRig_ShakeScreen_JumpsThenRestores_OnTopOfTheFraming()
+        {
+            var level = MakeLevel(new Vector2(2f, 1f), new Vector2(16f, 9f));
+            var rig = MakeCamera(16f / 9f);
+            rig.Level = level;
+            rig.Mode = CameraFramingMode.FitLevel;
+            rig.Snap();
+            var amount = rig.Shake.Amount;
+            Assert.Greater(amount, 0f, "camera.json's shakeAmount");
+
+            rig.ShakeScreen(); // shake starts False: the first press restores
+            Assert.AreEqual(Vector2.zero, rig.ShakeOffset);
+            Assert.AreEqual(new Vector3(2f, 1f, -10f), rig.transform.position);
+
+            var offset = rig.ShakeScreen();
+            Assert.GreaterOrEqual(offset.x, 0f, "right");
+            Assert.LessOrEqual(offset.x, amount * 2f);
+            Assert.LessOrEqual(offset.y, 0f, "down");
+            Assert.GreaterOrEqual(offset.y, -amount * 2f);
+            Assert.AreEqual(2f + offset.x, rig.transform.position.x, 1e-5f);
+            Assert.AreEqual(1f + offset.y, rig.transform.position.y, 1e-5f);
+
+            rig.Frame(0.1f); // framing again keeps the shake and does not drift the base view
+            Assert.AreEqual(2f + offset.x, rig.transform.position.x, 1e-5f);
+            Assert.AreEqual(1f + offset.y, rig.transform.position.y, 1e-5f);
+
+            rig.ShakeScreen();
+            Assert.AreEqual(Vector2.zero, rig.ShakeOffset);
+            Assert.AreEqual(new Vector3(2f, 1f, -10f), rig.transform.position, "the next press puts the target back on the camera");
+        }
+
+        [Test]
+        public void CameraRig_Recenter_DropsTheShake()
+        {
+            var rig = MakeCamera(16f / 9f);
+            rig.ShakeScreen();
+            rig.ShakeScreen();
+            rig.Recenter();
+
+            Assert.AreEqual(Vector2.zero, rig.ShakeOffset);
+            Assert.AreEqual(new Vector3(0f, 0f, -10f), rig.transform.position);
+            Assert.IsFalse(rig.Shake.Armed, "Reset leaves Root.vb's shake flag alone");
+        }
+
+        [Test]
+        public void ChainControls_ZeroKey_IsShakeScreen()
+        {
+            using (var controls = new ChainControls())
+            {
+                Assert.AreEqual("<Keyboard>/digit0", controls.ShakeScreen.bindings[0].path);
+                Assert.AreSame(controls.Debug, controls.ShakeScreen.actionMap);
+            }
+        }
     }
 
     public class HudTextTests

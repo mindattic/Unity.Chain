@@ -137,7 +137,7 @@ Every binding of the original, with its state:
 | F | `followMouse` toggle | ported (UNI-T47; ToggleFollow action, gamepad Y, UNI-T34) |
 | U | gem link skins | missing, UNI-T41 |
 | R | `Reset` | ported (Reset action sends `ResetGame`, gamepad Back, UNI-T34), restoring everything `Reset` does through the one `GameWorld.Reset` (UNI-T48) |
-| 0 | `shakeScreen(0.02)` | missing, UNI-T49 |
+| 0 | `shakeScreen(0.02)` | ported (UNI-T49; the Debug map's ShakeScreen, `CameraRig.ShakeScreen`); the draws are really random (BIBLE D19) |
 | L | lighting toggle | ported (`SceneLight`, the Debug map's ToggleLighting); off is unlit rather than frozen (BIBLE D16) |
 | B / N | beach / utopia background (a second `Case Keys.B` for the background toggle is unreachable) | missing, UNI-T40 |
 | E | zone (hit box) overlay, default on | missing, UNI-T56 |
@@ -176,7 +176,7 @@ Every binding of the original, with its state:
 | Camera | perspective 45 degrees, z -1, 4:3, rebuilt each frame from `cam` and `target` | rebuild uses an orthographic fit | deliberate deviation; debug camera UNI-T57 |
 | Background | 2.4 x 0.83 quad at x -0.56, `beach.png` default | missing, UNI-T40 |
 | Brick room | `Cube.vb` cube 67x55x38 around the camera, textured `brick.jpg`; hidden behind the background | missing, UNI-T40 |
-| Screen shake | alternates a random offset and a restore | missing, UNI-T49 |
+| Screen shake | alternates a random offset and a restore | ported (UNI-T49): `ScreenShake` offsets the rig's framing right and down by two draws of 0..0.02 screen each, the next press restores; the original's draws were always 0 (BIBLE D19) |
 | Terrain lines (`Terrains`) | loader dereferences an unset `DataRow`; never called | dead |
 | Zones (`Zone.vb`) | one box per enemy and the mace rect, drawn when `bZone` (default True) | missing, UNI-T56 |
 
