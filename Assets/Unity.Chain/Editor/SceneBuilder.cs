@@ -207,6 +207,8 @@ namespace MindAttic.Chain.EditorTools
             }
 
             mace.Skins = maceSkins;
+            // UNI-T72: Input.vb's texMaceGrapple (mace2.png), shown over whichever mode is current while armed.
+            mace.GrappleSprite = LoadSprite(ChainArtPath + maceSkinData.GrappleFile);
             maceRenderer.sprite = mace.SpriteFor(maceSkinData.Mode) ?? maceRenderer.sprite;
 
             // Form1.vb's U (UNI-T41): the links wearing a gem are drawn over the line, every gfx/chain link picture

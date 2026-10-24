@@ -178,6 +178,39 @@ namespace MindAttic.Chain.Tests
             Assert.AreSame(ball, renderer.sprite);
         }
 
+        [Test]
+        public void Grappling_SwapsToTheGrappleSprite_ThenRevertsOnRelease()
+        {
+            var ball = MakeSprite("ball");
+            var grappleArt = MakeSprite("grapple");
+            var visual = _rig.Track(new GameObject("Mace"));
+            var renderer = visual.AddComponent<SpriteRenderer>();
+            _mace.MaceVisual = visual.transform;
+            _mace.Skins = new[] { new MaceController.SkinArt(MaceMode.SpikeBall, ball) };
+            _mace.GrappleSprite = grappleArt;
+            _rig.Chain.GetComponent<LineRenderer>().widthMultiplier = 0.1f;
+            _rig.Step();
+            _rig.Chain.RenderChain(1f);
+
+            _mace.RenderMace();
+            Assert.IsFalse(_mace.IsGrappleArmed);
+            Assert.AreSame(ball, renderer.sprite, "not armed: the current mode's own skin");
+
+            _rig.Grapple.SetButtonHeld(true);
+            _rig.Step();
+            _rig.Chain.RenderChain(1f);
+            _mace.RenderMace();
+            Assert.IsTrue(_mace.IsGrappleArmed);
+            Assert.AreSame(grappleArt, renderer.sprite, "Input.vb's texMaceGrapple while the button is held (UNI-T72)");
+
+            _rig.Grapple.SetButtonHeld(false);
+            _rig.Step();
+            _rig.Chain.RenderChain(1f);
+            _mace.RenderMace();
+            Assert.IsFalse(_mace.IsGrappleArmed);
+            Assert.AreSame(ball, renderer.sprite, "release reverts to the mode's own skin");
+        }
+
         private Sprite MakeSprite(string name)
         {
             var texture = _rig.Track(new Texture2D(32, 32));

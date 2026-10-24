@@ -47,6 +47,13 @@ namespace MindAttic.Chain.Core
         /// <summary>The skin the mace starts in (Chain.vb's <c>maceMode As theMaceMode = theMaceMode.SpikeBall</c>).</summary>
         public MaceMode Mode { get; private set; }
 
+        /// <summary>
+        /// Input.vb's <c>texMaceGrapple</c> (Textures.vb's mace2.png): the picture shown over whichever
+        /// <see cref="MaceMode"/> is current while the grapple is armed, reverting to that mode's own
+        /// picture on release (chain.json's <c>maceSkins.files.grapple</c>, UNI-T72).
+        /// </summary>
+        public string GrappleFile { get; private set; }
+
         /// <summary>The picture file of <paramref name="mode"/> (mace.png), or null if there is none.</summary>
         public string File(MaceMode mode) => _files.TryGetValue(mode, out var file) ? file : null;
 
@@ -60,6 +67,7 @@ namespace MindAttic.Chain.Core
                 data._files[mode] = files.Text(mode.ToString());
             }
 
+            data.GrappleFile = files.Text("grapple");
             files.Done();
             return data;
         }

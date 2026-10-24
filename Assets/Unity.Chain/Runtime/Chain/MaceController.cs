@@ -18,7 +18,10 @@ namespace MindAttic.Chain
     /// Chain.vb's per-frame offset is not ported). The visual wears the player's mace skin (UNI-T43,
     /// <see cref="PlayerEntity.MaceMode"/>): the spike ball, or the magnet Chain.vb declared but never reached,
     /// chosen by chain.json's <c>maceSkins.mode</c> and flipped by the seat's ToggleMaceMode debug key
-    /// (<see cref="ToggleMode"/>). Only the picture changes; the world hits and grapples the same either way.
+    /// (<see cref="ToggleMode"/>). While the grapple is armed it instead wears Input.vb's grapple picture
+    /// (<see cref="GrappleSprite"/>, chain.json's <c>maceSkins.files.grapple</c>, Textures.vb's
+    /// <c>texMaceGrapple</c>/mace2.png, UNI-T72), over whichever mode is current, reverting to that mode's
+    /// picture on release. Only the picture changes; the world hits and grapples the same either way.
     /// </summary>
     [DisallowMultipleComponent]
     [DefaultExecutionOrder(100)] // after ChainController, so the visual tracks this frame's drawn chain
@@ -31,6 +34,9 @@ namespace MindAttic.Chain
 
         [Tooltip("Each mace skin's picture, by mode (chain.json's maceSkins.files).")]
         [SerializeField] private SkinArt[] skins = Array.Empty<SkinArt>();
+
+        [Tooltip("Input.vb's grapple picture (chain.json's maceSkins.files.grapple, texMaceGrapple/mace2.png), shown over the current mode's skin while the grapple is armed.")]
+        [SerializeField] private Sprite grappleSprite;
 
         /// <summary>One mace skin's picture, under its <see cref="MaceMode"/>.</summary>
         [Serializable]
@@ -110,6 +116,19 @@ namespace MindAttic.Chain
 
         /// <summary>What the mace wears: the world's once seated, else chain.json's starting skin.</summary>
         public MaceMode Mode => Chain.Entity?.MaceMode ?? Data.MaceMode;
+
+        /// <summary>Input.vb's grapple picture, shown over the current mode's skin while the grapple is armed.</summary>
+        public Sprite GrappleSprite
+        {
+            get => grappleSprite;
+            set => grappleSprite = value;
+        }
+
+        /// <summary>
+        /// Input.vb's left-mouse-down/up: true from grapple arm to release (armed or holding), whether or not a
+        /// target is caught, regardless of this player's <see cref="MaceMode"/>. False before the player is seated.
+        /// </summary>
+        public bool IsGrappleArmed => Chain.Entity?.Grapple.IsArmed ?? false;
 
         /// <summary>The picture of <paramref name="mode"/>, or null if none is wired.</summary>
         public Sprite SpriteFor(MaceMode mode)
@@ -206,10 +225,13 @@ namespace MindAttic.Chain
             maceVisual.localScale = Vector3.one * (width * CurrentScale);
         }
 
-        /// <summary>Puts the current mode's picture on the visual's sprite renderer, when both are there.</summary>
+        /// <summary>
+        /// Puts the current picture on the visual's sprite renderer, when both are there: Input.vb's grapple
+        /// picture while armed (<see cref="IsGrappleArmed"/>), else the current mode's own skin.
+        /// </summary>
         private void ApplySkin()
         {
-            var sprite = SpriteFor(Mode);
+            var sprite = (IsGrappleArmed ? grappleSprite : null) ?? SpriteFor(Mode);
             if (sprite != null && maceVisual.TryGetComponent<SpriteRenderer>(out var renderer) && renderer.sprite != sprite)
             {
                 renderer.sprite = sprite;
