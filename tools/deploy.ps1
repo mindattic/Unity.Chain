@@ -69,8 +69,20 @@ function Set-Shortcut([string]$exe) {
 $upToDate = $false
 if ((Test-Path (Join-Path $out $exeName)) -and (Test-Path $marker)) {
     $deployed = (Get-Content -LiteralPath $marker -Raw).Trim()
-    git -C $repoDir diff --quiet $deployed $head -- Assets Packages ProjectSettings 2>$null
-    $upToDate = $LASTEXITCODE -eq 0
+    # Under $ErrorActionPreference = 'Stop', redirecting a native command's stderr in Windows
+    # PowerShell 5.1 turns every stderr line into a terminating ErrorRecord. A $marker naming a
+    # commit this clone doesn't have (main rebased or force-pushed since, or deploying from a
+    # different clone/worktree) makes `git diff` write "fatal: bad revision" to stderr and kills
+    # the whole deploy instead of falling through to a rebuild. Confirm the commit actually
+    # resolves here first, with errors temporarily non-terminating.
+    $eap = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    if ($deployed) { git -C $repoDir cat-file -e "$deployed^{commit}" 2>$null }
+    if ($deployed -and $LASTEXITCODE -eq 0) {
+        git -C $repoDir diff --quiet $deployed $head -- Assets Packages ProjectSettings
+        $upToDate = $LASTEXITCODE -eq 0
+    }
+    $ErrorActionPreference = $eap
     if ($upToDate -and $deployed -ne $head) { Set-Content -LiteralPath $marker -Value $head -NoNewline }
 }
 if ($upToDate) {

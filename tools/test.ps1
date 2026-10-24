@@ -20,6 +20,27 @@ param([switch]$SkipCore, [switch]$SkipEditMode, [switch]$SkipPlayMode)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 
+# Unity's -runTests exits 0 even when it matched zero tests (a wrong -testPlatform, an excluded
+# assembly, or a renamed test all look like success otherwise), which would let "make the PlayMode
+# MainSceneSmokeTests part of that run" silently stop being true. Confirm the results file actually
+# names tests -- and, for PlayMode, that MainSceneSmokeTests is one of them -- not just that Unity
+# exited 0. A stale file from an earlier run is removed first so a crashed run can't be read as this
+# one's results.
+function Confirm-TestResults([string]$Path, [string]$MustContain) {
+    if (-not (Test-Path -LiteralPath $Path)) {
+        throw "$Path was not written; the Unity test run produced no results."
+    }
+    [xml]$results = Get-Content -LiteralPath $Path -Raw
+    $run = $results.'test-run'
+    if (-not $run -or [int]$run.total -le 0) {
+        throw "$Path reports zero tests; -runTests matched nothing."
+    }
+    if ($MustContain -and $results.SelectNodes("//test-case[contains(@fullname, '$MustContain')]").Count -eq 0) {
+        throw "$Path has no test-case whose fullname contains '$MustContain'."
+    }
+    Write-Host "    $Path`: $($run.passed)/$($run.total) passed" -ForegroundColor Gray
+}
+
 if (-not $SkipCore) {
     Write-Host '  Core.Tests (dotnet test)...' -ForegroundColor Cyan
     & (Join-Path $root 'run-core-tests.ps1')
@@ -28,16 +49,23 @@ if (-not $SkipCore) {
 
 if (-not $SkipEditMode) {
     Write-Host '  EditMode tests (Unity batch mode)...' -ForegroundColor Cyan
-    & "$PSScriptRoot/unity.ps1" -Log test-editmode -Extra "-runTests -testPlatform EditMode -testResults TestResults-EditMode.xml"
+    $editResults = Join-Path $root 'TestResults-EditMode.xml'
+    Remove-Item -LiteralPath $editResults -ErrorAction SilentlyContinue
+    & "$PSScriptRoot/unity.ps1" -Log test-editmode -Extra "-runTests -testPlatform EditMode -testResults $editResults"
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    Confirm-TestResults -Path $editResults
 }
 
 if (-not $SkipPlayMode) {
     # The PlayMode assembly holds only MainSceneSmokeTests today; -testPlatform PlayMode with no
     # -assemblyNames filter always includes it, so a future PlayMode addition is covered for free.
+    # Confirm-TestResults below is what actually proves it ran, not just this comment.
     Write-Host '  PlayMode tests (Unity batch mode, includes MainSceneSmokeTests)...' -ForegroundColor Cyan
-    & "$PSScriptRoot/unity.ps1" -Log test-playmode -Extra "-runTests -testPlatform PlayMode -testResults TestResults-PlayMode.xml"
+    $playResults = Join-Path $root 'TestResults-PlayMode.xml'
+    Remove-Item -LiteralPath $playResults -ErrorAction SilentlyContinue
+    & "$PSScriptRoot/unity.ps1" -Log test-playmode -Extra "-runTests -testPlatform PlayMode -testResults $playResults"
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    Confirm-TestResults -Path $playResults -MustContain 'MainSceneSmokeTests'
 }
 
 exit 0
