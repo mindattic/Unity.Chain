@@ -94,6 +94,20 @@ namespace MindAttic.Chain.Tests
         }
 
         [Test]
+        public void QuitGame_RaisesQuitRequested_EvenPaused_AndChangesNothing()
+        {
+            _world.Submit(new Pause(P0, true));
+            Events();
+            var time = _world.Time;
+
+            Assert.IsTrue(_world.Submit(new QuitGame(P0)), "Form1.vb's Escape quits while paused too");
+            var quit = Events().OfType<QuitRequested>().Single();
+            Assert.AreEqual(P0, quit.Player);
+            Assert.IsTrue(_world.State.IsPaused, "quitting is the host's business; the world is untouched");
+            Assert.AreEqual(time, _world.Time);
+        }
+
+        [Test]
         public void Step_PinsLinkZeroToTheAngelsHand()
         {
             _world.Submit(new SteerAngel(P0, new Vec2(400f, -300f), 0f));

@@ -10,7 +10,7 @@ namespace MindAttic.Chain
     /// <see cref="TogglePause"/>, the grapple button as <see cref="ArmGrapple"/> / <see cref="ReleaseGrapple"/>,
     /// <c>[</c> and <c>]</c> as <see cref="ChangeChainLength"/>, F as <see cref="ToggleFollow"/>, Insert/Delete,
     /// Home/End and PageUp/PageDown as <see cref="TuneChain"/> (resistance, gravity, spring), Minus and Equals held
-    /// as <see cref="ChangeGameSpeed"/> and R as <see cref="ResetGame"/>. J turns the stick off and on (Form1.vb's joystick toggle), which is this seat's
+    /// as <see cref="ChangeGameSpeed"/>, R as <see cref="ResetGame"/> and Escape as <see cref="QuitGame"/>. J turns the stick off and on (Form1.vb's joystick toggle), which is this seat's
     /// own input and no command. It never changes the world itself: it calls the seat's components, which submit.
     /// Sits beside the <see cref="AngelController"/>, which requires it.
     /// </summary>
@@ -27,6 +27,8 @@ namespace MindAttic.Chain
             public bool ChainLonger;
             public bool ToggleFollow;
             public bool Pause;
+            /// <summary>Escape (Form1.vb quits).</summary>
+            public bool Quit;
             public bool Reset;
             public bool ToggleJoystick;
             /// <summary>Insert and Delete.</summary>
@@ -86,6 +88,7 @@ namespace MindAttic.Chain
                 ChainLonger = c.ChainLonger.WasPressedThisFrame(),
                 ToggleFollow = c.ToggleFollow.WasPressedThisFrame(),
                 Pause = c.Pause.WasPressedThisFrame(),
+                Quit = c.Quit.WasPressedThisFrame(),
                 Reset = c.Reset.WasPressedThisFrame(),
                 ToggleJoystick = c.ToggleJoystick.WasPressedThisFrame(),
                 ResistanceUp = c.ResistanceUp.WasPressedThisFrame(),
@@ -166,6 +169,11 @@ namespace MindAttic.Chain
             if (frame.Reset)
             {
                 angel.Session.Submit(new ResetGame(angel.Seat));
+            }
+
+            if (frame.Quit)
+            {
+                angel.Session.Submit(new QuitGame(angel.Seat));
             }
         }
 

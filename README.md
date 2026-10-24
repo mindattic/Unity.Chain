@@ -99,7 +99,8 @@ The engine-free rules are tested by `Tests/Core.Tests` (`dotnet test Tests/Core.
 | Left button (hold, release) | right trigger or A (hold, release) | arm the grapple, throw what it holds |
 | `[` / `]` | left / right shoulder | shorten / lengthen the chain |
 | F | Y | chain follows the hand / hangs slack |
-| Pause, P or Escape | Start | pause |
+| Pause or P | Start | pause / resume |
+| Escape | | quit |
 | R | Back (Select) | start over |
 | J | | gamepad stick steering on / off |
 | L | | lighting on / off |

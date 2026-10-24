@@ -96,7 +96,7 @@ JS original: both-neighbor pull.
   turn off); `CameraRig` fits the whole level on any aspect (`FitLevel`) or follows the angel with
   a dead zone and frame-rate independent smoothing, clamped inside the level (`Follow`);
   the `GameWorld` (pure rules in `GameState`) checks enemy contact with a circle, ignoring
-  grabbed and dead enemies, scores every mace hit, pauses on the P/Escape command and on game over
+  grabbed and dead enemies, scores every mace hit, pauses on the Pause/P command and on game over
   fades out and resets itself (see Game over below); `GameHud` draws the original's lines with IMGUI. One deliberate
   change: the original drew `HP + 1` bars and ended the game below zero (31 hits from 30 HP); the
   port shows exactly HP bars and ends at 0.

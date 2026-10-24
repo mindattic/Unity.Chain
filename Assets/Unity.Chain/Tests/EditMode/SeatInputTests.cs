@@ -46,7 +46,7 @@ namespace MindAttic.Chain.Tests
                 CollectionAssert.AreEquivalent(
                     new[]
                     {
-                        "Steer", "SteerStick", "Grapple", "ChainShorter", "ChainLonger", "ToggleFollow", "Pause", "Reset", "ToggleJoystick",
+                        "Steer", "SteerStick", "Grapple", "ChainShorter", "ChainLonger", "ToggleFollow", "Pause", "Quit", "Reset", "ToggleJoystick",
                         "ResistanceUp", "ResistanceDown", "GravityDown", "GravityUp", "SpringUp", "SpringDown",
                         "GameSpeedDown", "GameSpeedUp",
                     },
@@ -204,6 +204,33 @@ namespace MindAttic.Chain.Tests
 
             _input.Dispatch(new SeatInput.Frame { GameSpeedDown = true, GameSpeedUp = true }, 0f, 1f);
             Assert.AreEqual("0.98", HudText.GameSpeed(world.GameSpeed), "both held cancel out, as in Input.vb");
+        }
+
+        [Test]
+        public void PauseKeyOrP_Pause_AndEscapeQuits()
+        {
+            using (var c = new ChainControls())
+            {
+                CollectionAssert.AreEquivalent(
+                    new[] { "<Keyboard>/pause", "<Keyboard>/p", "<Gamepad>/start" }, Paths(c.Pause),
+                    "Form1.vb's Pause key, P as the extra (BIBLE V8); Escape no longer pauses");
+                CollectionAssert.AreEqual(new[] { "<Keyboard>/escape" }, Paths(c.Quit), "Form1.vb's Escape quits");
+            }
+        }
+
+        [Test]
+        public void Escape_QuitsThroughACommand_EvenPaused()
+        {
+            var quitting = 0;
+            _rig.Session.Quitting += () => quitting++;
+            _input.Dispatch(new SeatInput.Frame { Pause = true }, 0f);
+
+            _input.Dispatch(new SeatInput.Frame { Quit = true }, 0f);
+
+            var quit = _events.OfType<QuitRequested>().Single();
+            Assert.AreEqual(_rig.Id, quit.Player);
+            Assert.AreEqual(1, quitting);
+            Assert.IsTrue(_rig.Session.State.IsPaused, "quitting does not resume");
         }
 
         [Test]

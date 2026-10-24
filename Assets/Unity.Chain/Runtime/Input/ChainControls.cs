@@ -12,7 +12,7 @@ namespace MindAttic.Chain
     /// <item><b>Player</b>, one seat's controls, read by that seat's <see cref="SeatInput"/> and sent to the
     /// authority as commands carrying its player id: Steer (mouse delta), SteerStick (gamepad left stick, steering
     /// like the mouse, BIBLE D14), Grapple (left mouse button), ChainShorter and ChainLonger (Input.vb's
-    /// <c>[</c> and <c>]</c>), ToggleFollow (Form1.vb's F), Pause, Reset (Form1.vb's R), ToggleJoystick
+    /// <c>[</c> and <c>]</c>), ToggleFollow (Form1.vb's F), Pause (Form1.vb's Pause key, P too), Quit (Form1.vb's Escape), Reset (Form1.vb's R), ToggleJoystick
     /// (Form1.vb's J), the live-tuning keys ResistanceUp/ResistanceDown (Insert/Delete), GravityDown/GravityUp
     /// (Home/End) and SpringUp/SpringDown (PageUp/PageDown), and GameSpeedDown/GameSpeedUp (Input.vb's Minus and
     /// Equals, read while held).</item>
@@ -47,7 +47,10 @@ namespace MindAttic.Chain
         public InputAction ChainShorter => Player["ChainShorter"];
         public InputAction ChainLonger => Player["ChainLonger"];
         public InputAction ToggleFollow => Player["ToggleFollow"];
+        /// <summary>Form1.vb's Pause key: <c>Pause = Not Pause</c>. P is the rebuild's extra (BIBLE V8).</summary>
         public InputAction Pause => Player["Pause"];
+        /// <summary>Form1.vb's Escape: <c>bRunning = False</c>, the game ends.</summary>
+        public InputAction Quit => Player["Quit"];
         public InputAction Reset => Player["Reset"];
         public InputAction ToggleJoystick => Player["ToggleJoystick"];
         /// <summary>Insert: <c>changeResistance(0.001)</c>.</summary>
@@ -84,8 +87,10 @@ namespace MindAttic.Chain
             Button(player, "ChainShorter", "<Keyboard>/leftBracket", "<Gamepad>/leftShoulder");
             Button(player, "ChainLonger", "<Keyboard>/rightBracket", "<Gamepad>/rightShoulder");
             Button(player, "ToggleFollow", "<Keyboard>/f", "<Gamepad>/buttonNorth");
-            // Form1.vb's Pause key; P and Escape until UNI-T54 settles the keys (BIBLE V8).
-            Button(player, "Pause", "<Keyboard>/pause", "<Keyboard>/p", "<Keyboard>/escape", "<Gamepad>/start");
+            // Form1.vb's Pause key, P as the modern extra and the gamepad's Start (BIBLE V8, UNI-T54).
+            Button(player, "Pause", "<Keyboard>/pause", "<Keyboard>/p", "<Gamepad>/start");
+            // Form1.vb's Escape quits the game.
+            Button(player, "Quit", "<Keyboard>/escape");
             Button(player, "Reset", "<Keyboard>/r", "<Gamepad>/select");
             Button(player, "ToggleJoystick", "<Keyboard>/j");
             // Form1.vb's live-tuning keys (UNI-T51): resistance, gravity and the spring of this seat's chain.

@@ -16,7 +16,8 @@ namespace MindAttic.Chain
     /// angel and chain components, which hold that id and send commands with it. There is no
     /// current-player singleton; a networked player's NetEntity would carry its seat's commands here
     /// the same way (UNI-T26). The scene's hearts are put in the world (<see cref="AddHeart"/>), which
-    /// moves, checks and resets them; the session freezes time while the world is paused.
+    /// moves, checks and resets them; the session freezes time while the world is paused, and ends the
+    /// application when a player quits.
     /// </summary>
     [DisallowMultipleComponent]
     [DefaultExecutionOrder(-100)] // the world steps before any view reads it
@@ -52,6 +53,12 @@ namespace MindAttic.Chain
         /// game-over fade. The camera, the music and the light restore their part of Root.vb's Reset here.
         /// </summary>
         public event Action Restarted;
+
+        /// <summary>
+        /// Raised when a player quits (the world's <see cref="QuitRequested"/>, Form1.vb's Escape), just before the
+        /// session ends the application (<see cref="QuitApplication"/>).
+        /// </summary>
+        public event Action Quitting;
 
         /// <summary>The world this session is the authority for. Read it; change it only through <see cref="Submit"/>.</summary>
         public GameWorld World
@@ -257,7 +264,31 @@ namespace MindAttic.Chain
                 {
                     Restarted?.Invoke();
                 }
+
+                if (gameEvent is QuitRequested)
+                {
+                    Quitting?.Invoke();
+                    QuitApplication();
+                }
             }
+        }
+
+        /// <summary>
+        /// Ends the game as Form1.vb's Escape does (<c>bRunning = False</c>, the form closes): the player quits, and
+        /// in the Editor play mode stops. Outside play mode (edit-mode tests) it does nothing.
+        /// </summary>
+        private static void QuitApplication()
+        {
+            if (!Application.isPlaying)
+            {
+                return;
+            }
+
+#if UNITY_EDITOR
+            UnityEditor.EditorApplication.isPlaying = false;
+#else
+            Application.Quit();
+#endif
         }
 
         private void ApplyTimeScale()

@@ -270,4 +270,17 @@ namespace MindAttic.Chain.Core
     {
         public override string ToString() => "WorldReset";
     }
+
+    /// <summary><see cref="Player"/> asked to quit (Form1.vb's Escape): the host ends the application.</summary>
+    public sealed class QuitRequested : GameEvent
+    {
+        public QuitRequested(PlayerId player)
+        {
+            Player = player;
+        }
+
+        public PlayerId Player { get; }
+
+        public override string ToString() => $"QuitRequested {Player}";
+    }
 }

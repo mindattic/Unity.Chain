@@ -138,7 +138,7 @@ namespace MindAttic.Chain.Core
         public override string ToString() => $"Pause {Player} {Paused}";
     }
 
-    /// <summary>Flip the pause state (the P and Escape keys).</summary>
+    /// <summary>Flip the pause state (Form1.vb's Pause key; P too, BIBLE V8).</summary>
     public sealed class TogglePause : GameCommand
     {
         public TogglePause(PlayerId player) : base(player)
@@ -156,5 +156,19 @@ namespace MindAttic.Chain.Core
         }
 
         public override string ToString() => $"ResetGame {Player}";
+    }
+
+    /// <summary>
+    /// Quit the game (Form1.vb's Escape: <c>bRunning = False</c>, the form closes). The world itself does not
+    /// change; it raises <see cref="QuitRequested"/> and the host that runs it ends the application. Works paused
+    /// and after a game over, as Form1.vb's key handler does.
+    /// </summary>
+    public sealed class QuitGame : GameCommand
+    {
+        public QuitGame(PlayerId player) : base(player)
+        {
+        }
+
+        public override string ToString() => $"QuitGame {Player}";
     }
 }
