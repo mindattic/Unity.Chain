@@ -160,6 +160,18 @@ namespace MindAttic.Chain.Core
             }
         }
 
+        /// <summary>
+        /// Form1.vb's F12 (<c>toggleScreen</c>, then Startup's <c>isFullscreen = Not isFullscreen</c> and
+        /// <c>saveOptions</c>): the window mode becomes windowed if the screen is <paramref name="fullScreen"/> now, else
+        /// fullscreen. Returns the new mode, now in <see cref="WindowMode"/>; the caller saves and applies it.
+        /// </summary>
+        public WindowMode ToggleScreen(bool fullScreen)
+        {
+            var mode = fullScreen ? Core.WindowMode.Windowed : Core.WindowMode.Fullscreen;
+            WindowMode = mode;
+            return mode;
+        }
+
         /// <summary>The name settings.json uses for <paramref name="mode"/>.</summary>
         public static string FormatWindowMode(WindowMode mode) => mode.ToString().ToLowerInvariant();
 

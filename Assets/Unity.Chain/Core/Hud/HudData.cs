@@ -118,6 +118,9 @@ namespace MindAttic.Chain.Core
         /// <summary>Root.vb's bDrawFPS: on at the start and again on every Reset; F4 flips it.</summary>
         public bool DrawFps { get; private set; }
 
+        /// <summary>Gui.vb's renderMenu: the Tab menu panel and its lines.</summary>
+        public HudMenu Menu { get; private set; }
+
         public HudPort Port { get; private set; }
 
         internal static HudData Read(SettingsReader r)
@@ -142,6 +145,7 @@ namespace MindAttic.Chain.Core
             data.Pause = HudTextStyle.Read(r, "pause");
             data.FpsSampleMs = r.Integer("fpsSampleMs", 1, 60000);
             data.DrawFps = r.Flag("drawFps");
+            data.Menu = HudMenu.Read(r);
 
             var port = r.Section("port");
             data.Port = new HudPort(
@@ -150,6 +154,65 @@ namespace MindAttic.Chain.Core
                 textShadow: port.Flag("textShadow"));
             port.Done();
             return data;
+        }
+    }
+
+    /// <summary>
+    /// hud.json's <c>menu</c>: Gui.vb's loadMenu and renderMenu. The panel is <c>menu.jpg</c> on a 255 x 255 quad at
+    /// (10, 10) whose v starts at 2 / 255 (the art's top two rows never show); every line is written in fontMenu
+    /// (Arial 10 bold) in <c>Write</c>'s 255, 255, 255, 64, at its own spot in the window.
+    /// </summary>
+    public sealed class HudMenu
+    {
+        private readonly Vec2[] _lines;
+
+        private HudMenu(Vec2 position, Vec2 size, Argb colour, float fontSize, bool bold, Vec2[] lines)
+        {
+            Position = position;
+            Size = size;
+            Colour = colour;
+            FontSize = fontSize;
+            Bold = bold;
+            _lines = lines;
+        }
+
+        /// <summary>The panel's top-left corner, pixels (10, 10).</summary>
+        public Vec2 Position { get; }
+
+        /// <summary>menuWidth x menuHeight: 255 x 255 pixels.</summary>
+        public Vec2 Size { get; }
+
+        /// <summary>The lines' colour.</summary>
+        public Argb Colour { get; }
+
+        /// <summary>The lines' font size in points.</summary>
+        public float FontSize { get; }
+
+        public bool Bold { get; }
+
+        /// <summary>The style of <paramref name="entry"/>'s line: its top-left corner in the window, the menu's colour and font.</summary>
+        public HudTextStyle Line(MenuEntry entry) =>
+            new HudTextStyle(HudAnchor.TopLeft, _lines[(int)entry], Colour, FontSize, Bold);
+
+        internal static HudMenu Read(SettingsReader parent)
+        {
+            var r = parent.Section("menu");
+            var position = r.Pair("position");
+            var size = r.Pair("size", 1f);
+            var colour = r.Colour("colour");
+            var fontSize = r.Positive("fontSize");
+            var bold = r.Flag("bold");
+
+            var lines = r.Section("lines");
+            var spots = new Vec2[GameMenu.Entries.Count];
+            foreach (var entry in GameMenu.Entries)
+            {
+                spots[(int)entry] = lines.Pair(entry.ToString());
+            }
+
+            lines.Done();
+            r.Done();
+            return new HudMenu(position, size, colour, fontSize, bold, spots);
         }
     }
 

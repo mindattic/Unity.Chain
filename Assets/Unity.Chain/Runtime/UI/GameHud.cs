@@ -17,6 +17,12 @@ namespace MindAttic.Chain
     /// <item>the frame rate top right (Gui.vb renderFPS), sampled every 100 ms by a <see cref="FrameRateCounter"/>,
     /// shown from the start, flipped by F4 (the Debug map's ToggleFps) and shown again by every reset (Root.vb's
     /// <c>bDrawFPS = True</c>);</item>
+    /// <item>Gui.vb's renderMenu (UNI-T55): Tab opens <c>menu.jpg</c>, 255 x 255 at (10, 10), listing F1 solid or
+    /// wireframe, F2 textured or shaded, F3 culling, F4 the frame rate, F12 configure video and ESC quit, each line
+    /// naming what its key does now (<see cref="GameMenu"/>); the flags are the screen's <see cref="Options"/>
+    /// (Root.vb's, all put back and the menu closed by every reset); F12 switches windowed and fullscreen
+    /// (<see cref="DisplayPreferences.ToggleScreen"/>) and ESC is the seat's own Quit, the world's
+    /// <see cref="QuitGame"/>; drawn only while not paused, as oneFrameRender draws it;</item>
     /// <item>while paused only the half see-through red <c>- PAUSE -</c> banner (oneFrameRender draws none of the
     /// HUD while paused), over the port's dim; at game over the port's banner over the fade (dimmed here unless
     /// <see cref="SceneLight"/> shows it).</item>
@@ -42,6 +48,9 @@ namespace MindAttic.Chain
         /// <summary>The status box art, under Resources (Gui.vb's gfx/gui/status_box.png, magenta keyed to alpha).</summary>
         public const string StatusBoxPath = "UI/status_box";
 
+        /// <summary>The menu art, under Resources (Gui.vb's gfx/gui/menu.jpg, its top two rows cropped as loadMenu's v does).</summary>
+        public const string MenuPath = "UI/menu";
+
         private const string ThemePath = "UI/ChainTheme";
 
         [Tooltip("Falls back to the scene's GameSession.")]
@@ -57,7 +66,7 @@ namespace MindAttic.Chain
         private ChainControls _controls;
         private HudData _layout;
         private FrameRateCounter _frames;
-        private bool _showFps = true;
+        private ViewOptions _options;
 
         private VisualElement _root;
         private VisualElement _overlay;
@@ -72,6 +81,8 @@ namespace MindAttic.Chain
         private Label _fps;
         private Label _pause;
         private Label _gameOver;
+        private VisualElement _menu;
+        private readonly Label[] _menuLines = new Label[GameMenu.Entries.Count];
 
         public GameSession Session
         {
@@ -177,26 +188,71 @@ namespace MindAttic.Chain
             ? enemy.Hp
             : (float?)null;
 
+        /// <summary>
+        /// Root.vb's option flags (wireframe, textures, culling, the frame rate, the menu), the screen's own: F1-F4 and
+        /// Tab flip them, every reset puts them back. The renderer reads the first three (UNI-T56).
+        /// </summary>
+        public ViewOptions Options => _options ?? (_options = new ViewOptions(Layout.DrawFps));
+
         /// <summary>Root.vb's bDrawFPS: whether the frame rate is drawn. F4 flips it; every reset turns it back on.</summary>
         public bool ShowFps
         {
-            get => _showFps;
+            get => Options.DrawFps;
             set
             {
-                _showFps = value;
+                Options.DrawFps = value;
                 Refresh();
             }
+        }
+
+        /// <summary>Whether the menu panel is drawn: open (Tab) and not paused, as oneFrameRender draws renderMenu.</summary>
+        public bool MenuShown => Root != null && Shown(_menu);
+
+        /// <summary>The menu panel's element.</summary>
+        public VisualElement MenuPanel => Root != null ? _menu : null;
+
+        /// <summary><paramref name="entry"/>'s menu line as it reads now.</summary>
+        public string MenuLineText(MenuEntry entry) => Root != null ? _menuLines[(int)entry].text : null;
+
+        /// <summary>Form1.vb's Tab: opens or closes the menu (it works paused, and shows once play resumes). Returns whether it is open.</summary>
+        public bool ToggleMenu()
+        {
+            var open = Options.ToggleMenu();
+            Refresh();
+            return open;
+        }
+
+        /// <summary>
+        /// What a menu line's key does: F1-F4 flip their flag (returning its new state), F12 switches windowed and
+        /// fullscreen (true when it went fullscreen), ESC sends the world <see cref="QuitGame"/> for the seated player,
+        /// as the seat's own Escape does (true when the world took it).
+        /// </summary>
+        public bool Act(MenuEntry entry)
+        {
+            bool result;
+            switch (entry)
+            {
+                case MenuEntry.Video:
+                    result = DisplayPreferences.ToggleScreen() != WindowMode.Windowed;
+                    break;
+                case MenuEntry.Quit:
+                    var player = session != null ? FindPlayer() : null;
+                    result = player != null && session.Submit(new QuitGame(player.Id));
+                    break;
+                default:
+                    result = Options.Toggle(entry);
+                    break;
+            }
+
+            Refresh();
+            return result;
         }
 
         /// <summary>Gui.vb's frame counter (sampled every hud.json <c>fpsSampleMs</c>).</summary>
         public FrameRateCounter Frames => _frames ?? (_frames = new FrameRateCounter(Layout.FpsSampleMs));
 
         /// <summary>Form1.vb's F4: flips <see cref="ShowFps"/>. Returns the new state.</summary>
-        public bool ToggleFps()
-        {
-            ShowFps = !ShowFps;
-            return ShowFps;
-        }
+        public bool ToggleFps() => Act(MenuEntry.Fps);
 
         /// <summary>
         /// One drawn frame at <paramref name="nowMs"/> of real time: counts it while the frame rate is drawn and the
@@ -205,7 +261,7 @@ namespace MindAttic.Chain
         /// </summary>
         public void TickFps(long nowMs)
         {
-            if (_showFps && (session == null || !session.State.IsPaused))
+            if (Options.DrawFps && (session == null || !session.State.IsPaused))
             {
                 Frames.Frame(nowMs);
             }
@@ -234,6 +290,7 @@ namespace MindAttic.Chain
                 return;
             }
 
+            RefreshMenu();
             if (session == null)
             {
                 SetShown(_status, false);
@@ -249,7 +306,7 @@ namespace MindAttic.Chain
 
             // oneFrameRender draws the status box, renderDisplay and renderFPS only while not paused.
             SetShown(_status, !paused);
-            SetShown(_fps, !paused && _showFps);
+            SetShown(_fps, !paused && Options.DrawFps);
 
             SetText(_hp, HudText.Hp(state.Hp));
             SetText(_score, HudText.Score(state.Score));
@@ -342,10 +399,18 @@ namespace MindAttic.Chain
 
         private void Update()
         {
-            if (_controls != null && _controls.ToggleFps.WasPressedThisFrame())
+            if (_controls == null)
             {
-                ToggleFps();
+                return;
             }
+
+            // Form1.vb's OnKeyDown. Escape is the seat's own Quit (SeatInput), so the menu's ESC line needs nothing here.
+            if (_controls.ToggleMenu.WasPressedThisFrame()) { ToggleMenu(); }
+            if (_controls.ToggleWireframe.WasPressedThisFrame()) { Act(MenuEntry.Wireframe); }
+            if (_controls.ToggleTextures.WasPressedThisFrame()) { Act(MenuEntry.Textures); }
+            if (_controls.ToggleCulling.WasPressedThisFrame()) { Act(MenuEntry.Culling); }
+            if (_controls.ToggleFps.WasPressedThisFrame()) { Act(MenuEntry.Fps); }
+            if (_controls.ConfigureVideo.WasPressedThisFrame()) { Act(MenuEntry.Video); }
         }
 
         // The fade, the grappled enemy's HP and the live tuning change every step without an event of their own.
@@ -358,8 +423,13 @@ namespace MindAttic.Chain
 
         private void OnSessionEvent(GameEvent gameEvent) => Refresh();
 
-        // Root.vb's Reset: bDrawFPS = True.
-        private void OnRestarted() => ShowFps = Layout.DrawFps;
+        // Root.vb's Reset: bRenderWireframe = False, bRenderTextures = True, bBackFaceCulling = False, bDrawFPS = True,
+        // bMenu = False.
+        private void OnRestarted()
+        {
+            Options.Reset();
+            Refresh();
+        }
 
         private PlayerEntity FindPlayer()
         {
@@ -446,7 +516,6 @@ namespace MindAttic.Chain
             }
 
             var layout = Layout;
-            _showFps = layout.DrawFps;
 
             _root = new VisualElement { name = "hud-root", pickingMode = PickingMode.Ignore };
             Fill(_root);
@@ -489,11 +558,57 @@ namespace MindAttic.Chain
             _gameOver = AddLabel(_root, "hud-game-over", layout.Port.GameOver);
             _gameOver.text = HudText.GameOver;
 
+            BuildMenu(layout.Menu);
+
             SetShown(_overlay, false);
             SetShown(_pause, false);
             SetShown(_gameOver, false);
             SetShown(_grappled, false);
             Refresh();
+        }
+
+        /// <summary>
+        /// Gui.vb's loadMenu and renderMenu: menu.jpg on its 255 x 255 quad at (10, 10), and one line per entry at its
+        /// own spot in the window. It sits over the HUD's own layers (a panel like the later ones) and lets clicks
+        /// through; the keys act on it, as in the original.
+        /// </summary>
+        private void BuildMenu(HudMenu menu)
+        {
+            var scale = Scale;
+            _menu = new VisualElement { name = "hud-menu", pickingMode = PickingMode.Ignore };
+            Fill(_menu);
+
+            var art = new VisualElement { name = "hud-menu-art", pickingMode = PickingMode.Ignore };
+            art.style.position = Position.Absolute;
+            art.style.left = menu.Position.X * scale;
+            art.style.top = menu.Position.Y * scale;
+            art.style.width = menu.Size.X * scale;
+            art.style.height = menu.Size.Y * scale;
+            var texture = Resources.Load<Texture2D>(MenuPath);
+            if (texture != null)
+            {
+                art.style.backgroundImage = new StyleBackground(texture);
+                art.style.backgroundSize = new BackgroundSize(Length.Percent(100), Length.Percent(100));
+            }
+
+            _menu.Add(art);
+            foreach (var entry in GameMenu.Entries)
+            {
+                _menuLines[(int)entry] = AddLabel(_menu, "hud-menu-" + entry.ToString().ToLowerInvariant(), menu.Line(entry));
+            }
+
+            _root.Add(_menu);
+        }
+
+        private void RefreshMenu()
+        {
+            var paused = session != null && session.State.IsPaused && !session.State.IsGameOver;
+            var shown = Options.MenuOpen && !paused;
+            SetShown(_menu, shown);
+            foreach (var entry in GameMenu.Entries)
+            {
+                SetText(_menuLines[(int)entry], GameMenu.Line(entry, Options));
+            }
         }
 
         /// <summary>A label placed and coloured from hud.json (<see cref="HudTextStyle"/>), in panel pixels.</summary>

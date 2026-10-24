@@ -17,8 +17,9 @@ namespace MindAttic.Chain
     /// (Home/End) and SpringUp/SpringDown (PageUp/PageDown), and GameSpeedDown/GameSpeedUp (Input.vb's Minus and
     /// Equals, read while held).</item>
     /// <item><b>Debug</b>, the scene's toggles that belong to no player: ToggleLighting (Form1.vb's L, read by
-    /// <see cref="SceneLight"/>), ShakeScreen (Form1.vb's 0, read by <see cref="CameraRig"/>) and ToggleFps
-    /// (Form1.vb's F4, read by <see cref="GameHud"/>). Later debug keys join this map.</item>
+    /// <see cref="SceneLight"/>), ShakeScreen (Form1.vb's 0, read by <see cref="CameraRig"/>), and, read by
+    /// <see cref="GameHud"/>, ToggleFps (F4), ToggleMenu (Tab), ToggleWireframe (F1), ToggleTextures (F2),
+    /// ToggleCulling (F3) and ConfigureVideo (F12). Later debug keys join this map.</item>
     /// </list>
     /// Input.vb's and Form1.vb's keys keep their bindings; Minus and Equals stay free for game speed (UNI-T52)
     /// and the numpad for the debug camera (UNI-T57), as the original has them.
@@ -72,6 +73,16 @@ namespace MindAttic.Chain
         public InputAction ToggleLighting => Debug["ToggleLighting"];
         public InputAction ShakeScreen => Debug["ShakeScreen"];
         public InputAction ToggleFps => Debug["ToggleFps"];
+        /// <summary>Form1.vb's Tab: <c>showMenu = Not showMenu</c>, Gui.vb's menu panel.</summary>
+        public InputAction ToggleMenu => Debug["ToggleMenu"];
+        /// <summary>Form1.vb's F1: <c>wireframe = Not wireframe</c>.</summary>
+        public InputAction ToggleWireframe => Debug["ToggleWireframe"];
+        /// <summary>Form1.vb's F2: <c>useTextures = Not useTextures</c>.</summary>
+        public InputAction ToggleTextures => Debug["ToggleTextures"];
+        /// <summary>Form1.vb's F3: <c>backFaceCulling = Not backFaceCulling</c>.</summary>
+        public InputAction ToggleCulling => Debug["ToggleCulling"];
+        /// <summary>Form1.vb's F12: <c>toggleScreen</c>, windowed to fullscreen and back.</summary>
+        public InputAction ConfigureVideo => Debug["ConfigureVideo"];
 
         /// <summary>A new asset with the game's two maps and every binding.</summary>
         public static InputActionAsset BuildAsset()
@@ -108,6 +119,12 @@ namespace MindAttic.Chain
             Button(debug, "ToggleLighting", "<Keyboard>/l");
             Button(debug, "ShakeScreen", "<Keyboard>/digit0");
             Button(debug, "ToggleFps", "<Keyboard>/f4");
+            // Gui.vb's menu (UNI-T55): Tab opens it; F1-F3 flip the render flags it lists, F12 the screen mode.
+            Button(debug, "ToggleMenu", "<Keyboard>/tab");
+            Button(debug, "ToggleWireframe", "<Keyboard>/f1");
+            Button(debug, "ToggleTextures", "<Keyboard>/f2");
+            Button(debug, "ToggleCulling", "<Keyboard>/f3");
+            Button(debug, "ConfigureVideo", "<Keyboard>/f12");
 
             return asset;
         }

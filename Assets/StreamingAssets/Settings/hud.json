@@ -15,6 +15,22 @@
   "pause": { "anchor": "Center", "position": [0, 0], "colour": [128, 255, 0, 0], "fontSize": 24, "bold": false },
   "fpsSampleMs": 100,
   "drawFps": true,
+  "menu": {
+    "_source": "Gui.vb loadMenu/renderMenu: menu.jpg on a menuWidth x menuHeight (255 x 255) quad at (10, 10), drawn while bMenu (Tab) and not paused; each line written in fontMenu (Arial 10 bold) with Write's 255, 255, 255, 64 at its own (x, y). lines are keyed by what the line's key does (F1 Wireframe, F2 Textures, F3 Culling, F4 Fps, F12 Video, ESC Quit).",
+    "position": [10, 10],
+    "size": [255, 255],
+    "colour": [255, 255, 255, 64],
+    "fontSize": 10,
+    "bold": true,
+    "lines": {
+      "Wireframe": [20, 20],
+      "Textures": [20, 40],
+      "Culling": [20, 60],
+      "Fps": [20, 80],
+      "Video": [20, 100],
+      "Quit": [20, 240]
+    }
+  },
   "port": {
     "_about": "Not in the original: the dim behind the pause banner, the game-over banner over the fade, and a thin drop shadow under the HUD text.",
     "pauseDim": 0.45,

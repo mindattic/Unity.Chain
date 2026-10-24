@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using MindAttic.Chain;
 using MindAttic.Chain.Core;
 using NUnit.Framework;
@@ -250,6 +251,28 @@ namespace MindAttic.Chain.Tests
             {
                 Assert.AreEqual("<Keyboard>/f4", controls.ToggleFps.bindings[0].path);
                 Assert.AreSame(controls.Debug, controls.ToggleFps.actionMap);
+            }
+        }
+
+        [Test]
+        public void ChainControls_TabAndTheMenusFKeys_AreDebugToggles()
+        {
+            using (var controls = new ChainControls())
+            {
+                var keys = new[]
+                {
+                    (controls.ToggleMenu, "<Keyboard>/tab"),
+                    (controls.ToggleWireframe, "<Keyboard>/f1"),
+                    (controls.ToggleTextures, "<Keyboard>/f2"),
+                    (controls.ToggleCulling, "<Keyboard>/f3"),
+                    (controls.ConfigureVideo, "<Keyboard>/f12"),
+                };
+                foreach (var (action, path) in keys)
+                {
+                    Assert.AreEqual(1, action.bindings.Count, action.name);
+                    Assert.AreEqual(path, action.bindings[0].path, action.name);
+                    Assert.AreSame(controls.Debug, action.actionMap, action.name);
+                }
             }
         }
     }
@@ -559,6 +582,91 @@ namespace MindAttic.Chain.Tests
             Session.Restart();
             Assert.IsTrue(hud.ShowFps, "Root.vb's Reset sets bDrawFPS = True");
             Assert.IsNotNull(hud.FpsText);
+        }
+
+        [Test]
+        public void Hud_Menu_TabShowsMenuJpgAt10_10_WithEachLinesState_AndEachKeyActsOnIt()
+        {
+            var hud = _rig.Track(new GameObject("Hud")).AddComponent<GameHud>();
+            hud.Session = Session;
+            var scale = hud.Scale;
+            Assert.IsFalse(hud.MenuShown, "bMenu starts False");
+
+            // Gui.vb loadMenu: menu.jpg on a 255 x 255 quad at (10, 10), over the HUD's own layers.
+            var art = hud.Root.Q<VisualElement>("hud-menu-art");
+            Assert.IsNotNull(art.style.backgroundImage.value.texture, "menu.jpg loads from Resources");
+            Assert.AreEqual(10f * scale, art.style.left.value.value, 1e-4f);
+            Assert.AreEqual(10f * scale, art.style.top.value.value, 1e-4f);
+            Assert.AreEqual(255f * scale, art.style.width.value.value, 1e-4f);
+            Assert.AreEqual(255f * scale, art.style.height.value.value, 1e-4f);
+            Assert.AreEqual(PickingMode.Ignore, hud.MenuPanel.pickingMode, "the menu lets the mouse steer");
+            Assert.Greater(hud.Root.IndexOf(hud.MenuPanel), hud.Root.IndexOf(hud.StatusBox.parent), "drawn over the status layer");
+
+            // renderMenu's Write calls: (20, 20) down to ESC at (20, 240), in 255, 255, 255, 64.
+            var quit = hud.Root.Q<Label>("hud-menu-quit");
+            Assert.AreEqual(20f * scale, quit.style.left.value.value, 1e-4f);
+            Assert.AreEqual(240f * scale, quit.style.top.value.value, 1e-4f);
+            Assert.AreEqual((Color)new Color32(255, 255, 64, 255), quit.style.color.value);
+
+            Assert.IsTrue(hud.ToggleMenu(), "Tab opens it");
+            Assert.IsTrue(hud.MenuShown);
+            Assert.AreEqual("F1 - Turn to Wireframe", hud.MenuLineText(MenuEntry.Wireframe));
+            Assert.AreEqual("F4 - Hide FPS", hud.MenuLineText(MenuEntry.Fps));
+            Assert.AreEqual("F12 - Configure Video", hud.MenuLineText(MenuEntry.Video));
+            Assert.AreEqual("ESC - Quit", hud.MenuLineText(MenuEntry.Quit));
+
+            // F1-F4 act on their flag and the line follows; F4 is the HUD's own frame rate toggle.
+            Assert.IsTrue(hud.Act(MenuEntry.Wireframe));
+            Assert.IsTrue(hud.Options.Wireframe);
+            Assert.AreEqual("F1 - Turn to Solid", hud.MenuLineText(MenuEntry.Wireframe));
+            Assert.IsFalse(hud.Act(MenuEntry.Textures));
+            Assert.AreEqual("F2 - Use Textured", hud.MenuLineText(MenuEntry.Textures));
+            Assert.IsTrue(hud.Act(MenuEntry.Culling));
+            Assert.AreEqual("F3 - Disable Culling", hud.MenuLineText(MenuEntry.Culling));
+            Assert.IsFalse(hud.ToggleFps());
+            Assert.IsNull(hud.FpsText, "F4 hides the frame rate");
+            Assert.AreEqual("F4 - Show FPS", hud.MenuLineText(MenuEntry.Fps));
+
+            // oneFrameRender draws renderMenu only while not paused; Tab still flips it.
+            Assert.IsTrue(Session.Submit(new Pause(_rig.Id, true)));
+            Assert.IsFalse(hud.MenuShown, "hidden while paused");
+            Assert.IsTrue(hud.Options.MenuOpen, "but still open");
+            Assert.IsTrue(Session.Submit(new Pause(_rig.Id, false)));
+            Assert.IsTrue(hud.MenuShown);
+
+            // ESC is the same Quit the seat's Escape sends: the world's QuitGame, raising QuitRequested.
+            Assert.IsTrue(hud.Act(MenuEntry.Quit));
+            Assert.AreEqual(_rig.Id, _events.OfType<QuitRequested>().Single().Player);
+
+            // Root.vb's Reset puts every flag back and closes the menu.
+            Session.Restart();
+            Assert.IsFalse(hud.MenuShown, "bMenu = False");
+            Assert.IsFalse(hud.Options.Wireframe);
+            Assert.IsTrue(hud.Options.Textured);
+            Assert.IsFalse(hud.Options.BackFaceCulling);
+            Assert.IsTrue(hud.ShowFps);
+        }
+
+        [Test]
+        public void Hud_Menu_F12_FlipsTheWindowMode_IntoTheProfile()
+        {
+            var previous = PlayerProfile.Store;
+            var store = new MemoryPreferencesStore();
+            PlayerProfile.Store = store;
+            try
+            {
+                var hud = _rig.Track(new GameObject("Hud")).AddComponent<GameHud>();
+                hud.Session = Session;
+                var windowed = Screen.fullScreenMode == FullScreenMode.Windowed;
+
+                Assert.AreEqual(windowed, hud.Act(MenuEntry.Video), "windowed goes fullscreen, fullscreen windowed");
+                Assert.AreEqual(windowed ? WindowMode.Fullscreen : WindowMode.Windowed, PlayerProfile.Preferences.WindowMode);
+                Assert.AreEqual(1, store.Writes, "saveOptions: kept in the profile");
+            }
+            finally
+            {
+                PlayerProfile.Store = previous;
+            }
         }
 
         [Test]

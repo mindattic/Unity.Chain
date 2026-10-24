@@ -52,7 +52,7 @@ namespace MindAttic.Chain.Tests
                     },
                     controls.Player.actions.Select(a => a.name).ToArray());
                 CollectionAssert.AreEquivalent(
-                    new[] { "ToggleLighting", "ShakeScreen", "ToggleFps" },
+                    new[] { "ToggleLighting", "ShakeScreen", "ToggleFps", "ToggleMenu", "ToggleWireframe", "ToggleTextures", "ToggleCulling", "ConfigureVideo" },
                     controls.Debug.actions.Select(a => a.name).ToArray());
             }
         }
