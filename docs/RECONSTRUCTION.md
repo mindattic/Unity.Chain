@@ -231,7 +231,7 @@ Checked against `AGENTS.md` (the owner's rebuild standard) and the reference rep
 | Commands and events | Done: one `GameWorld` in Core, stepped only by `GameSession`; players send `GameCommand`s with a `PlayerId`, presentation plays `GameEvent`s (BIBLE §5.3) | UNI-T32 |
 | Data-driven content | Done: JSON data files in `StreamingAssets/Settings` holding the original's figures, validated on load and read by Core's `GameSettings` through `ISettingsSource`, one mapping (`space.json`) to the port's units (BIBLE §6) | UNI-T33 |
 | Input System | Done: one `InputActionAsset` built in code (`ChainControls`), keyboard, mouse and gamepad bindings, read per seat by `SeatInput` into that seat's commands; nothing polls `Keyboard.current` or `Mouse.current` | UNI-T34 |
-| URP | Package installed, `GraphicsSettings` points at a pipeline asset that is not in the repo (UNI-T18) | UNI-T18 |
+| URP | Done: a URP pipeline with the 2D renderer (`Assets/Unity.Chain/Rendering`, built by `Editor/RenderPipelineBuilder`) is assigned in GraphicsSettings and every quality level beside the committed global settings and volume profile; a headless import leaves them unchanged | UNI-T18 |
 | Unity.Shared profiles and settings | Package not referenced; no profile, volumes are per-component fields | UNI-T36 |
 | UI | `GameHud` is IMGUI (`OnGUI`), not UI Toolkit or the shared components | UNI-T37 |
 | Project settings | 1600x900 resizable, no icon, no cursor policy, `applicationIdentifier` empty | UNI-T38 |

@@ -30,6 +30,10 @@ namespace MindAttic.Chain.EditorTools
                 return;
             }
 
+            // The URP 2D pipeline first, so the sprites added below take its lit default material
+            // and the SceneLight's global light shows on them (UNI-T18).
+            RenderPipelineBuilder.Ensure();
+
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
             var levelBounds = CreateLevelBounds();

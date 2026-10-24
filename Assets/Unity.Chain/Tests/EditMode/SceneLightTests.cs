@@ -1,7 +1,9 @@
 using System.Collections.Generic;
 using MindAttic.Chain.Core;
 using NUnit.Framework;
+using UnityEditor;
 using UnityEngine;
+using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
 
 namespace MindAttic.Chain.Tests
@@ -97,6 +99,62 @@ namespace MindAttic.Chain.Tests
             _session.Submit(new Pause(new PlayerId(0), true));
             _light.Step(1f);
             Assert.AreEqual(clock, _light.State.Clock, "pause skipped renderLight");
+        }
+
+        [Test]
+        public void Project_RendersWithTheCommitted2DPipeline_OnEveryQualityLevel()
+        {
+            // UNI-T18: the pipeline the settings name exists, draws with the 2D renderer, and is the
+            // one in GraphicsSettings and on every quality level (no level falls back to built-in).
+            var pipeline = AssetDatabase.LoadAssetAtPath<UniversalRenderPipelineAsset>("Assets/Unity.Chain/Rendering/ChainURP.asset");
+            Assert.IsNotNull(pipeline, "the URP pipeline asset is committed");
+            var renderers = new SerializedObject(pipeline).FindProperty("m_RendererDataList");
+            Assert.IsInstanceOf<Renderer2DData>(renderers.GetArrayElementAtIndex(0).objectReferenceValue, "its renderer is the 2D renderer");
+            Assert.AreEqual(pipeline, GraphicsSettings.defaultRenderPipeline);
+            var current = QualitySettings.GetQualityLevel();
+            try
+            {
+                for (var level = 0; level < QualitySettings.count; level++)
+                {
+                    Assert.AreEqual(pipeline, QualitySettings.GetRenderPipelineAssetAt(level), QualitySettings.names[level]);
+                    // URP writes its MSAA into the active level when it renders; a level that
+                    // disagrees would be rewritten (and churn in git) on every play.
+                    QualitySettings.SetQualityLevel(level, false);
+                    Assert.AreEqual(pipeline.msaaSampleCount > 1 ? pipeline.msaaSampleCount : 0, QualitySettings.antiAliasing, QualitySettings.names[level]);
+                }
+            }
+            finally
+            {
+                QualitySettings.SetQualityLevel(current, false);
+            }
+
+            Assert.IsNotNull(GraphicsSettings.GetSettingsForRenderPipeline<UniversalRenderPipeline>(), "URP global settings are mapped");
+        }
+
+        [Test]
+        public void GameOverFade_UnderThe2DPipeline_IsShownByTheLightNotTheHud()
+        {
+            var hud = Track(new GameObject("Hud")).AddComponent<GameHud>();
+            hud.Session = _session;
+            hud.SceneLight = _light;
+            for (var i = 0; i < _session.State.MaxHp; i++)
+            {
+                _session.State.TryHurt(i);
+            }
+
+            for (var i = 0; i < 10; i++)
+            {
+                _session.Step(1f / 50f);
+            }
+
+            _light.Step(1f / 60f);
+            Assert.IsTrue(_light.LightsTheScene, "the URP 2D light lights the scene");
+            Assert.Less(_light2D.color.r, 1f, "the light shows the fade");
+            Assert.AreEqual(0f, hud.GameOverDim, "so the HUD does not dim it a second time");
+
+            _light.ToggleLighting();
+            Assert.IsTrue(_light.LightsTheScene, "lighting off is unlit, and the light still shows the fade");
+            Assert.AreEqual(0f, hud.GameOverDim);
         }
 
         [Test]

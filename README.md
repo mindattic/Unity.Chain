@@ -32,8 +32,8 @@ In development, rebuilding the original to full parity. On main and tested:
 - HP, score, pause, and the original's game-over fade and automatic reset (`GameState`, `GameSession`), with an
   interim IMGUI HUD (`GameHud`)
 - the original's lighting: the ambient fade times the r/g/b tint the Day, Dusk, Night, Morning cycle walks (now on a
-  24-minute day; the original's never moved), on a URP 2D global light, L toggling it (`LightingState`, `SceneLight`;
-  it shows once UNI-T18 commits the 2D pipeline, until then the HUD shows the game-over fade)
+  24-minute day; the original's never moved), on a URP 2D global light, L toggling it (`LightingState`, `SceneLight`)
+  under the URP 2D pipeline (`Rendering/ChainURP`, `Editor/RenderPipelineBuilder`)
 - level bounds and a camera that fits or follows (`Level/`), sound and music players (`Audio/`, no clips yet)
 - every input from one Input System action asset built in code, with keyboard, mouse and gamepad bindings; a
   gamepad's left stick steers like the mouse and J switches it off and on (`Input/ChainControls`, `Input/SeatInput`,
@@ -44,7 +44,7 @@ Every tuning figure is data: the original's own figures in `Assets/StreamingAsse
 on load and mapped to world units in one place (`Core/Settings`, see [BIBLE §6](docs/BIBLE.md)).
 
 Still to come, in build order:
-URP assets, Unity.Shared settings, a UI Toolkit HUD, the original's art and sound,
+Unity.Shared settings, a UI Toolkit HUD, the original's art and sound,
 and the remaining keys and screens. The full list, one ticket per step, is
 [docs/RECONSTRUCTION.md §6](docs/RECONSTRUCTION.md); open tickets are in the MindAttic ticket database
 (`tickets ticket list --repo Unity.Chain`).
