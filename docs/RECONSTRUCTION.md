@@ -74,7 +74,7 @@ but unreachable or does nothing; not ported, recorded here), **n/a** (DirectX pl
 | Drift hacks | `link(Mace).X/Y += maceOffset` every frame (cumulative); `link(1).Y -= 0.0004` per frame | not ported (render-only offset) | deliberate deviation (UNI-T45) |
 | Wall bounce | commented out | `LevelBounds` bounce 0.5 | deliberate deviation (UNI-T45) |
 | `followMouse` (F key) | starts `True`, never reset; when false `animateChain` leaves every spring force zero (gravity and drag still act, so the chain falls away from the hand) and `renderChain` skips the mace's 3.5x scale, offset and `rectMace`, which is left where it last was | `ChainSimulation.IsFollowing`, `ChainFollow` (Core: `ToggleFollowCommand` with a player id -> `FollowChangedEvent`, the 3.5x and 1x mace scales), F action on `ChainController`; off, the mace draws at link size and neither hits nor catches (BIBLE D17) | ported, UNI-T47 |
-| Live tuning | Ins/Del resistance +/-0.001, Home/End gravity -/+0.00001, PgUp/PgDn spring +/-0.001, `changeBounce` unused | none | missing, UNI-T51 |
+| Live tuning | Ins/Del resistance +/-0.001, Home/End gravity -/+0.00001, PgUp/PgDn spring +/-0.001 (`changeResistance`, `changeGravity` on `gravity.Y`, `changeSpring` just add, no limits; works paused), `changeBounce` unused | Core `TuneChain` command (player id, `ChainKnob`, steps) -> `ChainTuned` event, `ChainTuning` (chain.json's `tuning`: the steps and the port's limits, BIBLE V19), the Player map's six actions through `SeatInput` and `ChainController.Tune`; the HUD's Res/Grav/Spring readout follows; `GameWorld.Reset` restores the data files' figures | ported, UNI-T51 |
 | Link skins | U key sets links 1-5 to aqua, emerald, teardrop, tablet, pearl | none | missing, UNI-T41 |
 | `theMaceMode.Magnet` + `magnet.PNG` | declared, texture loaded, **never selected** | none | dead in original; README promised it, UNI-T43 |
 | `bRicochet`, `grappleMax` | `bRicochet` unused; `grappleMax` 1 | `grappleMax` honoured | ported |
@@ -133,7 +133,7 @@ Every binding of the original, with its state:
 | Right, wheel button | right: nothing; wheel: set an unused blank cursor | dead |
 | `[` `]` | mace index -1/+1 (1..12) | ported (ChainShorter / ChainLonger actions; gamepad shoulders) |
 | Minus / Equals | `gameSpeed` -/+0.01 (min 0); only displayed, never applied | missing, UNI-T52 (no longer bound to chain length, UNI-T34) |
-| Ins/Del, Home/End, PgUp/PgDn | tune resistance, gravity, spring | missing, UNI-T51 |
+| Ins/Del, Home/End, PgUp/PgDn | tune resistance, gravity, spring | ported (UNI-T51; ResistanceUp/Down, GravityDown/Up, SpringUp/Down actions -> `TuneChain`, held to chain.json's limits, BIBLE V19) |
 | F | `followMouse` toggle | ported (UNI-T47; ToggleFollow action, gamepad Y, UNI-T34) |
 | U | gem link skins | missing, UNI-T41 |
 | R | `Reset` | ported (Reset action sends `ResetGame`, gamepad Back, UNI-T34), restoring everything `Reset` does through the one `GameWorld.Reset` (UNI-T48) |

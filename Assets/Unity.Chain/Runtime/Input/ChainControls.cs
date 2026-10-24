@@ -12,8 +12,9 @@ namespace MindAttic.Chain
     /// <item><b>Player</b>, one seat's controls, read by that seat's <see cref="SeatInput"/> and sent to the
     /// authority as commands carrying its player id: Steer (mouse delta), SteerStick (gamepad left stick, steering
     /// like the mouse, BIBLE D14), Grapple (left mouse button), ChainShorter and ChainLonger (Input.vb's
-    /// <c>[</c> and <c>]</c>), ToggleFollow (Form1.vb's F), Pause, Reset (Form1.vb's R) and ToggleJoystick
-    /// (Form1.vb's J).</item>
+    /// <c>[</c> and <c>]</c>), ToggleFollow (Form1.vb's F), Pause, Reset (Form1.vb's R), ToggleJoystick
+    /// (Form1.vb's J) and the live-tuning keys ResistanceUp/ResistanceDown (Insert/Delete), GravityDown/GravityUp
+    /// (Home/End) and SpringUp/SpringDown (PageUp/PageDown).</item>
     /// <item><b>Debug</b>, the scene's toggles that belong to no player: ToggleLighting (Form1.vb's L, read by
     /// <see cref="SceneLight"/>), ShakeScreen (Form1.vb's 0, read by <see cref="CameraRig"/>) and ToggleFps
     /// (Form1.vb's F4, read by <see cref="GameHud"/>). Later debug keys join this map.</item>
@@ -48,6 +49,18 @@ namespace MindAttic.Chain
         public InputAction Pause => Player["Pause"];
         public InputAction Reset => Player["Reset"];
         public InputAction ToggleJoystick => Player["ToggleJoystick"];
+        /// <summary>Insert: <c>changeResistance(0.001)</c>.</summary>
+        public InputAction ResistanceUp => Player["ResistanceUp"];
+        /// <summary>Delete: <c>changeResistance(-0.001)</c>.</summary>
+        public InputAction ResistanceDown => Player["ResistanceDown"];
+        /// <summary>Home: <c>changeGravity(-0.00001)</c>, gravity's y one step lower (a stronger pull down).</summary>
+        public InputAction GravityDown => Player["GravityDown"];
+        /// <summary>End: <c>changeGravity(0.00001)</c>.</summary>
+        public InputAction GravityUp => Player["GravityUp"];
+        /// <summary>PageUp: <c>changeSpring(0.001)</c>.</summary>
+        public InputAction SpringUp => Player["SpringUp"];
+        /// <summary>PageDown: <c>changeSpring(-0.001)</c>.</summary>
+        public InputAction SpringDown => Player["SpringDown"];
         public InputAction ToggleLighting => Debug["ToggleLighting"];
         public InputAction ShakeScreen => Debug["ShakeScreen"];
         public InputAction ToggleFps => Debug["ToggleFps"];
@@ -70,6 +83,13 @@ namespace MindAttic.Chain
             Button(player, "Pause", "<Keyboard>/pause", "<Keyboard>/p", "<Keyboard>/escape", "<Gamepad>/start");
             Button(player, "Reset", "<Keyboard>/r", "<Gamepad>/select");
             Button(player, "ToggleJoystick", "<Keyboard>/j");
+            // Form1.vb's live-tuning keys (UNI-T51): resistance, gravity and the spring of this seat's chain.
+            Button(player, "ResistanceUp", "<Keyboard>/insert");
+            Button(player, "ResistanceDown", "<Keyboard>/delete");
+            Button(player, "GravityDown", "<Keyboard>/home");
+            Button(player, "GravityUp", "<Keyboard>/end");
+            Button(player, "SpringUp", "<Keyboard>/pageUp");
+            Button(player, "SpringDown", "<Keyboard>/pageDown");
 
             var debug = asset.AddActionMap(DebugMapName);
             Button(debug, "ToggleLighting", "<Keyboard>/l");

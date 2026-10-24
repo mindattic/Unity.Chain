@@ -448,7 +448,9 @@ namespace MindAttic.Chain.Core
 
         /// <summary>
         /// Applies a player's command. Returns false when it changed nothing: the sender is not seated,
-        /// the game is paused (only pause and reset work then), or the command had no effect.
+        /// the game is paused (steering and the chain length wait then; pause, reset, follow and the
+        /// live-tuning keys still work, as in Form1.vb's key handler), or the command had no effect
+        /// (a tuning knob already at its limit).
         /// </summary>
         public bool Submit(GameCommand command)
         {
@@ -507,6 +509,15 @@ namespace MindAttic.Chain.Core
                 case ToggleFollow _:
                     var changed = ChainFollow.Apply(player.Chain, new ToggleFollowCommand(player.Id.Value));
                     Emit(new FollowChanged(player.Id, changed.IsFollowing));
+                    return true;
+
+                case TuneChain tune:
+                    if (!player.Tune(tune.Knob, tune.Steps))
+                    {
+                        return false;
+                    }
+
+                    Emit(new ChainTuned(player.Id, tune.Knob, ChainTuning.Read(player.Chain.Config, tune.Knob)));
                     return true;
 
                 case ChangeChainLength change:

@@ -8,7 +8,8 @@ namespace MindAttic.Chain
     /// what was pressed into the seat's commands, every one carrying the angel's player id: the mouse delta plus
     /// the gamepad stick (<see cref="SteerInput"/>, input.json) as <see cref="SteerAngel"/>, Pause as
     /// <see cref="TogglePause"/>, the grapple button as <see cref="ArmGrapple"/> / <see cref="ReleaseGrapple"/>,
-    /// <c>[</c> and <c>]</c> as <see cref="ChangeChainLength"/>, F as <see cref="ToggleFollow"/> and R as
+    /// <c>[</c> and <c>]</c> as <see cref="ChangeChainLength"/>, F as <see cref="ToggleFollow"/>, Insert/Delete,
+    /// Home/End and PageUp/PageDown as <see cref="TuneChain"/> (resistance, gravity, spring) and R as
     /// <see cref="ResetGame"/>. J turns the stick off and on (Form1.vb's joystick toggle), which is this seat's
     /// own input and no command. It never changes the world itself: it calls the seat's components, which submit.
     /// Sits beside the <see cref="AngelController"/>, which requires it.
@@ -28,6 +29,15 @@ namespace MindAttic.Chain
             public bool Pause;
             public bool Reset;
             public bool ToggleJoystick;
+            /// <summary>Insert and Delete.</summary>
+            public bool ResistanceUp;
+            public bool ResistanceDown;
+            /// <summary>Home (gravity's y down a step) and End (up a step).</summary>
+            public bool GravityDown;
+            public bool GravityUp;
+            /// <summary>PageUp and PageDown.</summary>
+            public bool SpringUp;
+            public bool SpringDown;
         }
 
         private AngelController _angel;
@@ -75,6 +85,12 @@ namespace MindAttic.Chain
                 Pause = c.Pause.WasPressedThisFrame(),
                 Reset = c.Reset.WasPressedThisFrame(),
                 ToggleJoystick = c.ToggleJoystick.WasPressedThisFrame(),
+                ResistanceUp = c.ResistanceUp.WasPressedThisFrame(),
+                ResistanceDown = c.ResistanceDown.WasPressedThisFrame(),
+                GravityDown = c.GravityDown.WasPressedThisFrame(),
+                GravityUp = c.GravityUp.WasPressedThisFrame(),
+                SpringUp = c.SpringUp.WasPressedThisFrame(),
+                SpringDown = c.SpringDown.WasPressedThisFrame(),
             };
         }
 
@@ -125,11 +141,29 @@ namespace MindAttic.Chain
                 {
                     chain.ToggleFollow();
                 }
+
+                // Form1.vb's live-tuning keys, one step a press.
+                Tune(chain, ChainKnob.Resistance, frame.ResistanceUp, frame.ResistanceDown);
+                Tune(chain, ChainKnob.Gravity, frame.GravityUp, frame.GravityDown);
+                Tune(chain, ChainKnob.Spring, frame.SpringUp, frame.SpringDown);
             }
 
             if (frame.Reset)
             {
                 angel.Session.Submit(new ResetGame(angel.Seat));
+            }
+        }
+
+        private static void Tune(ChainController chain, ChainKnob knob, bool up, bool down)
+        {
+            if (up)
+            {
+                chain.Tune(knob, 1);
+            }
+
+            if (down)
+            {
+                chain.Tune(knob, -1);
             }
         }
 

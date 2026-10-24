@@ -174,6 +174,26 @@ namespace MindAttic.Chain.Core
         public override string ToString() => $"FollowChanged {Player} {IsFollowing}";
     }
 
+    /// <summary>
+    /// A live-tuning key moved the player's chain's <see cref="Knob"/> to <see cref="Value"/> (world units and
+    /// seconds; the HUD's Res/Grav/Spring readout maps it back, <see cref="ChainReadout"/>).
+    /// </summary>
+    public sealed class ChainTuned : GameEvent
+    {
+        public ChainTuned(PlayerId player, ChainKnob knob, float value)
+        {
+            Player = player;
+            Knob = knob;
+            Value = value;
+        }
+
+        public PlayerId Player { get; }
+        public ChainKnob Knob { get; }
+        public float Value { get; }
+
+        public override string ToString() => $"ChainTuned {Player} {Knob} {Value:G6}";
+    }
+
     /// <summary>An enemy touched the player's angel and cost HP (Engine.vb checkAngelHit).</summary>
     public sealed class AngelHurt : GameEvent
     {

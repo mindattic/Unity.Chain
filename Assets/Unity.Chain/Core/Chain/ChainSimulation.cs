@@ -49,6 +49,17 @@ namespace MindAttic.Chain.Core
                 OverheadMargin = overheadMargin;
             }
 
+            /// <summary>These settings with <see cref="Resistance"/>, <see cref="Gravity"/> and <see cref="SpringConstant"/> replaced (Chain.vb's live-tuned three).</summary>
+            public Settings WithLiveTuning(float resistance, Vec2 gravity, float springConstant) => new Settings(
+                SegmentLength,
+                springConstant,
+                resistance,
+                gravity,
+                StopVelocity,
+                StopAcceleration,
+                OverheadBoost,
+                OverheadMargin);
+
             public static Settings Default => new Settings(
                 segmentLength: 0.2f,
                 springConstant: 60f,

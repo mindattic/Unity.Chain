@@ -137,7 +137,7 @@ their `AngelFlight`, `ChainSimulation`, mace link and `Grapple`) and every enemy
 
 - **Commands in.** A player's input becomes a `GameCommand` carrying that player's `PlayerId`: `SteerAngel` (mouse
   delta, applied on arrival so steering is as smooth as the display), `ArmGrapple`, `ReleaseGrapple`,
-  `ChangeChainLength`, `ToggleFollow` (the F key), `Pause`, `TogglePause`, `ResetGame`. `GameSession.Submit` hands it to `GameWorld.Submit`.
+  `ChangeChainLength`, `ToggleFollow` (the F key), `TuneChain` (the live-tuning keys), `Pause`, `TogglePause`, `ResetGame`. `GameSession.Submit` hands it to `GameWorld.Submit`.
   Commands are plain immutable data, so a networked player's NetEntity can carry them to the authority unchanged.
 - **One step.** `GameSession.FixedUpdate` is the only caller of `GameWorld.Step`: chains swing from their angels'
   hands, enemies seek the nearest angel, flock and (thrown) knock each other, grapples arm, catch, carry and throw,
@@ -147,7 +147,7 @@ their `AngelFlight`, `ChainSimulation`, mace link and `Grapple`) and every enemy
   `HeartFloat` each): it moves them, checks them against the angels (`CheckHearts`, `CollectHeart`) and resets
   them; `HeartPickup` only draws one.
 - **Events out.** Everything that happens is a `GameEvent`, in order: `EnemySpawned`, `EnemyRemoved`, `EnemyHit`,
-  `EnemyKnocked`, `EnemyKilled`, `GrappleChanged`, `Grabbed`, `Thrown`, `ChainLengthChanged`, `FollowChanged`, `AngelHurt`,
+  `EnemyKnocked`, `EnemyKilled`, `GrappleChanged`, `Grabbed`, `Thrown`, `ChainLengthChanged`, `FollowChanged`, `ChainTuned`, `AngelHurt`,
   `AngelHealed`, `PauseChanged`, `GameOver`, `WorldReset`. `GameSession.EventRaised` passes them on after each
   command and step; `EnemySpawner` makes and kills enemy views from them, `ChainAudio` plays its player's hits,
   catches and throws, and the session freezes time on `PauseChanged`.
@@ -193,7 +193,7 @@ Nothing tunes the game from the Inspector any more.
 | File | Holds | Original source |
 |---|---|---|
 | `space.json` | the original-to-port mapping (length scale, frame rate) | (the port; D9) |
-| `chain.json` | `maxLinks`, `segLength`, `springK`, `resistance`, `gravity`, `stopVel`/`stopAcc`, overhead boost and `linkSize`, link mass, `Mace` and its 1-12 range, `followMouse` and the 3.5x mace scale (UNI-T47); port: wall bounce, hit, catch and throw, damage per speed | `Chain.vb`, `Form1.vb` |
+| `chain.json` | `maxLinks`, `segLength`, `springK`, `resistance`, `gravity`, `stopVel`/`stopAcc`, overhead boost and `linkSize`, link mass, `Mace` and its 1-12 range, `followMouse` and the 3.5x mace scale (UNI-T47); `tuning`: the live-tuning keys' steps (Form1.vb's 0.001, 0.00001, 0.001) and the port's limits, in the file's own units (UNI-T51, V19); port: wall bounce, hit, catch and throw, damage per speed | `Chain.vb`, `Form1.vb` |
 | `angel.json` | `Ratio3D`, `hoverMax`/`hoverRate`, `flapRate` and frames, `maxHP`, `hurtDelay`, `angelSize` and its hit rectangle; port: hand offset, bounds margin, contact radius | `Angel.vb` |
 | `enemies.json` | `maxEnemy`, `seekSpd`, `resistSPD`, `flockSpd`, mass range, load and reset HP, Cautious's 6 x seekSpd; port: radius, the Seek cap (4) and the hang-back band `hangBackNear`/`hangBackFar` (screen units, mapped; D18) | `Enemy.vb`, `Root.vb` |
 | `item.json` | the heart's size, fall, sway (`floatSPD`, `floatAcc`, `floatMaxSPD`), start, wrap, heal and hit rectangle | `Item.vb` |
@@ -204,8 +204,7 @@ Nothing tunes the game from the Inspector any more.
 | `hud.json` | the original window (512x448), the status box (0, 0, 96x48), each HUD line's anchor, pixel position, `Write` colour [alpha, red, green, blue], font size (points) and weight, `fpsSampleMs` (100), `drawFps` (on); port: the pause dim, the game-over banner, the text shadow (UNI-T50) | `Gui.vb`, `Engine.vb`, `Root.vb` |
 | `input.json` | `bJoystick`, the joystick's `joyRange` (1000) and `joyOutsideDeadZone` (250); port: `stickSpeed`, the mouse counts a second a full stick steers by (D14) | `Input.vb` |
 
-Still in code, for later tickets: the game-over fade step and floor (`GameState`), the live-tuning key steps
-(UNI-T51), game speed (UNI-T52), asset lists (UNI-T19, UNI-T20) and the arena size
+Still in code, for later tickets: the game-over fade step and floor (`GameState`), game speed (UNI-T52), asset lists (UNI-T19, UNI-T20) and the arena size
 (`LevelBounds`, UNI-T66).
 
 **Player options live in the player's profile** (UNI-T36): the shared MindAttic profile's settings.json (the
@@ -281,6 +280,7 @@ Working behaviour of the original the rebuild does differently, and why. Status:
 | V16 | The ambient and tint light D3D materials | a URP 2D global light carries ambient x tint (`SceneLight`) onto the sprites' Sprite-Lit-Default material under the committed 2D pipeline (`Rendering/ChainURP`, `Chain2DRenderer`); the HUD draws the game-over fade as an overlay only when no URP pipeline is active, so it is never applied twice | there is no D3D material lighting in URP | kept (UNI-T18) |
 | V17 | SFX at `sfxVolume` -1000 (-10 dB), music at 0 dB, music from a random point (`rndMusicPos`) | the same, from `audio.json` (the port had played SFX at 0.8 and music at 0.6 from the top) | matches | matches (UNI-T33) |
 | V18 | `Windows.Forms.Cursor.Hide()` plus the mouse device's exclusive, foreground DirectInput cooperative level | `CursorPolicy` hides the cursor and sets `CursorLockMode.Confined` from the first frame of a player build; `AngelController`'s own `CursorLockMode.Locked` (while it is enabled) layers a tighter, centred lock on top for steering | Unity has no "exclusive raw device" mode as such; Confined is the baseline the rest of the app (menus, the loading screen, UNI-T58) runs under, Locked is what steering already used | kept (UNI-T38) |
+| V19 | Insert/Delete, Home/End and PageUp/PageDown add to `resistance`, `gravity.Y` and `springK` with no limit (`Chain.vb` `changeResistance`, `changeGravity`, `changeSpring`), so drag or a spring pushed below zero, or a stiff enough spring, blows the chain apart | the same steps, each press one `TuneChain` command, but each figure stops at `chain.json`'s `tuning` limits: resistance 0..1, gravity's y -0.01..0.0025, spring 0.001..0.25 (`ChainTuning`); a figure already past a limit (a profile override) is never pulled to it. Works paused, as Form1.vb's key handler does; a reset (or the game-over reset) puts the data files' figures back, a retune keeps the live ones | a key that wrecks the simulation is no tuning; the limits are data | kept (UNI-T51) |
 
 ### Keeping these tables current
 

@@ -19,6 +19,8 @@ namespace MindAttic.Chain.Core
         public float WallBounce;
         /// <summary>Whether the chain starts following the hand (Chain.vb: <c>followMouse As Boolean = True</c>).</summary>
         public bool Following;
+        /// <summary>Form1.vb's live-tuning keys: each knob's step and limits (chain.json's <c>tuning</c>).</summary>
+        public ChainTuning Tuning;
 
         /// <summary>The mace's link (Chain.vb's Mace: 6, adjustable 1-12).</summary>
         public int MaceIndex;
@@ -48,6 +50,7 @@ namespace MindAttic.Chain.Core
             KeepChainInArena = true,
             WallBounce = 0.5f,
             Following = ChainFollow.StartsFollowing,
+            Tuning = ChainTuning.Default,
             MaceIndex = 6,
             MinMaceIndex = 1,
             MaxMaceIndex = 12,
@@ -69,6 +72,7 @@ namespace MindAttic.Chain.Core
     {
         private PlayerSetup _setup;
         private int _maceIndex;
+        private bool _tuned;
 
         internal bool ButtonHeld;
         internal bool PressedSinceStep;
@@ -115,6 +119,7 @@ namespace MindAttic.Chain.Core
         internal void Configure(PlayerSetup setup)
         {
             var rebuild = setup.LinkCount != _setup.LinkCount;
+            var live = Chain.Config;
             _setup = Sanitize(setup);
             Flight.Config = _setup.Flight;
             Grapple.ThrowMultiplier = _setup.ThrowMultiplier;
@@ -125,9 +130,30 @@ namespace MindAttic.Chain.Core
                 PreviousMaceIndex = -1;
             }
 
-            Chain.Config = _setup.Chain;
+            // The live-tuning keys' figures are play state, not setup: a retune keeps them until a reset.
+            Chain.Config = _tuned
+                ? _setup.Chain.WithLiveTuning(live.Resistance, live.Gravity, live.SpringConstant)
+                : _setup.Chain;
             Chain.WallBounce = _setup.WallBounce;
             ApplyMace();
+        }
+
+        /// <summary>
+        /// Form1.vb's live-tuning keys: moves the chain's <paramref name="knob"/> by <paramref name="steps"/> of its
+        /// step, held to its limits (<see cref="PlayerSetup.Tuning"/>). Returns true if the figure moved.
+        /// </summary>
+        internal bool Tune(ChainKnob knob, int steps)
+        {
+            var before = ChainTuning.Read(Chain.Config, knob);
+            var tuned = _setup.Tuning.Apply(Chain.Config, knob, steps);
+            if (ChainTuning.Read(tuned, knob) == before)
+            {
+                return false;
+            }
+
+            Chain.Config = tuned;
+            _tuned = true;
+            return true;
         }
 
         /// <summary>Sets the mace link, clamped to the chain. Returns true if it moved.</summary>
@@ -153,6 +179,7 @@ namespace MindAttic.Chain.Core
                 IsFollowing = following,
             };
             Grapple = new Grapple(_setup.ThrowMultiplier);
+            _tuned = false;
             ButtonHeld = false;
             PressedSinceStep = false;
             PreviousMaceIndex = -1;

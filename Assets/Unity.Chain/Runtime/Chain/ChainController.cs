@@ -123,6 +123,14 @@ namespace MindAttic.Chain
             return IsFollowing;
         }
 
+        /// <summary>
+        /// Form1.vb's live-tuning keys: sends this chain's player a <see cref="TuneChain"/> command moving
+        /// <paramref name="knob"/> by <paramref name="steps"/> of its step; the world holds it to chain.json's
+        /// limits and raises <see cref="ChainTuned"/>. Returns false if nothing moved.
+        /// </summary>
+        public bool Tune(ChainKnob knob, int steps) =>
+            Session != null && Session.Submit(new TuneChain(Player, knob, steps));
+
         /// <summary>chain.json's spring figures (in world units and seconds) with this chain's overrides.</summary>
         public ChainSimulation.Settings CurrentSettings
         {

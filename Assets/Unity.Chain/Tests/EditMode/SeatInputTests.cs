@@ -44,9 +44,15 @@ namespace MindAttic.Chain.Tests
                 Assert.IsNotNull(controls.Asset.FindActionMap(ChainControls.PlayerMapName));
                 Assert.IsNotNull(controls.Asset.FindActionMap(ChainControls.DebugMapName));
                 CollectionAssert.AreEquivalent(
-                    new[] { "Steer", "SteerStick", "Grapple", "ChainShorter", "ChainLonger", "ToggleFollow", "Pause", "Reset", "ToggleJoystick" },
+                    new[]
+                    {
+                        "Steer", "SteerStick", "Grapple", "ChainShorter", "ChainLonger", "ToggleFollow", "Pause", "Reset", "ToggleJoystick",
+                        "ResistanceUp", "ResistanceDown", "GravityDown", "GravityUp", "SpringUp", "SpringDown",
+                    },
                     controls.Player.actions.Select(a => a.name).ToArray());
-                CollectionAssert.AreEquivalent(new[] { "ToggleLighting" }, controls.Debug.actions.Select(a => a.name).ToArray());
+                CollectionAssert.AreEquivalent(
+                    new[] { "ToggleLighting", "ShakeScreen", "ToggleFps" },
+                    controls.Debug.actions.Select(a => a.name).ToArray());
             }
         }
 
@@ -64,6 +70,12 @@ namespace MindAttic.Chain.Tests
                 CollectionAssert.Contains(Paths(c.Reset), "<Keyboard>/r");
                 CollectionAssert.Contains(Paths(c.ToggleJoystick), "<Keyboard>/j");
                 CollectionAssert.Contains(Paths(c.ToggleLighting), "<Keyboard>/l");
+                CollectionAssert.Contains(Paths(c.ResistanceUp), "<Keyboard>/insert", "Form1.vb changeResistance(0.001)");
+                CollectionAssert.Contains(Paths(c.ResistanceDown), "<Keyboard>/delete", "Form1.vb changeResistance(-0.001)");
+                CollectionAssert.Contains(Paths(c.GravityDown), "<Keyboard>/home", "Form1.vb changeGravity(-0.00001)");
+                CollectionAssert.Contains(Paths(c.GravityUp), "<Keyboard>/end", "Form1.vb changeGravity(0.00001)");
+                CollectionAssert.Contains(Paths(c.SpringUp), "<Keyboard>/pageUp", "Form1.vb changeSpring(0.001)");
+                CollectionAssert.Contains(Paths(c.SpringDown), "<Keyboard>/pageDown", "Form1.vb changeSpring(-0.001)");
             }
         }
 
@@ -156,6 +168,21 @@ namespace MindAttic.Chain.Tests
 
             Assert.IsFalse(_rig.Player.IsFollowing);
             Assert.That(_events.OfType<FollowChanged>().Single().Player, Is.EqualTo(_rig.Id));
+        }
+
+        [Test]
+        public void TuningKeys_MoveTheReadoutsFigures()
+        {
+            var mapping = _rig.Session.Settings.Mapping;
+            ChainReadout Readout() => ChainReadout.From(_rig.Player.Chain.Config, mapping);
+
+            _input.Dispatch(new SeatInput.Frame { ResistanceUp = true, GravityDown = true, SpringUp = true }, 0f);
+            Assert.AreEqual("Res 0.251\nGrav -0.00251\nSpring 0.101", HudText.Readout(Readout()));
+            Assert.That(_events.OfType<ChainTuned>().Count(), Is.EqualTo(3));
+
+            _input.Dispatch(new SeatInput.Frame { ResistanceDown = true, GravityUp = true, SpringDown = true }, 0f);
+            _input.Dispatch(new SeatInput.Frame { ResistanceDown = true, GravityUp = true, SpringDown = true }, 0f);
+            Assert.AreEqual("Res 0.249\nGrav -0.00249\nSpring 0.099", HudText.Readout(Readout()));
         }
 
         [Test]

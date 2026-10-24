@@ -213,6 +213,7 @@ namespace MindAttic.Chain.Core
                 KeepChainInArena = chain.Port.KeepInArena,
                 WallBounce = chain.Port.WallBounce,
                 Following = chain.FollowMouse,
+                Tuning = chain.Tuning.ToPort(m),
                 MaceIndex = chain.Mace,
                 MinMaceIndex = chain.MaceMin,
                 MaxMaceIndex = chain.MaceMax,
@@ -341,6 +342,10 @@ namespace MindAttic.Chain.Core
         public int MaceMax { get; private set; }
         public bool FollowMouse { get; private set; }
         public float MaceScale { get; private set; }
+
+        /// <summary>Form1.vb's live-tuning keys: steps and limits, in the file's own units (UNI-T51).</summary>
+        public ChainTuningData Tuning { get; private set; }
+
         public ChainPort Port { get; private set; }
 
         internal static ChainData Read(SettingsReader r)
@@ -368,6 +373,14 @@ namespace MindAttic.Chain.Core
             r.Check(data.MaceMax <= data.MaxLinks, "maceMax", $"must not be above maxLinks ({data.MaxLinks})");
             r.Check(data.Mace >= data.MaceMin && data.Mace <= data.MaceMax, "Mace", $"must be between maceMin and maceMax ({data.MaceMin}-{data.MaceMax})");
 
+            var tuning = r.Section("tuning");
+            data.Tuning = ChainTuningData.Read(tuning);
+            var t = data.Tuning;
+            tuning.Check(t.ResistanceMin < t.ResistanceMax, "resistanceMax", $"must be above resistanceMin ({t.ResistanceMin})");
+            tuning.Check(t.GravityMin < t.GravityMax, "gravityMax", $"must be above gravityMin ({t.GravityMin})");
+            tuning.Check(t.SpringMin < t.SpringMax, "springMax", $"must be above springMin ({t.SpringMin})");
+            tuning.Done();
+
             var port = r.Section("port");
             data.Port = new ChainPort(
                 keepInArena: port.Flag("keepInArena"),
@@ -379,6 +392,45 @@ namespace MindAttic.Chain.Core
             port.Done();
             return data;
         }
+    }
+
+    /// <summary>
+    /// chain.json's <c>tuning</c>: Form1.vb's live-tuning keys. The steps are the original's (Insert/Delete
+    /// <c>changeResistance(+/-0.001)</c>, Home/End <c>changeGravity(-/+0.00001)</c>, PageUp/PageDown
+    /// <c>changeSpring(+/-0.001)</c>); the limits are the port's (the original had none, BIBLE V19). All in the
+    /// file's own units, as the HUD's Res/Grav/Spring readout shows them, and mapped like the figures they move.
+    /// </summary>
+    public sealed class ChainTuningData
+    {
+        public float ResistanceStep { get; private set; }
+        public float ResistanceMin { get; private set; }
+        public float ResistanceMax { get; private set; }
+        public float GravityStep { get; private set; }
+        public float GravityMin { get; private set; }
+        public float GravityMax { get; private set; }
+        public float SpringStep { get; private set; }
+        public float SpringMin { get; private set; }
+        public float SpringMax { get; private set; }
+
+        internal static ChainTuningData Read(SettingsReader r) => new ChainTuningData
+        {
+            ResistanceStep = r.Positive("resistanceStep"),
+            ResistanceMin = r.Number("resistanceMin", 0f),
+            ResistanceMax = r.Number("resistanceMax", 0f),
+            GravityStep = r.Positive("gravityStep"),
+            GravityMin = r.Number("gravityMin"),
+            GravityMax = r.Number("gravityMax"),
+            SpringStep = r.Positive("springStep"),
+            SpringMin = r.Positive("springMin"),
+            SpringMax = r.Positive("springMax"),
+        };
+
+        /// <summary>These figures in the port's units (<paramref name="space"/>).</summary>
+        public ChainTuning ToPort(OriginalSpace space) => ChainTuning.From(
+            space,
+            ResistanceStep, ResistanceMin, ResistanceMax,
+            GravityStep, GravityMin, GravityMax,
+            SpringStep, SpringMin, SpringMax);
     }
 
     /// <summary>chain.json's port-only figures, world units and seconds.</summary>

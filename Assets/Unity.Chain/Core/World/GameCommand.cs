@@ -83,6 +83,26 @@ namespace MindAttic.Chain.Core
         public override string ToString() => $"ToggleFollow {Player}";
     }
 
+    /// <summary>
+    /// Form1.vb's live-tuning keys for the player's chain: move <see cref="Knob"/> by <see cref="Steps"/> of its
+    /// step (chain.json's <c>tuning</c>), held to its limits (<see cref="ChainTuning"/>). Insert/Delete are
+    /// resistance +1/-1, Home/End gravity -1/+1, PageUp/PageDown spring +1/-1. Works paused too, as Form1.vb's
+    /// key handler does; a reset puts the data files' figures back.
+    /// </summary>
+    public sealed class TuneChain : GameCommand
+    {
+        public TuneChain(PlayerId player, ChainKnob knob, int steps) : base(player)
+        {
+            Knob = knob;
+            Steps = steps;
+        }
+
+        public ChainKnob Knob { get; }
+        public int Steps { get; }
+
+        public override string ToString() => $"TuneChain {Player} {Knob} {Steps:+0;-0;0}";
+    }
+
     /// <summary>Pause or resume the game (Form1.vb's Pause key). A finished game cannot be paused.</summary>
     public sealed class Pause : GameCommand
     {

@@ -1,5 +1,5 @@
 {
-  "_source": "Chain.vb (and Form1.vb for the [ ] mace range). Screen units, per frame. The F key's followMouse is UNI-T47.",
+  "_source": "Chain.vb (and Form1.vb for the [ ] mace range and the live-tuning keys). Screen units, per frame. The F key's followMouse is UNI-T47.",
   "maxLinks": 25,
   "segLength": 0.002,
   "springK": 0.1,
@@ -15,6 +15,19 @@
   "maceMax": 12,
   "followMouse": true,
   "maceScale": 3.5,
+  "tuning": {
+    "_source": "Form1.vb's live-tuning keys (UNI-T51): Insert/Delete changeResistance(+/-0.001), Home/End changeGravity(-/+0.00001) on gravity's y, PageUp/PageDown changeSpring(+/-0.001). Same units as the figures above (the HUD's Res/Grav/Spring readout).",
+    "_limits": "Not in the original, which just added (BIBLE V19): resistance 0..1 (no negative drag, never more than a frame's speed), gravity's y -0.01 (4x the pull) .. 0.0025 (the pull reversed), spring 0.001 (one step above none) .. 0.25 (2.5x, under the stiffness the fixed step stays stable at with the overhead boost). A reset puts the figures above back.",
+    "resistanceStep": 0.001,
+    "resistanceMin": 0,
+    "resistanceMax": 1,
+    "gravityStep": 0.00001,
+    "gravityMin": -0.01,
+    "gravityMax": 0.0025,
+    "springStep": 0.001,
+    "springMin": 0.001,
+    "springMax": 0.25
+  },
   "port": {
     "_about": "Not in the original; world units and seconds, never mapped.",
     "keepInArena": true,
