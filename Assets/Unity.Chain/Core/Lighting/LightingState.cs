@@ -11,6 +11,14 @@ namespace MindAttic.Chain.Core
         Morning,
     }
 
+    /// <summary>One of the material tint's channels (Root.vb's <c>r</c>, <c>g</c>, <c>b</c>).</summary>
+    public enum TintChannel
+    {
+        Red,
+        Green,
+        Blue,
+    }
+
     /// <summary>A light colour, each channel 0-1.</summary>
     public readonly struct Rgb : IEquatable<Rgb>
     {
@@ -220,6 +228,21 @@ namespace MindAttic.Chain.Core
         /// (Script.vb's <c>TIME DAYPERIOD</c>). The tint is not snapped: the original only set the period.
         /// </summary>
         public void SetPeriod(DayPeriod period) => MoveTo(period);
+
+        /// <summary>
+        /// Sets one tint channel, held to 0-255 (Script.vb's <c>CHANGE LIGHT RED|GREEN|BLUE</c>; Root.vb's channels are
+        /// bytes). The cycle walks on from there.
+        /// </summary>
+        public void SetTint(TintChannel channel, float value)
+        {
+            var v = Calc.Clamp(value, 0f, FullTint);
+            switch (channel)
+            {
+                case TintChannel.Red: Red = v; break;
+                case TintChannel.Green: Green = v; break;
+                default: Blue = v; break;
+            }
+        }
 
         /// <summary>
         /// A new round (Root.vb's <c>Reset</c>): lighting back on. The time of day carries on, as the

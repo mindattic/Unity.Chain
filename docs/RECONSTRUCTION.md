@@ -151,7 +151,7 @@ Every binding of the original, with its state:
 | F12 | toggle fullscreen and restart the engine (config) | ported (UNI-T55, UNI-T59): the Debug map's ConfigureVideo opens frmConfig's settings screen, whose Submit applies the window mode in place, no restart (BIBLE V21, D27) |
 | J | joystick toggle; the joystick code reads axes and buttons and binds nothing | fixed: the gamepad drives the actions, its stick steers like the mouse, J switches the stick (BIBLE D14, UNI-T34) |
 | Numpad + Enter / 4 6 / 8 2, X, Z | debug camera | ported, UNI-T57: the Debug map's CameraForward/Backward/Left/Right/Up/Down, Isometric, Deisometric, read held by `CameraRig` into a Core `DebugCamera` (BIBLE V1, D26; the anchor move is dead, V22) |
-| ` (grave) | scripter console | missing, UNI-T60, UNI-T61 |
+| ` (grave) | scripter console | missing, UNI-T61 (the language it runs is ported, UNI-T60) |
 | Arrow keys, `btnAttack`..`btnDashRight` | declared; no effect | dead |
 
 ### 3.6 Game rules, HUD and clock (`Engine.vb`, `Gui.vb`, `Root.vb`)
@@ -197,7 +197,14 @@ UNI-T20. `defend` and `footstep` are unused in both. Volumes and mutes are the s
 `Command Type Item Parameter` split on spaces. Commands: `CHANGE` (`CAMERA|CAM` X/Y with `+n`/`-n` arithmetic,
 `LIGHT` AMBIENT, RED/R, GREEN/G, BLUE/B, `TIME` DAYPERIOD, `SCRIPT` COLOR and RUNNING, `HERO`/`ENEMY` stubs), `MAKE`
 and `MOVE` (accepted, do nothing), `RUN` (`NIGHT`, `HEAVEN`). There is a generic `Make` that grows parallel arrays;
-no caller. Missing, UNI-T60, UNI-T61.
+no caller. Ported as Core (UNI-T60): `ScriptLine` splits and checks a line as `divideScript` and `isScriptOkay` do,
+`ScriptRunner` runs it against a `ScriptView` (the ambient and tint it reads) and reports `ScriptEffect`s
+(`CameraMoved`/`CameraPlaced` in the original's screen units, `AmbientChanged`, `TintChanged`, `DayPeriodChanged`,
+`ScriptColourChanged`, `ScriptRunningChanged`) for presentation to apply; it holds `scriptColor` (0, 0, 255) and
+`bScriptRunning`, throttles each script by its increment, and ignores invalid lines. The HERO/ENEMY handlers are the
+original's empty stubs, except `HERO AI STOP` (clears `bScriptRunning`); `Make` is not ported (nothing calls it).
+Fixed: LIGHT was never accepted (BIBLE D29), the arithmetic (D30), short lines and non-numbers (D31), RUN HEAVEN's
+second line (D32). The console that types and runs them is UNI-T61.
 
 ### 3.10 Assets
 
