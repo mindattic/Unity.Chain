@@ -69,6 +69,11 @@ namespace MindAttic.Chain.Core
             public HeartFloat.Settings Heart;
             /// <summary>The game speed every round starts at (Root.vb Reset: <c>gameSpeed = 1.0</c>).</summary>
             public float GameSpeed;
+            /// <summary>
+            /// How fast a held Minus or Equals moves the game speed, per second (Input.vb's 0.01 a frame, game.json's
+            /// <c>gameSpeedStep</c>, at 60 fps: 0.6).
+            /// </summary>
+            public float GameSpeedRate;
 
             public static Settings Default => new Settings
             {
@@ -76,6 +81,7 @@ namespace MindAttic.Chain.Core
                 Enemies = EnemySetup.Default,
                 Heart = HeartFloat.Settings.Default,
                 GameSpeed = 1f,
+                GameSpeedRate = 0.6f,
             };
         }
 
@@ -112,18 +118,20 @@ namespace MindAttic.Chain.Core
         /// <summary>The play space: where enemies spawn and, for players that keep their chain in it, the walls links bounce off.</summary>
         public Rect2? Arena { get; set; }
 
-        /// <summary>Seconds of play stepped so far (paused time does not count).</summary>
+        /// <summary>Seconds of play stepped so far, in game time (paused time does not count; the game speed scales it).</summary>
         public float Time { get; private set; }
 
         /// <summary>
-        /// Seconds of play this round: Gui.vb's <c>timerMin:timerSec</c> clock, which <see cref="Reset"/> sets
-        /// back to 0:00. The HUD's m:ss readout is UNI-T53.
+        /// Seconds of play this round, in game time: Gui.vb's <c>timerMin:timerSec</c> clock, which <see cref="Reset"/>
+        /// sets back to 0:00. The HUD's m:ss readout is UNI-T53.
         /// </summary>
         public float RoundTime { get; private set; }
 
         /// <summary>
-        /// Root.vb's <c>gameSpeed</c>: <see cref="Settings.GameSpeed"/> (1.0) at the start of every round,
-        /// never below 0 (Input.vb). The Minus/Equals keys and applying it to the step are UNI-T52.
+        /// Root.vb's <c>gameSpeed</c>: <see cref="Settings.GameSpeed"/> (1.0) at the start of every round, moved by
+        /// Minus and Equals (<see cref="ChangeGameSpeed"/>), never below 0 (Input.vb). The original only drew it;
+        /// here it is the time scale every <see cref="Step"/> runs at (<see cref="TimeScale"/>, BIBLE D13, V20):
+        /// 0.5 plays at half speed, 2.0 at double, 0 stands still.
         /// </summary>
         public float GameSpeed
         {
@@ -448,9 +456,10 @@ namespace MindAttic.Chain.Core
 
         /// <summary>
         /// Applies a player's command. Returns false when it changed nothing: the sender is not seated,
-        /// the game is paused (steering and the chain length wait then; pause, reset, follow and the
-        /// live-tuning keys still work, as in Form1.vb's key handler), or the command had no effect
-        /// (a tuning knob already at its limit).
+        /// the game is paused (steering and the chain length wait then; pause, reset, follow, the
+        /// live-tuning keys and the game speed still work, as in Form1.vb's key handler and Input.vb's
+        /// polling), or the command had no effect (a tuning knob already at its limit, the game speed
+        /// already 0). Steering also waits while the game speed is 0, as time stands still.
         /// </summary>
         public bool Submit(GameCommand command)
         {
@@ -479,12 +488,13 @@ namespace MindAttic.Chain.Core
             switch (command)
             {
                 case SteerAngel steer:
-                    if (State.IsPaused)
+                    if (State.IsPaused || GameSpeed <= 0f)
                     {
                         return false;
                     }
 
-                    player.Flight.Step(steer.MouseDelta, Calc.Max(0f, steer.DeltaTime));
+                    // The mouse moves the angel as far at any speed; its hover and wing beat run on game time.
+                    player.Flight.Step(steer.MouseDelta, Calc.Max(0f, steer.DeltaTime) * GameSpeed);
                     return true;
 
                 case ArmGrapple _:
@@ -520,6 +530,17 @@ namespace MindAttic.Chain.Core
                     Emit(new ChainTuned(player.Id, tune.Knob, ChainTuning.Read(player.Chain.Config, tune.Knob)));
                     return true;
 
+                case ChangeGameSpeed change:
+                    var speed = TimeScale.Change(GameSpeed, change.Direction, Config.GameSpeedRate, change.HeldSeconds);
+                    if (speed == GameSpeed)
+                    {
+                        return false;
+                    }
+
+                    GameSpeed = speed;
+                    Emit(new GameSpeedChanged(player.Id, GameSpeed));
+                    return true;
+
                 case ChangeChainLength change:
                     if (State.IsPaused || !player.SetMaceIndex(player.MaceIndex + change.Links))
                     {
@@ -548,7 +569,14 @@ namespace MindAttic.Chain.Core
 
         // --- The step ------------------------------------------------------------------------
 
-        /// <summary>One fixed step of <paramref name="deltaTime"/> seconds. Does nothing while paused.</summary>
+        /// <summary>
+        /// One fixed step of <paramref name="deltaTime"/> real seconds, run at the <see cref="GameSpeed"/>: it plays
+        /// <paramref name="deltaTime"/> x the speed of game time, cut into <see cref="TimeScale.Substeps"/> equal
+        /// sub-steps so none is longer than <paramref name="deltaTime"/> (the chain's springs stay stable at any
+        /// speed). Everything the original did once a frame (the mace's sweep, the grapple, the hurt check, the
+        /// game-over fade) runs once a sub-step. A game-over reset ends the step there: the new round starts on
+        /// the next one, at its own speed. Does nothing while paused or at speed 0.
+        /// </summary>
         public void Step(float deltaTime)
         {
             if (State.IsPaused || deltaTime <= 0f)
@@ -556,6 +584,28 @@ namespace MindAttic.Chain.Core
                 return;
             }
 
+            var substeps = TimeScale.Substeps(GameSpeed);
+            if (substeps == 0)
+            {
+                return;
+            }
+
+            var gameTime = deltaTime * GameSpeed / substeps;
+            for (var i = 0; i < substeps; i++)
+            {
+                if (StepOnce(gameTime))
+                {
+                    return;
+                }
+            }
+        }
+
+        /// <summary>
+        /// One sub-step of <paramref name="deltaTime"/> seconds of game time: the original's frame. Returns true if
+        /// the game-over fade finished and the world reset itself.
+        /// </summary>
+        private bool StepOnce(float deltaTime)
+        {
             Time += deltaTime;
             RoundTime += deltaTime;
 
@@ -588,7 +638,7 @@ namespace MindAttic.Chain.Core
             }
 
             CheckHearts();
-            StepGameOver();
+            return StepGameOver();
         }
 
         /// <summary>Link 0 follows the angel's hand; the rest swing on their springs.</summary>
@@ -882,12 +932,15 @@ namespace MindAttic.Chain.Core
         }
 
         /// <summary>Engine.vb GameOver: the light fades 5 a step, then the game resets itself.</summary>
-        private void StepGameOver()
+        private bool StepGameOver()
         {
             if (State.IsGameOver && State.AdvanceGameOver())
             {
                 Reset();
+                return true;
             }
+
+            return false;
         }
 
         // --- Events --------------------------------------------------------------------------

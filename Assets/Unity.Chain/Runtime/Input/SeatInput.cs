@@ -9,8 +9,8 @@ namespace MindAttic.Chain
     /// the gamepad stick (<see cref="SteerInput"/>, input.json) as <see cref="SteerAngel"/>, Pause as
     /// <see cref="TogglePause"/>, the grapple button as <see cref="ArmGrapple"/> / <see cref="ReleaseGrapple"/>,
     /// <c>[</c> and <c>]</c> as <see cref="ChangeChainLength"/>, F as <see cref="ToggleFollow"/>, Insert/Delete,
-    /// Home/End and PageUp/PageDown as <see cref="TuneChain"/> (resistance, gravity, spring) and R as
-    /// <see cref="ResetGame"/>. J turns the stick off and on (Form1.vb's joystick toggle), which is this seat's
+    /// Home/End and PageUp/PageDown as <see cref="TuneChain"/> (resistance, gravity, spring), Minus and Equals held
+    /// as <see cref="ChangeGameSpeed"/> and R as <see cref="ResetGame"/>. J turns the stick off and on (Form1.vb's joystick toggle), which is this seat's
     /// own input and no command. It never changes the world itself: it calls the seat's components, which submit.
     /// Sits beside the <see cref="AngelController"/>, which requires it.
     /// </summary>
@@ -38,6 +38,9 @@ namespace MindAttic.Chain
             /// <summary>PageUp and PageDown.</summary>
             public bool SpringUp;
             public bool SpringDown;
+            /// <summary>Minus and Equals, held (Input.vb polls them every frame).</summary>
+            public bool GameSpeedDown;
+            public bool GameSpeedUp;
         }
 
         private AngelController _angel;
@@ -91,14 +94,18 @@ namespace MindAttic.Chain
                 GravityUp = c.GravityUp.WasPressedThisFrame(),
                 SpringUp = c.SpringUp.WasPressedThisFrame(),
                 SpringDown = c.SpringDown.WasPressedThisFrame(),
+                GameSpeedDown = c.GameSpeedDown.IsPressed(),
+                GameSpeedUp = c.GameSpeedUp.IsPressed(),
             };
         }
 
         /// <summary>
         /// Sends one frame's input as this seat's commands. Called from <c>Update</c> with <see cref="Read"/>;
-        /// public so tests can drive it. Does nothing before the angel is seated.
+        /// public so tests can drive it. Does nothing before the angel is seated. <paramref name="realDeltaTime"/>
+        /// is the frame's unscaled length, which times a held Minus or Equals (they work paused, when
+        /// <paramref name="deltaTime"/> is 0); left out, it is <paramref name="deltaTime"/>.
         /// </summary>
-        public void Dispatch(Frame frame, float deltaTime)
+        public void Dispatch(Frame frame, float deltaTime, float realDeltaTime = -1f)
         {
             var angel = Angel;
             if (angel == null || angel.Session == null)
@@ -148,6 +155,14 @@ namespace MindAttic.Chain
                 Tune(chain, ChainKnob.Spring, frame.SpringUp, frame.SpringDown);
             }
 
+            // Input.vb's Minus and Equals: 0.01 a frame while held, timed in real seconds.
+            var speedDirection = (frame.GameSpeedUp ? 1 : 0) - (frame.GameSpeedDown ? 1 : 0);
+            if (speedDirection != 0)
+            {
+                var held = realDeltaTime >= 0f ? realDeltaTime : deltaTime;
+                angel.Session.Submit(new ChangeGameSpeed(angel.Seat, speedDirection, held));
+            }
+
             if (frame.Reset)
             {
                 angel.Session.Submit(new ResetGame(angel.Seat));
@@ -190,6 +205,6 @@ namespace MindAttic.Chain
             _controls = null;
         }
 
-        private void Update() => Dispatch(Read(), Time.deltaTime);
+        private void Update() => Dispatch(Read(), Time.deltaTime, Mathf.Min(Time.unscaledDeltaTime, Time.maximumDeltaTime));
     }
 }

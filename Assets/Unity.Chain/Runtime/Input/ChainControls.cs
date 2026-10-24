@@ -13,8 +13,9 @@ namespace MindAttic.Chain
     /// authority as commands carrying its player id: Steer (mouse delta), SteerStick (gamepad left stick, steering
     /// like the mouse, BIBLE D14), Grapple (left mouse button), ChainShorter and ChainLonger (Input.vb's
     /// <c>[</c> and <c>]</c>), ToggleFollow (Form1.vb's F), Pause, Reset (Form1.vb's R), ToggleJoystick
-    /// (Form1.vb's J) and the live-tuning keys ResistanceUp/ResistanceDown (Insert/Delete), GravityDown/GravityUp
-    /// (Home/End) and SpringUp/SpringDown (PageUp/PageDown).</item>
+    /// (Form1.vb's J), the live-tuning keys ResistanceUp/ResistanceDown (Insert/Delete), GravityDown/GravityUp
+    /// (Home/End) and SpringUp/SpringDown (PageUp/PageDown), and GameSpeedDown/GameSpeedUp (Input.vb's Minus and
+    /// Equals, read while held).</item>
     /// <item><b>Debug</b>, the scene's toggles that belong to no player: ToggleLighting (Form1.vb's L, read by
     /// <see cref="SceneLight"/>), ShakeScreen (Form1.vb's 0, read by <see cref="CameraRig"/>) and ToggleFps
     /// (Form1.vb's F4, read by <see cref="GameHud"/>). Later debug keys join this map.</item>
@@ -61,6 +62,10 @@ namespace MindAttic.Chain
         public InputAction SpringUp => Player["SpringUp"];
         /// <summary>PageDown: <c>changeSpring(-0.001)</c>.</summary>
         public InputAction SpringDown => Player["SpringDown"];
+        /// <summary>Minus: <c>gameSpeed -= 0.01</c> every frame it is held (Input.vb).</summary>
+        public InputAction GameSpeedDown => Player["GameSpeedDown"];
+        /// <summary>Equals: <c>gameSpeed += 0.01</c> every frame it is held (Input.vb).</summary>
+        public InputAction GameSpeedUp => Player["GameSpeedUp"];
         public InputAction ToggleLighting => Debug["ToggleLighting"];
         public InputAction ShakeScreen => Debug["ShakeScreen"];
         public InputAction ToggleFps => Debug["ToggleFps"];
@@ -90,6 +95,9 @@ namespace MindAttic.Chain
             Button(player, "GravityUp", "<Keyboard>/end");
             Button(player, "SpringUp", "<Keyboard>/pageUp");
             Button(player, "SpringDown", "<Keyboard>/pageDown");
+            // Input.vb's Minus and Equals (UNI-T52): the game speed, while held.
+            Button(player, "GameSpeedDown", "<Keyboard>/minus");
+            Button(player, "GameSpeedUp", "<Keyboard>/equals");
 
             var debug = asset.AddActionMap(DebugMapName);
             Button(debug, "ToggleLighting", "<Keyboard>/l");

@@ -48,6 +48,7 @@ namespace MindAttic.Chain.Tests
                     {
                         "Steer", "SteerStick", "Grapple", "ChainShorter", "ChainLonger", "ToggleFollow", "Pause", "Reset", "ToggleJoystick",
                         "ResistanceUp", "ResistanceDown", "GravityDown", "GravityUp", "SpringUp", "SpringDown",
+                        "GameSpeedDown", "GameSpeedUp",
                     },
                     controls.Player.actions.Select(a => a.name).ToArray());
                 CollectionAssert.AreEquivalent(
@@ -80,13 +81,16 @@ namespace MindAttic.Chain.Tests
         }
 
         [Test]
-        public void MinusAndEquals_StayFreeForGameSpeed()
+        public void MinusAndEquals_AreTheGameSpeedOnly()
         {
             using (var c = new ChainControls())
             {
-                var all = c.Asset.SelectMany(a => a.bindings).Select(b => b.path).ToArray();
-                CollectionAssert.DoesNotContain(all, "<Keyboard>/minus", "Input.vb: gameSpeed (UNI-T52)");
-                CollectionAssert.DoesNotContain(all, "<Keyboard>/equals");
+                CollectionAssert.AreEqual(new[] { "<Keyboard>/minus" }, Paths(c.GameSpeedDown), "Input.vb: gameSpeed -= 0.01");
+                CollectionAssert.AreEqual(new[] { "<Keyboard>/equals" }, Paths(c.GameSpeedUp), "Input.vb: gameSpeed += 0.01");
+                var others = c.Asset.Where(a => a != c.GameSpeedDown && a != c.GameSpeedUp)
+                    .SelectMany(a => a.bindings).Select(b => b.path).ToArray();
+                CollectionAssert.DoesNotContain(others, "<Keyboard>/minus", "no longer bound to chain length (UNI-T34)");
+                CollectionAssert.DoesNotContain(others, "<Keyboard>/equals");
             }
         }
 
@@ -183,6 +187,23 @@ namespace MindAttic.Chain.Tests
             _input.Dispatch(new SeatInput.Frame { ResistanceDown = true, GravityUp = true, SpringDown = true }, 0f);
             _input.Dispatch(new SeatInput.Frame { ResistanceDown = true, GravityUp = true, SpringDown = true }, 0f);
             Assert.AreEqual("Res 0.249\nGrav -0.00249\nSpring 0.099", HudText.Readout(Readout()));
+        }
+
+        [Test]
+        public void MinusAndEquals_HeldMoveTheGameSpeed_EvenPaused()
+        {
+            var world = _rig.Session.World;
+
+            _input.Dispatch(new SeatInput.Frame { GameSpeedUp = true }, 1f / 60f);
+            Assert.AreEqual("1.01", HudText.GameSpeed(world.GameSpeed), "0.01 a frame held, shown with two decimals");
+            Assert.That(_events.OfType<GameSpeedChanged>().Single().Player, Is.EqualTo(_rig.Id));
+
+            _rig.Session.Submit(new Pause(_rig.Id, true));
+            _input.Dispatch(new SeatInput.Frame { GameSpeedDown = true }, 0f, 3f / 60f);
+            Assert.AreEqual("0.98", HudText.GameSpeed(world.GameSpeed), "paused, the real frame time counts");
+
+            _input.Dispatch(new SeatInput.Frame { GameSpeedDown = true, GameSpeedUp = true }, 0f, 1f);
+            Assert.AreEqual("0.98", HudText.GameSpeed(world.GameSpeed), "both held cancel out, as in Input.vb");
         }
 
         [Test]

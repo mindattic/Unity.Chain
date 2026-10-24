@@ -1,6 +1,7 @@
 {
-  "_source": "Engine.vb: checkMaceImpact (Score += damage * 1000) and checkAngelHit (HP -= 1). Root.vb: gameSpeed, 1.0 at the start and again on every Reset (Minus/Equals and applying it are UNI-T52).",
+  "_source": "Engine.vb: checkMaceImpact (Score += damage * 1000) and checkAngelHit (HP -= 1). Root.vb: gameSpeed, 1.0 at the start and again on every Reset. Input.vb getKeyboard: Minus gameSpeed -= 0.01 and Equals += 0.01 every frame the key is held, never below 0 (UNI-T52); the original only drew it, the port runs every step at it (BIBLE D13, V20).",
   "pointsPerDamage": 1000,
   "contactDamage": 1,
-  "gameSpeed": 1.0
+  "gameSpeed": 1.0,
+  "gameSpeedStep": 0.01
 }

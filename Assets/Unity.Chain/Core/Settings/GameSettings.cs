@@ -261,6 +261,8 @@ namespace MindAttic.Chain.Core
                     SeekCap = enemies.Port.SeekCap,
                 },
                 GameSpeed = Game.GameSpeed,
+                // Input.vb's 0.01 a frame while Minus or Equals is held: a rate with no length in it.
+                GameSpeedRate = m.PerSecond(Game.GameSpeedStep),
             };
 
             Heart = new HeartFloat.Settings
@@ -621,7 +623,7 @@ namespace MindAttic.Chain.Core
         }
     }
 
-    /// <summary>game.json: Engine.vb's session rules and the game speed Root.vb's Reset starts a round at.</summary>
+    /// <summary>game.json: Engine.vb's session rules, the game speed Root.vb's Reset starts a round at and Input.vb's Minus/Equals step.</summary>
     public sealed class GameData
     {
         public float PointsPerDamage { get; private set; }
@@ -629,11 +631,15 @@ namespace MindAttic.Chain.Core
         /// <summary>Root.vb's <c>gameSpeed</c>: 1.0, set again by every Reset.</summary>
         public float GameSpeed { get; private set; }
 
+        /// <summary>Input.vb's Minus/Equals: <c>gameSpeed -= 0.01</c> / <c>+= 0.01</c> each frame the key is held (UNI-T52).</summary>
+        public float GameSpeedStep { get; private set; }
+
         internal static GameData Read(SettingsReader r) => new GameData
         {
             PointsPerDamage = r.Number("pointsPerDamage", 0f),
             ContactDamage = r.Integer("contactDamage", 0),
             GameSpeed = r.Number("gameSpeed", 0f),
+            GameSpeedStep = r.Positive("gameSpeedStep"),
         };
     }
 

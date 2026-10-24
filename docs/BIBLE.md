@@ -137,17 +137,18 @@ their `AngelFlight`, `ChainSimulation`, mace link and `Grapple`) and every enemy
 
 - **Commands in.** A player's input becomes a `GameCommand` carrying that player's `PlayerId`: `SteerAngel` (mouse
   delta, applied on arrival so steering is as smooth as the display), `ArmGrapple`, `ReleaseGrapple`,
-  `ChangeChainLength`, `ToggleFollow` (the F key), `TuneChain` (the live-tuning keys), `Pause`, `TogglePause`, `ResetGame`. `GameSession.Submit` hands it to `GameWorld.Submit`.
+  `ChangeChainLength`, `ToggleFollow` (the F key), `TuneChain` (the live-tuning keys), `ChangeGameSpeed` (Minus/Equals, held), `Pause`, `TogglePause`, `ResetGame`. `GameSession.Submit` hands it to `GameWorld.Submit`.
   Commands are plain immutable data, so a networked player's NetEntity can carry them to the authority unchanged.
 - **One step.** `GameSession.FixedUpdate` is the only caller of `GameWorld.Step`: chains swing from their angels'
   hands, enemies seek the nearest angel, flock and (thrown) knock each other, grapples arm, catch, carry and throw,
   each mace hits what its swept circle touched, enemies touching an angel cost HP, and a finished game fades and
-  resets itself. Contacts are circle tests in Core (`Sweep`, `EnemyEntity.Overlaps`), not Physics2D queries, so all
+  resets itself. Every step runs at the world's `GameSpeed` (V20): it plays that many fixed steps' worth of game
+  time, in sub-steps no longer than one fixed step (`TimeScale`). Contacts are circle tests in Core (`Sweep`, `EnemyEntity.Overlaps`), not Physics2D queries, so all
   of it runs and is tested under `dotnet test`. The world holds the hearts too (`GameWorld.AddHeart`, a
   `HeartFloat` each): it moves them, checks them against the angels (`CheckHearts`, `CollectHeart`) and resets
   them; `HeartPickup` only draws one.
 - **Events out.** Everything that happens is a `GameEvent`, in order: `EnemySpawned`, `EnemyRemoved`, `EnemyHit`,
-  `EnemyKnocked`, `EnemyKilled`, `GrappleChanged`, `Grabbed`, `Thrown`, `ChainLengthChanged`, `FollowChanged`, `ChainTuned`, `AngelHurt`,
+  `EnemyKnocked`, `EnemyKilled`, `GrappleChanged`, `Grabbed`, `Thrown`, `ChainLengthChanged`, `FollowChanged`, `ChainTuned`, `GameSpeedChanged`, `AngelHurt`,
   `AngelHealed`, `PauseChanged`, `GameOver`, `WorldReset`. `GameSession.EventRaised` passes them on after each
   command and step; `EnemySpawner` makes and kills enemy views from them, `ChainAudio` plays its player's hits,
   catches and throws, and the session freezes time on `PauseChanged`.
@@ -197,14 +198,14 @@ Nothing tunes the game from the Inspector any more.
 | `angel.json` | `Ratio3D`, `hoverMax`/`hoverRate`, `flapRate` and frames, `maxHP`, `hurtDelay`, `angelSize` and its hit rectangle; port: hand offset, bounds margin, contact radius | `Angel.vb` |
 | `enemies.json` | `maxEnemy`, `seekSpd`, `resistSPD`, `flockSpd`, mass range, load and reset HP, Cautious's 6 x seekSpd; port: radius, the Seek cap (4) and the hang-back band `hangBackNear`/`hangBackFar` (screen units, mapped; D18) | `Enemy.vb`, `Root.vb` |
 | `item.json` | the heart's size, fall, sway (`floatSPD`, `floatAcc`, `floatMaxSPD`), start, wrap, heal and hit rectangle | `Item.vb` |
-| `game.json` | score per damage, HP per contact, the `gameSpeed` every round starts at (1.0) | `Engine.vb`, `Root.vb` |
+| `game.json` | score per damage, HP per contact, the `gameSpeed` every round starts at (1.0), `gameSpeedStep`: Minus/Equals' 0.01 a held frame (UNI-T52, V20) | `Engine.vb`, `Root.vb`, `Input.vb` |
 | `lighting.json` | day length (1440 s, D6), tint step | `Lights.vb` |
 | `camera.json` | `Fov`, `camZ` (for UNI-T57), `shakeAmount` (the 0 key's 0.02, UNI-T49); port: the rig's mode, padding, follow size, dead zone, sharpness | `Camera.vb` |
 | `audio.json` | `musicVolume`, `sfxVolume`, `ambientVolume` (hundredths of a dB), `rndMusicPos`; port: the swing whoosh | `Sound.vb` |
 | `hud.json` | the original window (512x448), the status box (0, 0, 96x48), each HUD line's anchor, pixel position, `Write` colour [alpha, red, green, blue], font size (points) and weight, `fpsSampleMs` (100), `drawFps` (on); port: the pause dim, the game-over banner, the text shadow (UNI-T50) | `Gui.vb`, `Engine.vb`, `Root.vb` |
 | `input.json` | `bJoystick`, the joystick's `joyRange` (1000) and `joyOutsideDeadZone` (250); port: `stickSpeed`, the mouse counts a second a full stick steers by (D14) | `Input.vb` |
 
-Still in code, for later tickets: the game-over fade step and floor (`GameState`), game speed (UNI-T52), asset lists (UNI-T19, UNI-T20) and the arena size
+Still in code, for later tickets: the game-over fade step and floor (`GameState`), asset lists (UNI-T19, UNI-T20) and the arena size
 (`LevelBounds`, UNI-T66).
 
 **Player options live in the player's profile** (UNI-T36): the shared MindAttic profile's settings.json (the
@@ -239,7 +240,7 @@ Status: **fixed** (on main), **planned** (the ticket that fixes it).
 | D10 | Off-by-one HP: the HUD draws `HP + 1` bars and the game ends below zero, so 30 HP takes 31 hits | `Engine.vb` `renderDisplay`, `GameOver` | exactly HP bars; game over at 0 (`GameState`) | fixed |
 | D11 | Some swings do no damage: damage is `abs(dX + dY/2)`, which cancels to zero on certain diagonals | `Engine.vb` `checkMaceImpact` | damage from mace speed (`GameWorld`, `EnemyBrain.Hit`) | fixed (UNI-T45 matches the scale) |
 | D12 | Fast swings pass through enemies: one AABB at the mace link per frame | `Engine.vb` `checkMaceImpact` | swept circle from the last position to this one | fixed |
-| D13 | Game speed does nothing: Minus/Equals change `gameSpeed` and the HUD shows it, but it is never applied | `Engine.vb`, `Form1.OnKeyDown` | game speed scales the step | planned, UNI-T52 |
+| D13 | Game speed does nothing: Minus/Equals change `gameSpeed` and the HUD shows it, but it is never applied | `Engine.vb` `renderDisplay`, `Input.vb` `getKeyboard` | game speed is the world's time scale: Minus and Equals move it 0.01 a held frame (game.json's `gameSpeedStep`), never below 0, the HUD shows it with two decimals, and every step runs at it (V20) | fixed (UNI-T52) |
 | D14 | The joystick binds nothing: `getJoystick` acquires and polls the stick, sets every axis to -1000..1000, tests it against `joyOutsideDeadZone` 250 and reads every button, and every branch is empty, so a plugged-in joystick does nothing (and Form1.vb's J flips a `joystickToggle` nothing reads) | `Input.vb` `getJoystick`, `Form1.OnKeyDown` | a gamepad drives the same actions as the keyboard and mouse: its left stick steers like the mouse delta (past the original's 250-in-1000 dead zone, at `input.json`'s `stickSpeed` mouse counts a second, so `Ratio3D` turns it into distance as it does the mouse), right trigger or A grapples, the shoulders change the chain, Y follows, Start pauses, Back resets; J switches the stick off and on, starting on as `bJoystick` does (`SteerInput`, `ChainControls`, `SeatInput`) | fixed (UNI-T34) |
 | D15 | The background toggle key is unreachable: a second `Case Keys.B` sits below the first | `Form1.OnKeyDown` | B and N both reach their backgrounds | planned, UNI-T40 |
 | D16 | The lighting toggle freezes instead of switching off: with `bLighting` false `renderLight` just stops updating the device, so the last ambient and tint stay on screen (and the game-over fade stops showing); and `Reset` has a stray `b = True` among its flags that snaps blue to 255 mid-cycle | `Lights.vb` `renderLight`, `Root.vb` `Reset` | L off shows the scene untinted, still dimmed by the game-over fade, with the cycle held where it is; a new round turns lighting back on and leaves the time of day running, as `Reset` otherwise does; the stray `b = True` is not ported (UNI-T48) | fixed (UNI-T46) |
@@ -281,6 +282,7 @@ Working behaviour of the original the rebuild does differently, and why. Status:
 | V17 | SFX at `sfxVolume` -1000 (-10 dB), music at 0 dB, music from a random point (`rndMusicPos`) | the same, from `audio.json` (the port had played SFX at 0.8 and music at 0.6 from the top) | matches | matches (UNI-T33) |
 | V18 | `Windows.Forms.Cursor.Hide()` plus the mouse device's exclusive, foreground DirectInput cooperative level | `CursorPolicy` hides the cursor and sets `CursorLockMode.Confined` from the first frame of a player build; `AngelController`'s own `CursorLockMode.Locked` (while it is enabled) layers a tighter, centred lock on top for steering | Unity has no "exclusive raw device" mode as such; Confined is the baseline the rest of the app (menus, the loading screen, UNI-T58) runs under, Locked is what steering already used | kept (UNI-T38) |
 | V19 | Insert/Delete, Home/End and PageUp/PageDown add to `resistance`, `gravity.Y` and `springK` with no limit (`Chain.vb` `changeResistance`, `changeGravity`, `changeSpring`), so drag or a spring pushed below zero, or a stiff enough spring, blows the chain apart | the same steps, each press one `TuneChain` command, but each figure stops at `chain.json`'s `tuning` limits: resistance 0..1, gravity's y -0.01..0.0025, spring 0.001..0.25 (`ChainTuning`); a figure already past a limit (a profile override) is never pulled to it. Works paused, as Form1.vb's key handler does; a reset (or the game-over reset) puts the data files' figures back, a retune keeps the live ones | a key that wrecks the simulation is no tuning; the limits are data | kept (UNI-T51) |
+| V20 | `gameSpeed` is polled every frame, paused or not: Minus -0.01 and Equals +0.01 per frame held, floored at 0, no upper limit, 1.0 again on `Reset`; it is drawn with two decimals and applied to nothing (D13) | the same keys, step and floor, timed in real seconds (0.01 a 60 fps frame, 0.6 a second, at any frame rate; Minus and Equals together cancel), each frame held one `ChangeGameSpeed` command raising `GameSpeedChanged`, working paused. Applied as the Core's time scale: `GameWorld.Step` plays the fixed step x `GameSpeed` of game time, cut into `TimeScale.Substeps` (one at 1.0 or below, `ceil(speed)` above it, at most 64) so no sub-step is longer than the fixed step and the chain's springs stay stable; what the original did once a frame (mace sweep, grapple, hurt check, game-over fade) runs once a sub-step, so below 1.0 the fade is not slowed; a game-over reset ends the step there. At 0 nothing moves and steering waits too, as if paused, until Equals raises it. The round clock, the hurt delay, the heart, the angel's hover and wing beat run on game time; the mouse moves the angel as far at any speed; presentation that runs on Unity's own clock (the camera, the time of day, the music) is not scaled | the original plainly meant the keys to change the speed; a sub-stepped time scale is the safe way to apply it | kept (UNI-T52) |
 
 ### Keeping these tables current
 

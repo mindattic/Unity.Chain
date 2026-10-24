@@ -103,6 +103,28 @@ namespace MindAttic.Chain.Core
         public override string ToString() => $"TuneChain {Player} {Knob} {Steps:+0;-0;0}";
     }
 
+    /// <summary>
+    /// Input.vb's Minus and Equals: the game speed (<see cref="GameWorld.GameSpeed"/>) moves by game.json's
+    /// <c>gameSpeedStep</c> (0.01) for every original frame of <see cref="HeldSeconds"/> the key was held,
+    /// <see cref="Direction"/> -1 (Minus) or +1 (Equals), never below 0 (<see cref="TimeScale"/>). The speed is
+    /// the whole world's, whoever holds the key; it works paused too, as Input.vb polls the keys every frame.
+    /// </summary>
+    public sealed class ChangeGameSpeed : GameCommand
+    {
+        public ChangeGameSpeed(PlayerId player, int direction, float heldSeconds) : base(player)
+        {
+            Direction = direction;
+            HeldSeconds = heldSeconds;
+        }
+
+        public int Direction { get; }
+
+        /// <summary>Real seconds the key was held since the last command (unscaled: it works paused and at any speed).</summary>
+        public float HeldSeconds { get; }
+
+        public override string ToString() => $"ChangeGameSpeed {Player} {Direction:+0;-0;0} {HeldSeconds:G4}s";
+    }
+
     /// <summary>Pause or resume the game (Form1.vb's Pause key). A finished game cannot be paused.</summary>
     public sealed class Pause : GameCommand
     {

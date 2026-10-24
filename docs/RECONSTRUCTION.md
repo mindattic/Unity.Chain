@@ -132,7 +132,7 @@ Every binding of the original, with its state:
 | Left button | arm grapple while held; release throws | ported (Grapple action; gamepad right trigger or A) |
 | Right, wheel button | right: nothing; wheel: set an unused blank cursor | dead |
 | `[` `]` | mace index -1/+1 (1..12) | ported (ChainShorter / ChainLonger actions; gamepad shoulders) |
-| Minus / Equals | `gameSpeed` -/+0.01 (min 0); only displayed, never applied | missing, UNI-T52 (no longer bound to chain length, UNI-T34) |
+| Minus / Equals | `gameSpeed` -/+0.01 per frame held (min 0, polled even paused); only displayed, never applied | ported (UNI-T52; GameSpeedDown/GameSpeedUp actions, read while held, -> `ChangeGameSpeed` -> `GameSpeedChanged`; game.json's `gameSpeedStep`; applied as the world's time scale, `TimeScale`, BIBLE D13, V20) |
 | Ins/Del, Home/End, PgUp/PgDn | tune resistance, gravity, spring | ported (UNI-T51; ResistanceUp/Down, GravityDown/Up, SpringUp/Down actions -> `TuneChain`, held to chain.json's limits, BIBLE V19) |
 | F | `followMouse` toggle | ported (UNI-T47; ToggleFollow action, gamepad Y, UNI-T34) |
 | U | gem link skins | missing, UNI-T41 |

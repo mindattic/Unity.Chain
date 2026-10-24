@@ -194,6 +194,24 @@ namespace MindAttic.Chain.Core
         public override string ToString() => $"ChainTuned {Player} {Knob} {Value:G6}";
     }
 
+    /// <summary>
+    /// Minus or Equals moved the world's game speed to <see cref="Speed"/> (the time scale every step runs at; the
+    /// HUD shows it with two decimals, <c>FormatNumber(gameSpeed, 2)</c>). <see cref="Player"/> held the key.
+    /// </summary>
+    public sealed class GameSpeedChanged : GameEvent
+    {
+        public GameSpeedChanged(PlayerId player, float speed)
+        {
+            Player = player;
+            Speed = speed;
+        }
+
+        public PlayerId Player { get; }
+        public float Speed { get; }
+
+        public override string ToString() => $"GameSpeedChanged {Player} {Speed:0.00}";
+    }
+
     /// <summary>An enemy touched the player's angel and cost HP (Engine.vb checkAngelHit).</summary>
     public sealed class AngelHurt : GameEvent
     {
