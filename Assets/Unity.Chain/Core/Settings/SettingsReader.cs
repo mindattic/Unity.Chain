@@ -126,6 +126,38 @@ namespace MindAttic.Chain.Core
             return new Vec2((float)x, (float)y);
         }
 
+        /// <summary>
+        /// A colour as the original's <c>Write</c> takes it: four whole numbers [alpha, red, green, blue], each 0-255.
+        /// </summary>
+        public Argb Colour(string key)
+        {
+            var value = Take(key, JsonKind.Array, "an [alpha, red, green, blue] colour");
+            if (value == null)
+            {
+                return default;
+            }
+
+            var bytes = new byte[4];
+            var ok = value.Items.Count == 4;
+            for (var i = 0; ok && i < 4; i++)
+            {
+                var item = value.Items[i];
+                ok = item.Kind == JsonKind.Number && item.Number >= 0d && item.Number <= 255d && Math.Floor(item.Number) == item.Number;
+                if (ok)
+                {
+                    bytes[i] = (byte)item.Number;
+                }
+            }
+
+            if (!ok)
+            {
+                Fail(key, value, "must be an [alpha, red, green, blue] colour of four whole numbers between 0 and 255");
+                return default;
+            }
+
+            return new Argb(bytes[0], bytes[1], bytes[2], bytes[3]);
+        }
+
         /// <summary>One of <typeparamref name="T"/>'s names, written as in the code ("FitLevel").</summary>
         public T Choice<T>(string key) where T : struct
         {

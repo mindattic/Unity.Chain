@@ -142,7 +142,7 @@ Every binding of the original, with its state:
 | B / N | beach / utopia background (a second `Case Keys.B` for the background toggle is unreachable) | missing, UNI-T40 |
 | E | zone (hit box) overlay, default on | missing, UNI-T56 |
 | F1, F2, F3 | wireframe, textures, culling (D3D render states) | missing, UNI-T56 |
-| F4 | FPS counter | missing, UNI-T50 |
+| F4 | FPS counter (`bDrawFPS`, on at the start and in every `Reset`) | ported (UNI-T50; the Debug map's ToggleFps, `GameHud.ToggleFps`); off hides it and a frame counts once (BIBLE D20, D21) |
 | Tab | menu panel | missing, UNI-T55 |
 | Pause | pause | ported (Pause action: Pause, P, Esc, gamepad Start); Esc's quit, UNI-T54 |
 | Esc | quit | missing, UNI-T54 |
@@ -156,10 +156,10 @@ Every binding of the original, with its state:
 
 | Behaviour | Original | Status / ticket |
 |---|---|---|
-| HUD text | `HP : ` as `|` per point, `Score : `, `Grappled: <hp>`, `Res/Grav/Spring`, game speed, FPS. **In the final source `Root.Write` has its `DrawText` commented out, so no text is drawn at all**; the earlier backups drew it. The rebuild follows the intent | partial (IMGUI), UNI-T50 |
+| HUD text | `Write(text, font, x, y, alpha, red, green, blue)` in a 512x448 window: `HP : ` as `|` per point at (20, 10) and `Score : ` at (10, 30), red; `Res/Grav/Spring` at (50, 50), blue; `Grappled: <hp>` at (20, 120), yellow; `FormatNumber(gameSpeed, 2)` at (Width - 50, 20) in `colorReticle` (red); `<n> fps` at (Width - 50, 4) in 255, 0, 25; all `fontMenu` (Arial 10 bold). **In the final source `Root.Write` has its `DrawText` commented out, so no text is drawn at all**; the earlier backups drew it. The rebuild follows the intent (BIBLE D3) | ported (UNI-T50): `GameHud`, a UI Toolkit panel laid out from `hud.json` in the original window's pixels, scaled to the screen's height; `TopRight` text keeps its 50 px from the right edge on any aspect |
 | Clock | `m:ss`, one count per second at (300, 5), reset by `Reset` | counted and reset (`GameWorld.RoundTime`, UNI-T48); the readout, UNI-T53 |
-| Status box | `status_box.png` 96x48 at the top left | missing, UNI-T50 |
-| Pause | stops everything, draws `- PAUSE -` | ported (P/Esc), UNI-T54 |
+| Status box | `status_box.png` (99x46, magenta keyed) loaded at 96x46 and drawn on a 96x48 quad at (`statOffsetX`, `statOffsetY`) = (0, 0), its v from 2/48 (the top two rows, all keyed, never show) | ported (UNI-T50): `Resources/UI/status_box.png`, keyed to alpha, top two rows cropped, point-filtered, drawn 96x48 under the HUD text |
+| Pause | stops everything; draws only the background and `- PAUSE -` (`fontPause`, Arial Narrow 24, at 512 / 2, 448 / 2, half see-through `colorReticle` red), none of the HUD | ported (P/Esc; keys UNI-T54); the HUD hides its status layer and FPS while paused and shows the red banner centred (UNI-T50) |
 | Game over | HP < 0: fade the ambient light 5 per frame, then `Reset` with no click | missing, UNI-T28 |
 | `Reset` | score, timer, fade, ambient, speed, flags, camera, spring/bounce/resistance/gravity, angel HP and position, all enemies (HP 1.0, Seek, corners), the heart, music start | ported, UNI-T48: one `GameWorld.Reset` for R and game over restores score, `RoundTime`, the fade, game speed (`game.json`), pause, the chain's spring/resistance/gravity, angel HP 30 and home, a fresh wave (HP 1.0, Seek, real random points, BIBLE D1) and the world's hearts (y 0.4, sway left, `floatSPD` 0.001; `turnAround` kept); its `WorldReset` recentres the camera, jumps the music (`rndMusicPos`) and turns lighting on (the time of day runs on, the stray `b = True` is not ported, BIBLE D16). The render flags wait on their own tickets; `Bounce` is only read by commented-out code (BIBLE V15) |
 | `renderTime`, `renderDate`, `levelText` | never called, or only move a matrix (no text drawn) | dead |

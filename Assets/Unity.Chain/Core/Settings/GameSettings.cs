@@ -12,7 +12,7 @@ namespace MindAttic.Chain.Core
     /// <item><b>The files</b> hold the original's own figures, named and valued exactly as its source has them, in
     /// its own units (screen space, per frame): <see cref="Chain"/>, <see cref="Angel"/>, <see cref="Enemies"/>,
     /// <see cref="Item"/>, <see cref="Game"/>, <see cref="Lighting"/>, <see cref="Camera"/>, <see cref="Audio"/>,
-    /// <see cref="Input"/>.
+    /// <see cref="Input"/>, <see cref="Hud"/>.
     /// A figure the original never had (a circle radius where it tested rectangles, the camera rig's follow) sits in
     /// that file's <c>port</c> object, in world units and seconds, and is never mapped.</item>
     /// <item><b>The port's values</b> (<see cref="Player"/>, <see cref="World"/>, <see cref="Heart"/>,
@@ -35,11 +35,12 @@ namespace MindAttic.Chain.Core
         public const string CameraFile = "camera.json";
         public const string AudioFile = "audio.json";
         public const string InputFile = "input.json";
+        public const string HudFile = "hud.json";
 
         /// <summary>Every data file the registry reads.</summary>
         public static readonly string[] Files =
         {
-            SpaceFile, ChainFile, AngelFile, EnemiesFile, ItemFile, GameFile, LightingFile, CameraFile, AudioFile, InputFile,
+            SpaceFile, ChainFile, AngelFile, EnemiesFile, ItemFile, GameFile, LightingFile, CameraFile, AudioFile, InputFile, HudFile,
         };
 
         private GameSettings()
@@ -56,6 +57,9 @@ namespace MindAttic.Chain.Core
         public CameraData Camera { get; private set; }
         public AudioData Audio { get; private set; }
         public InputData Input { get; private set; }
+
+        /// <summary>hud.json: the HUD's layout, colours and FPS counter, in the original window's pixels (UNI-T50).</summary>
+        public HudData Hud { get; private set; }
 
         /// <summary>The original-to-port mapping (space.json).</summary>
         public OriginalSpace Mapping { get; private set; }
@@ -110,6 +114,7 @@ namespace MindAttic.Chain.Core
                 Camera = Read(source, CameraFile, errors, CameraData.Read),
                 Audio = Read(source, AudioFile, errors, AudioData.Read),
                 Input = Read(source, InputFile, errors, InputData.Read),
+                Hud = Read(source, HudFile, errors, HudData.Read),
             };
 
             if (errors.Count > 0)

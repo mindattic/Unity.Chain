@@ -151,11 +151,6 @@ MonoBehaviour:
   session: {fileID: 498368145}
   grapple: {fileID: 1629464914}
   sceneLight: {fileID: 54496682}
-  textScale: 0.03
-  margin: 0.02
-  statusColor: {r: 1, g: 0.2, b: 0.2, a: 1}
-  grappleColor: {r: 1, g: 1, b: 0.2, a: 1}
-  bannerColor: {r: 1, g: 1, b: 1, a: 1}
 --- !u!4 &9324315
 Transform:
   m_ObjectHideFlags: 0

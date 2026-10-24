@@ -6,17 +6,28 @@ namespace MindAttic.Chain
 {
     /// <summary>
     /// The screen-space HUD, a UI Toolkit <see cref="UIDocument"/> built entirely in code (its
-    /// <see cref="PanelSettings"/>, theme and visual tree; nothing to wire in the Inspector), laid out
-    /// like Engine.vb's <c>renderDisplay</c>: the HP bar and score top-left, the grappled enemy's HP
-    /// under them while the grapple holds one, a centered "- PAUSE -" banner while paused, and a
-    /// game-over banner over the ambient fade (dimmed here unless <see cref="SceneLight"/> shows it).
-    /// The panel scales with the screen (<see cref="ReferenceResolution"/>, matched on height).
+    /// <see cref="PanelSettings"/>, theme and visual tree; nothing to wire in the Inspector), the port of Gui.vb and
+    /// Engine.vb's <c>renderDisplay</c> (UNI-T50):
+    /// <list type="bullet">
+    /// <item>the status box art (Gui.vb renderStatus: <c>status_box.png</c>, 96 x 48 at the top left);</item>
+    /// <item>HP as one <c>|</c> per point and the score, red; the grappled enemy's HP in yellow while the grapple
+    /// holds one; the chain's <c>Res</c>/<c>Grav</c>/<c>Spring</c> in blue; the game speed, red, top right;</item>
+    /// <item>the frame rate top right (Gui.vb renderFPS), sampled every 100 ms by a <see cref="FrameRateCounter"/>,
+    /// shown from the start, flipped by F4 (the Debug map's ToggleFps) and shown again by every reset (Root.vb's
+    /// <c>bDrawFPS = True</c>);</item>
+    /// <item>while paused only the half see-through red <c>- PAUSE -</c> banner (oneFrameRender draws none of the
+    /// HUD while paused), over the port's dim; at game over the port's banner over the fade (dimmed here unless
+    /// <see cref="SceneLight"/> shows it).</item>
+    /// </list>
+    /// Every position, colour, font size and the sample rate come from hud.json (<see cref="HudData"/>), in pixels of
+    /// the original's 512 x 448 window, which the panel scales to the screen's height
+    /// (<see cref="ReferenceResolution"/>, matched on height); <c>TopRight</c> text keeps its distance from the right
+    /// edge on any aspect.
     ///
-    /// <see cref="Root"/> is the HUD root the later HUD, menu, scripter and settings panels are added
-    /// to (<see cref="AddPanel"/>): the status and overlay layers sit at its bottom, so a panel added
-    /// later draws over them. The HUD reads everything from the world through
-    /// <see cref="GameSession"/> (refreshing on its events and following the fade each frame) and the
-    /// player's <see cref="GrappleController"/>, and changes nothing; the strings come from
+    /// <see cref="Root"/> is the HUD root the later HUD, menu, scripter and settings panels are added to
+    /// (<see cref="AddPanel"/>): the HUD's own layers sit at its bottom, so a panel added later draws over them. The
+    /// HUD reads everything from the world through <see cref="GameSession"/> (refreshing on its events and every
+    /// frame) and the player's <see cref="GrappleController"/>, and changes nothing; the strings come from
     /// <see cref="HudText"/>.
     /// </summary>
     [DisallowMultipleComponent]
@@ -26,8 +37,8 @@ namespace MindAttic.Chain
         /// <summary>The panel's design resolution; it scales to the screen matching on height.</summary>
         public static readonly Vector2Int ReferenceResolution = new Vector2Int(1280, 720);
 
-        /// <summary>How dark the pause banner's overlay is.</summary>
-        public const float PauseDim = 0.45f;
+        /// <summary>The status box art, under Resources (Gui.vb's gfx/gui/status_box.png, magenta keyed to alpha).</summary>
+        public const string StatusBoxPath = "UI/status_box";
 
         private const string ThemePath = "UI/ChainTheme";
 
@@ -38,27 +49,26 @@ namespace MindAttic.Chain
         [Tooltip("While this lights the scene, its light shows the game-over fade and the HUD does not dim. Falls back to the scene's SceneLight.")]
         [SerializeField] private SceneLight sceneLight;
 
-        [Header("Look")]
-        [Tooltip("HUD text height as a fraction of the screen height.")]
-        [Range(0.01f, 0.1f)]
-        [SerializeField] private float textScale = 0.03f;
-        [Tooltip("Inset of the HUD from the screen's top-left corner, as a fraction of the screen height.")]
-        [Range(0f, 0.2f)]
-        [SerializeField] private float margin = 0.02f;
-        [SerializeField] private Color statusColor = new Color(1f, 0.2f, 0.2f);
-        [SerializeField] private Color grappleColor = new Color(1f, 1f, 0.2f);
-        [SerializeField] private Color bannerColor = Color.white;
-
         private UIDocument _document;
         private PanelSettings _panelSettings;
         private GameSession _subscribed;
+        private ChainControls _controls;
+        private HudData _layout;
+        private FrameRateCounter _frames;
+        private bool _showFps = true;
 
         private VisualElement _root;
         private VisualElement _overlay;
+        private VisualElement _status;
+        private VisualElement _statusBox;
         private Label _hp;
         private Label _score;
+        private Label _readout;
         private Label _grappled;
-        private Label _banner;
+        private Label _gameSpeed;
+        private Label _fps;
+        private Label _pause;
+        private Label _gameOver;
 
         public GameSession Session
         {
@@ -95,10 +105,16 @@ namespace MindAttic.Chain
             }
         }
 
+        /// <summary>hud.json: the layout the HUD is built from (the session's registry, else the data files').</summary>
+        public HudData Layout => _layout ?? (_layout = (session != null ? session.Settings : SettingsStore.Current).Hud);
+
+        /// <summary>Original-window pixels to panel pixels: the panel's height over the original's (720 / 448).</summary>
+        public float Scale => ReferenceResolution.y / Layout.Screen.Y;
+
         /// <summary>
-        /// The HUD root: a full-screen element that lets clicks through, holding the status and
-        /// overlay layers. Later panels go on it with <see cref="AddPanel"/>. Built on first use, so it
-        /// can be read (and tested) before the document's panel exists.
+        /// The HUD root: a full-screen element that lets clicks through, holding the HUD's own layers. Later panels go
+        /// on it with <see cref="AddPanel"/>. Built on first use, so it can be read (and tested) before the document's
+        /// panel exists.
         /// </summary>
         public VisualElement Root
         {
@@ -112,17 +128,32 @@ namespace MindAttic.Chain
         /// <summary>The document the HUD is shown through (null until the component wakes).</summary>
         public UIDocument Document => _document;
 
+        /// <summary>The status box art's element.</summary>
+        public VisualElement StatusBox => Root != null ? _statusBox : null;
+
+        /// <summary>Whether the status layer (box, HP, score, readouts) is drawn: not while paused, as in oneFrameRender.</summary>
+        public bool StatusShown => Root != null && Shown(_status);
+
         /// <summary>The HP line as it is shown.</summary>
         public string HpText => Root != null ? _hp.text : null;
 
         /// <summary>The score line as it is shown.</summary>
         public string ScoreText => Root != null ? _score.text : null;
 
+        /// <summary>The Res/Grav/Spring block as it is shown.</summary>
+        public string ReadoutText => Root != null ? _readout.text : null;
+
+        /// <summary>The game speed as it is shown.</summary>
+        public string GameSpeedText => Root != null ? _gameSpeed.text : null;
+
         /// <summary>The grappled enemy's HP line, or null while it is hidden.</summary>
         public string GrappledText => Root != null && Shown(_grappled) ? _grappled.text : null;
 
-        /// <summary>The centered banner (pause or game over), or null while it is hidden.</summary>
-        public string BannerText => Root != null && Shown(_banner) ? _banner.text : null;
+        /// <summary>The frame rate as it is shown, or null while it is hidden (F4 off, or paused).</summary>
+        public string FpsText => Root != null && Shown(_fps) ? _fps.text : null;
+
+        /// <summary>The centered banner (pause or game over), or null while neither is shown.</summary>
+        public string BannerText => Root == null ? null : Shown(_gameOver) ? _gameOver.text : Shown(_pause) ? _pause.text : null;
 
         /// <summary>How dark the overlay is drawn right now (0 while hidden).</summary>
         public float OverlayDim => Root != null && Shown(_overlay) ? _overlay.style.backgroundColor.value.a : 0f;
@@ -140,6 +171,45 @@ namespace MindAttic.Chain
             ? enemy.Hp
             : (float?)null;
 
+        /// <summary>Root.vb's bDrawFPS: whether the frame rate is drawn. F4 flips it; every reset turns it back on.</summary>
+        public bool ShowFps
+        {
+            get => _showFps;
+            set
+            {
+                _showFps = value;
+                Refresh();
+            }
+        }
+
+        /// <summary>Gui.vb's frame counter (sampled every hud.json <c>fpsSampleMs</c>).</summary>
+        public FrameRateCounter Frames => _frames ?? (_frames = new FrameRateCounter(Layout.FpsSampleMs));
+
+        /// <summary>Form1.vb's F4: flips <see cref="ShowFps"/>. Returns the new state.</summary>
+        public bool ToggleFps()
+        {
+            ShowFps = !ShowFps;
+            return ShowFps;
+        }
+
+        /// <summary>
+        /// One drawn frame at <paramref name="nowMs"/> of real time: counts it while the frame rate is drawn and the
+        /// game is not paused (renderFPS runs only then), and shows the latest sample. Called every frame; public so
+        /// tests can drive it.
+        /// </summary>
+        public void TickFps(long nowMs)
+        {
+            if (_showFps && (session == null || !session.State.IsPaused))
+            {
+                Frames.Frame(nowMs);
+            }
+
+            if (_root != null)
+            {
+                SetText(_fps, HudText.Fps(Frames.FrameRate));
+            }
+        }
+
         /// <summary>
         /// Adds a panel over the HUD's own layers (the later HUD, menu, scripter and settings
         /// panels). Returns the panel.
@@ -150,7 +220,7 @@ namespace MindAttic.Chain
             return panel;
         }
 
-        /// <summary>Shows the world's state: HP, score, grappled HP, and the pause or game-over banner.</summary>
+        /// <summary>Shows the world's state: the status layer, the frame rate, and the pause or game-over banner.</summary>
         public void Refresh()
         {
             if (_root == null)
@@ -160,19 +230,31 @@ namespace MindAttic.Chain
 
             if (session == null)
             {
-                SetShown(_hp, false);
-                SetShown(_score, false);
-                SetShown(_grappled, false);
-                SetShown(_banner, false);
+                SetShown(_status, false);
+                SetShown(_fps, false);
+                SetShown(_pause, false);
+                SetShown(_gameOver, false);
                 SetShown(_overlay, false);
                 return;
             }
 
             var state = session.State;
-            SetShown(_hp, true);
-            SetShown(_score, true);
+            var paused = state.IsPaused && !state.IsGameOver;
+
+            // oneFrameRender draws the status box, renderDisplay and renderFPS only while not paused.
+            SetShown(_status, !paused);
+            SetShown(_fps, !paused && _showFps);
+
             SetText(_hp, HudText.Hp(state.Hp));
             SetText(_score, HudText.Score(state.Score));
+            SetText(_gameSpeed, HudText.GameSpeed(session.World.GameSpeed));
+
+            var player = FindPlayer();
+            SetShown(_readout, player != null);
+            if (player != null)
+            {
+                SetText(_readout, HudText.Readout(ChainReadout.From(player.Chain.Config, session.Settings.Mapping)));
+            }
 
             var grappled = GrappledHp;
             SetShown(_grappled, grappled.HasValue);
@@ -181,17 +263,18 @@ namespace MindAttic.Chain
                 SetText(_grappled, HudText.Grappled(grappled.Value));
             }
 
+            SetShown(_gameOver, state.IsGameOver);
+            SetShown(_pause, paused);
             if (state.IsGameOver)
             {
-                ShowBanner(HudText.GameOver, GameOverDim);
+                ShowOverlay(GameOverDim);
             }
-            else if (state.IsPaused)
+            else if (paused)
             {
-                ShowBanner(HudText.Paused, PauseDim);
+                ShowOverlay(Layout.Port.PauseDim);
             }
             else
             {
-                SetShown(_banner, false);
                 SetShown(_overlay, false);
             }
         }
@@ -221,13 +304,20 @@ namespace MindAttic.Chain
             Subscribe();
             Attach();
             Refresh();
+            (_controls ?? (_controls = new ChainControls())).Debug.Enable();
         }
 
-        private void OnDisable() => Unsubscribe();
+        private void OnDisable()
+        {
+            Unsubscribe();
+            _controls?.Debug.Disable();
+        }
 
         private void OnDestroy()
         {
             Unsubscribe();
+            _controls?.Dispose();
+            _controls = null;
             if (_panelSettings != null)
             {
                 if (Application.isPlaying)
@@ -243,14 +333,33 @@ namespace MindAttic.Chain
             }
         }
 
-        // The fade and the grappled enemy's HP change every step without an event of their own.
+        private void Update()
+        {
+            if (_controls != null && _controls.ToggleFps.WasPressedThisFrame())
+            {
+                ToggleFps();
+            }
+        }
+
+        // The fade, the grappled enemy's HP and the live tuning change every step without an event of their own.
         private void LateUpdate()
         {
             Attach();
+            TickFps((long)(Time.realtimeSinceStartupAsDouble * 1000d));
             Refresh();
         }
 
         private void OnSessionEvent(GameEvent gameEvent) => Refresh();
+
+        // Root.vb's Reset: bDrawFPS = True.
+        private void OnRestarted() => ShowFps = Layout.DrawFps;
+
+        private PlayerEntity FindPlayer()
+        {
+            var world = session.World;
+            var player = session.Angel != null ? world.FindPlayer(session.Angel.Seat) : null;
+            return player ?? (world.Players.Count > 0 ? world.Players[0] : null);
+        }
 
         private void Subscribe()
         {
@@ -263,6 +372,7 @@ namespace MindAttic.Chain
             if (session != null)
             {
                 session.EventRaised += OnSessionEvent;
+                session.Restarted += OnRestarted;
                 _subscribed = session;
             }
         }
@@ -272,6 +382,7 @@ namespace MindAttic.Chain
             if (_subscribed != null)
             {
                 _subscribed.EventRaised -= OnSessionEvent;
+                _subscribed.Restarted -= OnRestarted;
                 _subscribed = null;
             }
         }
@@ -304,7 +415,7 @@ namespace MindAttic.Chain
             settings.scaleMode = PanelScaleMode.ScaleWithScreenSize;
             settings.referenceResolution = ReferenceResolution;
             settings.screenMatchMode = PanelScreenMatchMode.MatchWidthOrHeight;
-            settings.match = 1f; // text height is a fraction of the screen height
+            settings.match = 1f; // the original window's height is the screen's height
             settings.clearColor = false;
             return settings;
         }
@@ -327,70 +438,117 @@ namespace MindAttic.Chain
                 return;
             }
 
-            var lineHeight = ReferenceResolution.y * textScale;
-            var inset = ReferenceResolution.y * margin;
+            var layout = Layout;
+            _showFps = layout.DrawFps;
 
             _root = new VisualElement { name = "hud-root", pickingMode = PickingMode.Ignore };
-            _root.style.position = Position.Absolute;
-            _root.style.left = 0f;
-            _root.style.top = 0f;
-            _root.style.right = 0f;
-            _root.style.bottom = 0f;
+            Fill(_root);
 
             _overlay = new VisualElement { name = "hud-overlay", pickingMode = PickingMode.Ignore };
             Fill(_overlay);
-            _overlay.style.justifyContent = Justify.Center;
-            _overlay.style.alignItems = Align.Center;
             _root.Add(_overlay);
 
-            _banner = MakeLabel("hud-banner", lineHeight * 2f, bannerColor);
-            _banner.style.unityTextAlign = TextAnchor.MiddleCenter;
-            _overlay.Add(_banner);
+            // Gui.vb renderStatus draws the box first; renderDisplay writes over it.
+            _status = new VisualElement { name = "hud-status", pickingMode = PickingMode.Ignore };
+            Fill(_status);
+            _root.Add(_status);
 
-            var status = new VisualElement { name = "hud-status", pickingMode = PickingMode.Ignore };
-            status.style.position = Position.Absolute;
-            status.style.left = inset;
-            status.style.top = inset;
-            status.style.flexDirection = FlexDirection.Column;
-            _root.Add(status);
+            _statusBox = new VisualElement { name = "hud-status-box", pickingMode = PickingMode.Ignore };
+            _statusBox.style.position = Position.Absolute;
+            _statusBox.style.left = layout.StatusBoxPosition.X * Scale;
+            _statusBox.style.top = layout.StatusBoxPosition.Y * Scale;
+            _statusBox.style.width = layout.StatusBoxSize.X * Scale;
+            _statusBox.style.height = layout.StatusBoxSize.Y * Scale;
+            var art = Resources.Load<Texture2D>(StatusBoxPath);
+            if (art != null)
+            {
+                _statusBox.style.backgroundImage = new StyleBackground(art);
+                _statusBox.style.backgroundSize = new BackgroundSize(Length.Percent(100), Length.Percent(100));
+            }
 
-            _hp = MakeLabel("hud-hp", lineHeight, statusColor);
-            _score = MakeLabel("hud-score", lineHeight, statusColor);
-            _grappled = MakeLabel("hud-grappled", lineHeight, grappleColor);
-            _grappled.style.marginTop = lineHeight * 0.5f;
-            status.Add(_hp);
-            status.Add(_score);
-            status.Add(_grappled);
+            _status.Add(_statusBox);
+
+            _hp = AddLabel(_status, "hud-hp", layout.Hp);
+            _score = AddLabel(_status, "hud-score", layout.Score);
+            _readout = AddLabel(_status, "hud-readout", layout.Readout);
+            _grappled = AddLabel(_status, "hud-grappled", layout.Grappled);
+            _gameSpeed = AddLabel(_status, "hud-game-speed", layout.GameSpeed);
+
+            _fps = AddLabel(_root, "hud-fps", layout.Fps);
+            _fps.text = HudText.Fps(Frames.FrameRate);
+            _pause = AddLabel(_root, "hud-pause", layout.Pause);
+            _pause.text = HudText.Paused;
+            _gameOver = AddLabel(_root, "hud-game-over", layout.Port.GameOver);
+            _gameOver.text = HudText.GameOver;
 
             SetShown(_overlay, false);
-            SetShown(_banner, false);
+            SetShown(_pause, false);
+            SetShown(_gameOver, false);
             SetShown(_grappled, false);
             Refresh();
         }
 
-        private static Label MakeLabel(string name, float fontSize, Color color)
+        /// <summary>A label placed and coloured from hud.json (<see cref="HudTextStyle"/>), in panel pixels.</summary>
+        private Label AddLabel(VisualElement parent, string name, HudTextStyle style)
         {
+            var scale = Scale;
+            var fontSize = style.FontPixels * scale;
             var label = new Label { name = name, pickingMode = PickingMode.Ignore };
+            label.style.position = Position.Absolute;
             label.style.fontSize = fontSize;
-            label.style.color = color;
-            label.style.unityFontStyleAndWeight = FontStyle.Bold;
+            label.style.color = ToColor(style.Colour);
+            label.style.unityFontStyleAndWeight = style.Bold ? FontStyle.Bold : FontStyle.Normal;
             label.style.whiteSpace = WhiteSpace.NoWrap;
             label.style.marginLeft = 0f;
             label.style.marginRight = 0f;
             label.style.marginTop = 0f;
-            label.style.marginBottom = fontSize * 0.3f;
+            label.style.marginBottom = 0f;
             label.style.paddingLeft = 0f;
             label.style.paddingRight = 0f;
             label.style.paddingTop = 0f;
             label.style.paddingBottom = 0f;
-            label.style.textShadow = new TextShadow
+
+            var x = style.Position.X * scale;
+            var y = style.Position.Y * scale;
+            switch (style.Anchor)
             {
-                offset = new Vector2(Mathf.Max(1f, fontSize / 12f), Mathf.Max(1f, fontSize / 12f)),
-                blurRadius = 0f,
-                color = new Color(0f, 0f, 0f, 0.75f),
-            };
+                case HudAnchor.TopRight:
+                    // rTarget.Width - x: the left edge sits x in from the right edge, on any aspect.
+                    label.style.left = Length.Percent(100);
+                    label.style.marginLeft = -x;
+                    label.style.top = y;
+                    break;
+                case HudAnchor.Center:
+                    label.style.left = Length.Percent(50);
+                    label.style.top = Length.Percent(50);
+                    label.style.translate = new Translate(Length.Percent(-50), Length.Percent(-50));
+                    label.style.marginLeft = x;
+                    label.style.marginTop = y;
+                    label.style.unityTextAlign = TextAnchor.MiddleCenter;
+                    break;
+                default:
+                    label.style.left = x;
+                    label.style.top = y;
+                    break;
+            }
+
+            if (Layout.Port.TextShadow)
+            {
+                var offset = Mathf.Max(1f, fontSize / 12f);
+                label.style.textShadow = new TextShadow
+                {
+                    offset = new Vector2(offset, offset),
+                    blurRadius = 0f,
+                    color = new Color(0f, 0f, 0f, 0.75f * style.Colour.A / 255f),
+                };
+            }
+
+            parent.Add(label);
             return label;
         }
+
+        /// <summary>A hud.json colour ([alpha, red, green, blue], 0-255) as a Unity colour.</summary>
+        public static Color ToColor(Argb colour) => new Color32(colour.R, colour.G, colour.B, colour.A);
 
         private static void Fill(VisualElement element)
         {
@@ -401,10 +559,8 @@ namespace MindAttic.Chain
             element.style.bottom = 0f;
         }
 
-        private void ShowBanner(string title, float dim)
+        private void ShowOverlay(float dim)
         {
-            SetText(_banner, title);
-            SetShown(_banner, true);
             SetShown(_overlay, true);
             _overlay.style.backgroundColor = new Color(0f, 0f, 0f, Mathf.Clamp01(dim));
         }

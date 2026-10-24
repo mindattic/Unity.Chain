@@ -1,0 +1,23 @@
+{
+  "_source": "Gui.vb (statOffsetX/Y, statWidth 96 x statHeight 48, iFPSProfileSpeed 100, initFont), Engine.vb renderDisplay and oneFrameRender's pause, Root.vb (colorReticle = Red; bDrawFPS True at the start and in every Reset). Positions are pixels of the original's 512 x 448 window (Form1.vb; the pause banner sits at 512 / 2, 448 / 2), y down; colours are Write's [alpha, red, green, blue]; fontSize is points (fontMenu Arial 10 bold, fontPause Arial Narrow 24). anchor is TopLeft, TopRight (x pixels in from the right edge: rTarget.Width - 50) or Center.",
+  "screen": [512, 448],
+  "statusBox": {
+    "position": [0, 0],
+    "size": [96, 48]
+  },
+  "hp": { "anchor": "TopLeft", "position": [20, 10], "colour": [255, 255, 0, 0], "fontSize": 10, "bold": true },
+  "score": { "anchor": "TopLeft", "position": [10, 30], "colour": [255, 255, 0, 0], "fontSize": 10, "bold": true },
+  "readout": { "anchor": "TopLeft", "position": [50, 50], "colour": [255, 0, 0, 255], "fontSize": 10, "bold": true },
+  "grappled": { "anchor": "TopLeft", "position": [20, 120], "colour": [255, 255, 255, 0], "fontSize": 10, "bold": true },
+  "gameSpeed": { "anchor": "TopRight", "position": [50, 20], "colour": [255, 255, 0, 0], "fontSize": 10, "bold": true },
+  "fps": { "anchor": "TopRight", "position": [50, 4], "colour": [255, 255, 0, 25], "fontSize": 10, "bold": true },
+  "pause": { "anchor": "Center", "position": [0, 0], "colour": [128, 255, 0, 0], "fontSize": 24, "bold": false },
+  "fpsSampleMs": 100,
+  "drawFps": true,
+  "port": {
+    "_about": "Not in the original: the dim behind the pause banner, the game-over banner over the fade, and a thin drop shadow under the HUD text.",
+    "pauseDim": 0.45,
+    "gameOver": { "anchor": "Center", "position": [0, 0], "colour": [255, 255, 255, 255], "fontSize": 24, "bold": true },
+    "textShadow": true
+  }
+}

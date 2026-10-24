@@ -242,6 +242,16 @@ namespace MindAttic.Chain.Tests
                 Assert.AreSame(controls.Debug, controls.ShakeScreen.actionMap);
             }
         }
+
+        [Test]
+        public void ChainControls_F4_IsToggleFps()
+        {
+            using (var controls = new ChainControls())
+            {
+                Assert.AreEqual("<Keyboard>/f4", controls.ToggleFps.bindings[0].path);
+                Assert.AreSame(controls.Debug, controls.ToggleFps.actionMap);
+            }
+        }
     }
 
     public class HudTextTests
@@ -261,6 +271,15 @@ namespace MindAttic.Chain.Tests
             Assert.AreEqual("Grappled: 0.75", HudText.Grappled(0.75f));
             Assert.AreEqual("Grappled: 2", HudText.Grappled(2f));
             Assert.AreEqual("Grappled: 0", HudText.Grappled(-1f));
+        }
+
+        [Test]
+        public void Readout_GameSpeed_AndFps_AreRenderDisplaysAndRenderFpssWording()
+        {
+            Assert.AreEqual("Res 0.25\nGrav -0.0025\nSpring 0.1", HudText.Readout(new ChainReadout(0.25f, -0.0025f, 0.1f)));
+            Assert.AreEqual("1.00", HudText.GameSpeed(1f), "FormatNumber(gameSpeed, 2)");
+            Assert.AreEqual("0.97", HudText.GameSpeed(0.97f));
+            Assert.AreEqual("60 fps", HudText.Fps(60));
         }
     }
 
@@ -464,11 +483,74 @@ namespace MindAttic.Chain.Tests
 
             Assert.IsTrue(Session.Submit(new Pause(_rig.Id, true)));
             Assert.AreEqual(HudText.Paused, hud.BannerText, "the pause event refreshes the HUD");
-            Assert.AreEqual(GameHud.PauseDim, hud.OverlayDim, 1e-5f);
+            Assert.AreEqual(hud.Layout.Port.PauseDim, hud.OverlayDim, 1e-5f);
+            Assert.IsFalse(hud.StatusShown, "oneFrameRender draws none of the HUD while paused");
+            Assert.IsNull(hud.FpsText, "nor the frame rate");
 
             Assert.IsTrue(Session.Submit(new Pause(_rig.Id, false)));
             Assert.IsNull(hud.BannerText);
             Assert.AreEqual(0f, hud.OverlayDim);
+            Assert.IsTrue(hud.StatusShown);
+            Assert.IsNotNull(hud.FpsText);
+        }
+
+        [Test]
+        public void Hud_LaysOutGuiVbAndRenderDisplay_FromHudJson()
+        {
+            var hud = _rig.Track(new GameObject("Hud")).AddComponent<GameHud>();
+            hud.Session = Session;
+            var layout = hud.Layout;
+            var scale = hud.Scale;
+            Assert.AreEqual(GameHud.ReferenceResolution.y / 448f, scale, 1e-5f, "the original's 448-pixel-high window fills the panel's height");
+
+            // Gui.vb renderStatus: status_box.png, 96 x 48 at the top left.
+            var box = hud.StatusBox;
+            Assert.IsNotNull(box.style.backgroundImage.value.texture, "the status box art loads from Resources");
+            Assert.AreEqual(0f, box.style.left.value.value);
+            Assert.AreEqual(0f, box.style.top.value.value);
+            Assert.AreEqual(96f * scale, box.style.width.value.value, 1e-4f);
+            Assert.AreEqual(48f * scale, box.style.height.value.value, 1e-4f);
+
+            // renderDisplay's Write calls: HP at (20, 10) red, Res/Grav/Spring at (50, 50) blue.
+            var hp = hud.Root.Q<Label>("hud-hp");
+            Assert.AreEqual(20f * scale, hp.style.left.value.value, 1e-4f);
+            Assert.AreEqual(10f * scale, hp.style.top.value.value, 1e-4f);
+            Assert.AreEqual((Color)new Color32(255, 0, 0, 255), hp.style.color.value);
+            Assert.AreEqual(10f * 96f / 72f * scale, hp.style.fontSize.value.value, 1e-4f, "fontMenu, Arial 10 pt");
+            Assert.AreEqual((Color)new Color32(0, 0, 255, 255), hud.Root.Q<Label>("hud-readout").style.color.value);
+            Assert.AreEqual((Color)new Color32(255, 255, 0, 255), hud.Root.Q<Label>("hud-grappled").style.color.value, "grappled HP in yellow");
+            Assert.AreEqual((Color)new Color32(255, 0, 0, 128), hud.Root.Q<Label>("hud-pause").style.color.value, "- PAUSE - half see-through in colorReticle");
+
+            // The game speed sits rTarget.Width - 50 from the left: 50 in from the right edge.
+            var speed = hud.Root.Q<Label>("hud-game-speed");
+            Assert.AreEqual(LengthUnit.Percent, speed.style.left.value.unit);
+            Assert.AreEqual(100f, speed.style.left.value.value);
+            Assert.AreEqual(-50f * scale, speed.style.marginLeft.value.value, 1e-4f);
+
+            Assert.AreEqual(HudText.GameSpeed(1f), hud.GameSpeedText);
+            Assert.AreEqual("Res 0.25\nGrav -0.0025\nSpring 0.1", hud.ReadoutText, "chain.json's figures, in the original's units");
+            Assert.AreEqual(100, layout.FpsSampleMs);
+        }
+
+        [Test]
+        public void Hud_Fps_SamplesEvery100Ms_F4HidesIt_AndAResetShowsItAgain()
+        {
+            var hud = _rig.Track(new GameObject("Hud")).AddComponent<GameHud>();
+            hud.Session = Session;
+            Assert.IsTrue(hud.ShowFps, "bDrawFPS starts True");
+
+            // A sample at 100 ms, then 6 frames counted before the next at 200 ms: 6 x (1000 / 100) = 60 fps.
+            hud.TickFps(100L);
+            for (var i = 1; i < 6; i++) { hud.TickFps(100L + i * 16L); }
+            hud.TickFps(200L);
+            Assert.AreEqual(HudText.Fps(60), hud.FpsText);
+
+            Assert.IsFalse(hud.ToggleFps());
+            Assert.IsNull(hud.FpsText, "F4 hides it");
+
+            Session.Restart();
+            Assert.IsTrue(hud.ShowFps, "Root.vb's Reset sets bDrawFPS = True");
+            Assert.IsNotNull(hud.FpsText);
         }
 
         [Test]

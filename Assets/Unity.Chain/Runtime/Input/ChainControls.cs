@@ -15,8 +15,8 @@ namespace MindAttic.Chain
     /// <c>[</c> and <c>]</c>), ToggleFollow (Form1.vb's F), Pause, Reset (Form1.vb's R) and ToggleJoystick
     /// (Form1.vb's J).</item>
     /// <item><b>Debug</b>, the scene's toggles that belong to no player: ToggleLighting (Form1.vb's L, read by
-    /// <see cref="SceneLight"/>) and ShakeScreen (Form1.vb's 0, read by <see cref="CameraRig"/>). Later debug keys
-    /// join this map.</item>
+    /// <see cref="SceneLight"/>), ShakeScreen (Form1.vb's 0, read by <see cref="CameraRig"/>) and ToggleFps
+    /// (Form1.vb's F4, read by <see cref="GameHud"/>). Later debug keys join this map.</item>
     /// </list>
     /// Input.vb's and Form1.vb's keys keep their bindings; Minus and Equals stay free for game speed (UNI-T52)
     /// and the numpad for the debug camera (UNI-T57), as the original has them.
@@ -50,6 +50,7 @@ namespace MindAttic.Chain
         public InputAction ToggleJoystick => Player["ToggleJoystick"];
         public InputAction ToggleLighting => Debug["ToggleLighting"];
         public InputAction ShakeScreen => Debug["ShakeScreen"];
+        public InputAction ToggleFps => Debug["ToggleFps"];
 
         /// <summary>A new asset with the game's two maps and every binding.</summary>
         public static InputActionAsset BuildAsset()
@@ -73,6 +74,7 @@ namespace MindAttic.Chain
             var debug = asset.AddActionMap(DebugMapName);
             Button(debug, "ToggleLighting", "<Keyboard>/l");
             Button(debug, "ShakeScreen", "<Keyboard>/digit0");
+            Button(debug, "ToggleFps", "<Keyboard>/f4");
 
             return asset;
         }

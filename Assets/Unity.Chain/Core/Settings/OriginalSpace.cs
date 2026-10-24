@@ -58,5 +58,17 @@ namespace MindAttic.Chain.Core
 
         /// <summary>World units moved per unit of input (Angel.vb's Ratio3D, screen units per mouse count).</summary>
         public float PerInput(float originalPerInput) => originalPerInput * LengthScale;
+
+        // The way back, for readouts that show the original's own figures (the HUD's Res/Grav/Spring, UNI-T50).
+
+        /// <summary>The inverse of <see cref="PerSecond"/>: a rate per second back to the original's per frame.</summary>
+        public float ToPerFrame(float perSecond) => (float)((double)perSecond / FramesPerSecond);
+
+        /// <summary>The inverse of <see cref="PerSecondSquared"/>.</summary>
+        public float ToPerFrameSquared(float perSecondSquared) => (float)((double)perSecondSquared / ((double)FramesPerSecond * FramesPerSecond));
+
+        /// <summary>The inverse of <see cref="Acceleration(float)"/>: world units per second squared back to screen units per frame squared.</summary>
+        public float ToOriginalAcceleration(float acceleration) =>
+            (float)((double)acceleration / ((double)LengthScale * FramesPerSecond * FramesPerSecond));
     }
 }
