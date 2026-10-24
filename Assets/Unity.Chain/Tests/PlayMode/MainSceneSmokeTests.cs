@@ -76,7 +76,7 @@ namespace MindAttic.Chain.Tests
             var startingMacePosition = chain.GetLinkPosition(mace.MaceIndex);
 
             // The game's real loop: the session stepping the world, the chain view, the HUD
-            // OnGUI. None of this should throw across several physics steps.
+            // refreshing its UI Toolkit tree. None of this should throw across several physics steps.
             for (var i = 0; i < 10; i++)
             {
                 yield return new WaitForFixedUpdate();
@@ -99,6 +99,14 @@ namespace MindAttic.Chain.Tests
                 Vector2.Distance(handSocket.position, angel.HandSocket), 0.01f,
                 "The HandSocket transform does not follow the Angel's hand.");
             Assert.AreEqual(mace.MaceIndex + 1, line.positionCount, "LineRenderer is not drawing the active chain length.");
+
+            // The HUD is a UI Toolkit document built in code, its root in the document's panel,
+            // showing the world's HP and score.
+            Assert.IsNotNull(hud.Document, "GameHud built no UIDocument.");
+            Assert.IsNotNull(hud.Document.panelSettings, "GameHud's UIDocument has no PanelSettings.");
+            Assert.IsNotNull(hud.Root.panel, "The HUD root is not in a panel.");
+            Assert.AreEqual(HudText.Hp(session.State.Hp), hud.HpText, "The HUD does not show the world's HP.");
+            Assert.AreEqual(HudText.Score(session.State.Score), hud.ScoreText, "The HUD does not show the world's score.");
             Assert.Greater(
                 Vector2.Distance(startingMacePosition, chain.GetLinkPosition(mace.MaceIndex)), 0.0001f,
                 "The mace link did not move: the chain simulation does not appear to be running.");

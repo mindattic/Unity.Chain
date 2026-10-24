@@ -1,20 +1,36 @@
 using MindAttic.Chain.Core;
 using UnityEngine;
+using UnityEngine.UIElements;
 
 namespace MindAttic.Chain
 {
     /// <summary>
-    /// Screen-space HUD drawn with IMGUI (no canvas, prefab or font asset needed), laid out like
-    /// Engine.vb's <c>renderDisplay</c>: the HP bar and score top-left, the grappled enemy's HP
+    /// The screen-space HUD, a UI Toolkit <see cref="UIDocument"/> built entirely in code (its
+    /// <see cref="PanelSettings"/>, theme and visual tree; nothing to wire in the Inspector), laid out
+    /// like Engine.vb's <c>renderDisplay</c>: the HP bar and score top-left, the grappled enemy's HP
     /// under them while the grapple holds one, a centered "- PAUSE -" banner while paused, and a
-    /// game-over banner over the ambient fade (dimmed here unless <see cref="SceneLight"/> shows it). Text scales with the screen height. Reads
-    /// everything from the world through <see cref="GameSession"/> and the player's
-    /// <see cref="GrappleController"/>, and changes nothing; the strings
-    /// come from <see cref="HudText"/>.
+    /// game-over banner over the ambient fade (dimmed here unless <see cref="SceneLight"/> shows it).
+    /// The panel scales with the screen (<see cref="ReferenceResolution"/>, matched on height).
+    ///
+    /// <see cref="Root"/> is the HUD root the later HUD, menu, scripter and settings panels are added
+    /// to (<see cref="AddPanel"/>): the status and overlay layers sit at its bottom, so a panel added
+    /// later draws over them. The HUD reads everything from the world through
+    /// <see cref="GameSession"/> (refreshing on its events and following the fade each frame) and the
+    /// player's <see cref="GrappleController"/>, and changes nothing; the strings come from
+    /// <see cref="HudText"/>.
     /// </summary>
     [DisallowMultipleComponent]
+    [DefaultExecutionOrder(100)] // after the session and the views have run for the frame
     public sealed class GameHud : MonoBehaviour
     {
+        /// <summary>The panel's design resolution; it scales to the screen matching on height.</summary>
+        public static readonly Vector2Int ReferenceResolution = new Vector2Int(1280, 720);
+
+        /// <summary>How dark the pause banner's overlay is.</summary>
+        public const float PauseDim = 0.45f;
+
+        private const string ThemePath = "UI/ChainTheme";
+
         [Tooltip("Falls back to the scene's GameSession.")]
         [SerializeField] private GameSession session;
         [Tooltip("Shows the grappled enemy's HP while it holds one. Falls back to the scene's GrappleController.")]
@@ -33,28 +49,83 @@ namespace MindAttic.Chain
         [SerializeField] private Color grappleColor = new Color(1f, 1f, 0.2f);
         [SerializeField] private Color bannerColor = Color.white;
 
-        private GUIStyle _label;
-        private GUIStyle _shadow;
-        private GUIStyle _banner;
-        private GUIStyle _subtitle;
+        private UIDocument _document;
+        private PanelSettings _panelSettings;
+        private GameSession _subscribed;
+
+        private VisualElement _root;
+        private VisualElement _overlay;
+        private Label _hp;
+        private Label _score;
+        private Label _grappled;
+        private Label _banner;
 
         public GameSession Session
         {
             get => session;
-            set => session = value;
+            set
+            {
+                session = value;
+                if (isActiveAndEnabled)
+                {
+                    Subscribe();
+                }
+
+                Refresh();
+            }
         }
 
         public GrappleController Grapple
         {
             get => grapple;
-            set => grapple = value;
+            set
+            {
+                grapple = value;
+                Refresh();
+            }
         }
 
         public SceneLight SceneLight
         {
             get => sceneLight;
-            set => sceneLight = value;
+            set
+            {
+                sceneLight = value;
+                Refresh();
+            }
         }
+
+        /// <summary>
+        /// The HUD root: a full-screen element that lets clicks through, holding the status and
+        /// overlay layers. Later panels go on it with <see cref="AddPanel"/>. Built on first use, so it
+        /// can be read (and tested) before the document's panel exists.
+        /// </summary>
+        public VisualElement Root
+        {
+            get
+            {
+                Build();
+                return _root;
+            }
+        }
+
+        /// <summary>The document the HUD is shown through (null until the component wakes).</summary>
+        public UIDocument Document => _document;
+
+        /// <summary>The HP line as it is shown.</summary>
+        public string HpText => Root != null ? _hp.text : null;
+
+        /// <summary>The score line as it is shown.</summary>
+        public string ScoreText => Root != null ? _score.text : null;
+
+        /// <summary>The grappled enemy's HP line, or null while it is hidden.</summary>
+        public string GrappledText => Root != null && Shown(_grappled) ? _grappled.text : null;
+
+        /// <summary>The centered banner (pause or game over), or null while it is hidden.</summary>
+        public string BannerText => Root != null && Shown(_banner) ? _banner.text : null;
+
+        /// <summary>How dark the overlay is drawn right now (0 while hidden).</summary>
+        public float OverlayDim => Root != null && Shown(_overlay) ? _overlay.style.backgroundColor.value.a : 0f;
 
         /// <summary>
         /// How dark the HUD's game-over overlay is: the game-over fade, unless the scene's 2D light
@@ -68,6 +139,62 @@ namespace MindAttic.Chain
         public float? GrappledHp => grapple != null && grapple.HeldEnemy is EnemyEntity enemy && enemy.IsAlive
             ? enemy.Hp
             : (float?)null;
+
+        /// <summary>
+        /// Adds a panel over the HUD's own layers (the later HUD, menu, scripter and settings
+        /// panels). Returns the panel.
+        /// </summary>
+        public T AddPanel<T>(T panel) where T : VisualElement
+        {
+            Root.Add(panel);
+            return panel;
+        }
+
+        /// <summary>Shows the world's state: HP, score, grappled HP, and the pause or game-over banner.</summary>
+        public void Refresh()
+        {
+            if (_root == null)
+            {
+                return;
+            }
+
+            if (session == null)
+            {
+                SetShown(_hp, false);
+                SetShown(_score, false);
+                SetShown(_grappled, false);
+                SetShown(_banner, false);
+                SetShown(_overlay, false);
+                return;
+            }
+
+            var state = session.State;
+            SetShown(_hp, true);
+            SetShown(_score, true);
+            SetText(_hp, HudText.Hp(state.Hp));
+            SetText(_score, HudText.Score(state.Score));
+
+            var grappled = GrappledHp;
+            SetShown(_grappled, grappled.HasValue);
+            if (grappled.HasValue)
+            {
+                SetText(_grappled, HudText.Grappled(grappled.Value));
+            }
+
+            if (state.IsGameOver)
+            {
+                ShowBanner(HudText.GameOver, GameOverDim);
+            }
+            else if (state.IsPaused)
+            {
+                ShowBanner(HudText.Paused, PauseDim);
+            }
+            else
+            {
+                SetShown(_banner, false);
+                SetShown(_overlay, false);
+            }
+        }
 
         private void Awake()
         {
@@ -85,94 +212,214 @@ namespace MindAttic.Chain
             {
                 sceneLight = FindAnyObjectByType<SceneLight>();
             }
+
+            EnsureDocument();
         }
 
-        private void OnGUI()
+        private void OnEnable()
         {
-            if (session == null)
+            Subscribe();
+            Attach();
+            Refresh();
+        }
+
+        private void OnDisable() => Unsubscribe();
+
+        private void OnDestroy()
+        {
+            Unsubscribe();
+            if (_panelSettings != null)
+            {
+                if (Application.isPlaying)
+                {
+                    Destroy(_panelSettings);
+                }
+                else
+                {
+                    DestroyImmediate(_panelSettings);
+                }
+
+                _panelSettings = null;
+            }
+        }
+
+        // The fade and the grappled enemy's HP change every step without an event of their own.
+        private void LateUpdate()
+        {
+            Attach();
+            Refresh();
+        }
+
+        private void OnSessionEvent(GameEvent gameEvent) => Refresh();
+
+        private void Subscribe()
+        {
+            if (_subscribed == session)
             {
                 return;
             }
 
-            EnsureStyles();
-            var state = session.State;
-            var lineHeight = Mathf.Max(8, Mathf.RoundToInt(Screen.height * textScale));
-            _label.fontSize = lineHeight;
-            _shadow.fontSize = lineHeight;
-            _banner.fontSize = lineHeight * 2;
-            _subtitle.fontSize = lineHeight;
-
-            var inset = Screen.height * margin;
-            var x = inset;
-            var y = inset;
-            var width = Screen.width - inset * 2f;
-
-            Line(HudText.Hp(state.Hp), statusColor, x, ref y, width, lineHeight);
-            Line(HudText.Score(state.Score), statusColor, x, ref y, width, lineHeight);
-
-            var grappled = GrappledHp;
-            if (grappled.HasValue)
+            Unsubscribe();
+            if (session != null)
             {
-                y += lineHeight * 0.5f;
-                Line(HudText.Grappled(grappled.Value), grappleColor, x, ref y, width, lineHeight);
-            }
-
-            if (state.IsGameOver)
-            {
-                Banner(HudText.GameOver, null, GameOverDim);
-            }
-            else if (state.IsPaused)
-            {
-                Banner(HudText.Paused, null);
+                session.EventRaised += OnSessionEvent;
+                _subscribed = session;
             }
         }
 
-        private void Line(string text, Color color, float x, ref float y, float width, int lineHeight)
+        private void Unsubscribe()
         {
-            var rect = new Rect(x, y, width, lineHeight * 1.4f);
-            var offset = Mathf.Max(1f, lineHeight / 12f);
-            GUI.Label(new Rect(rect.x + offset, rect.y + offset, rect.width, rect.height), text, _shadow);
-            _label.normal.textColor = color;
-            GUI.Label(rect, text, _label);
-            y += lineHeight * 1.3f;
-        }
-
-        private void Banner(string title, string subtitle, float dim = 0.45f)
-        {
-            var full = new Rect(0f, 0f, Screen.width, Screen.height);
-            var previous = GUI.color;
-            GUI.color = new Color(0f, 0f, 0f, dim);
-            GUI.DrawTexture(full, Texture2D.whiteTexture);
-            GUI.color = previous;
-
-            _banner.normal.textColor = bannerColor;
-            var height = _banner.fontSize * 1.5f;
-            GUI.Label(new Rect(0f, Screen.height * 0.5f - height, Screen.width, height), title, _banner);
-
-            if (!string.IsNullOrEmpty(subtitle))
+            if (_subscribed != null)
             {
-                _subtitle.normal.textColor = bannerColor;
-                GUI.Label(new Rect(0f, Screen.height * 0.5f + height * 0.1f, Screen.width, height), subtitle, _subtitle);
+                _subscribed.EventRaised -= OnSessionEvent;
+                _subscribed = null;
             }
         }
 
-        private void EnsureStyles()
+        /// <summary>The document and its panel settings, made here rather than as assets.</summary>
+        private void EnsureDocument()
         {
-            if (_label != null)
+            if (_document == null)
+            {
+                _document = GetComponent<UIDocument>();
+                if (_document == null)
+                {
+                    _document = gameObject.AddComponent<UIDocument>();
+                }
+            }
+
+            if (_document.panelSettings == null)
+            {
+                _panelSettings = CreatePanelSettings();
+                _document.panelSettings = _panelSettings;
+            }
+        }
+
+        private static PanelSettings CreatePanelSettings()
+        {
+            var settings = ScriptableObject.CreateInstance<PanelSettings>();
+            settings.name = "ChainHudPanel";
+            settings.hideFlags = HideFlags.DontSave;
+            settings.themeStyleSheet = Resources.Load<ThemeStyleSheet>(ThemePath);
+            settings.scaleMode = PanelScaleMode.ScaleWithScreenSize;
+            settings.referenceResolution = ReferenceResolution;
+            settings.screenMatchMode = PanelScreenMatchMode.MatchWidthOrHeight;
+            settings.match = 1f; // text height is a fraction of the screen height
+            settings.clearColor = false;
+            return settings;
+        }
+
+        /// <summary>Puts the HUD root into the document's panel once the panel exists.</summary>
+        private void Attach()
+        {
+            Build();
+            var panelRoot = _document != null ? _document.rootVisualElement : null;
+            if (panelRoot != null && _root.parent != panelRoot)
+            {
+                panelRoot.Add(_root);
+            }
+        }
+
+        private void Build()
+        {
+            if (_root != null)
             {
                 return;
             }
 
-            _label = new GUIStyle(GUI.skin.label)
+            var lineHeight = ReferenceResolution.y * textScale;
+            var inset = ReferenceResolution.y * margin;
+
+            _root = new VisualElement { name = "hud-root", pickingMode = PickingMode.Ignore };
+            _root.style.position = Position.Absolute;
+            _root.style.left = 0f;
+            _root.style.top = 0f;
+            _root.style.right = 0f;
+            _root.style.bottom = 0f;
+
+            _overlay = new VisualElement { name = "hud-overlay", pickingMode = PickingMode.Ignore };
+            Fill(_overlay);
+            _overlay.style.justifyContent = Justify.Center;
+            _overlay.style.alignItems = Align.Center;
+            _root.Add(_overlay);
+
+            _banner = MakeLabel("hud-banner", lineHeight * 2f, bannerColor);
+            _banner.style.unityTextAlign = TextAnchor.MiddleCenter;
+            _overlay.Add(_banner);
+
+            var status = new VisualElement { name = "hud-status", pickingMode = PickingMode.Ignore };
+            status.style.position = Position.Absolute;
+            status.style.left = inset;
+            status.style.top = inset;
+            status.style.flexDirection = FlexDirection.Column;
+            _root.Add(status);
+
+            _hp = MakeLabel("hud-hp", lineHeight, statusColor);
+            _score = MakeLabel("hud-score", lineHeight, statusColor);
+            _grappled = MakeLabel("hud-grappled", lineHeight, grappleColor);
+            _grappled.style.marginTop = lineHeight * 0.5f;
+            status.Add(_hp);
+            status.Add(_score);
+            status.Add(_grappled);
+
+            SetShown(_overlay, false);
+            SetShown(_banner, false);
+            SetShown(_grappled, false);
+            Refresh();
+        }
+
+        private static Label MakeLabel(string name, float fontSize, Color color)
+        {
+            var label = new Label { name = name, pickingMode = PickingMode.Ignore };
+            label.style.fontSize = fontSize;
+            label.style.color = color;
+            label.style.unityFontStyleAndWeight = FontStyle.Bold;
+            label.style.whiteSpace = WhiteSpace.NoWrap;
+            label.style.marginLeft = 0f;
+            label.style.marginRight = 0f;
+            label.style.marginTop = 0f;
+            label.style.marginBottom = fontSize * 0.3f;
+            label.style.paddingLeft = 0f;
+            label.style.paddingRight = 0f;
+            label.style.paddingTop = 0f;
+            label.style.paddingBottom = 0f;
+            label.style.textShadow = new TextShadow
             {
-                fontStyle = FontStyle.Bold,
-                alignment = TextAnchor.UpperLeft,
-                wordWrap = false,
+                offset = new Vector2(Mathf.Max(1f, fontSize / 12f), Mathf.Max(1f, fontSize / 12f)),
+                blurRadius = 0f,
+                color = new Color(0f, 0f, 0f, 0.75f),
             };
-            _shadow = new GUIStyle(_label);
-            _shadow.normal.textColor = new Color(0f, 0f, 0f, 0.75f);
-            _banner = new GUIStyle(_label) { alignment = TextAnchor.MiddleCenter };
-            _subtitle = new GUIStyle(_banner) { fontStyle = FontStyle.Normal };
+            return label;
         }
+
+        private static void Fill(VisualElement element)
+        {
+            element.style.position = Position.Absolute;
+            element.style.left = 0f;
+            element.style.top = 0f;
+            element.style.right = 0f;
+            element.style.bottom = 0f;
+        }
+
+        private void ShowBanner(string title, float dim)
+        {
+            SetText(_banner, title);
+            SetShown(_banner, true);
+            SetShown(_overlay, true);
+            _overlay.style.backgroundColor = new Color(0f, 0f, 0f, Mathf.Clamp01(dim));
+        }
+
+        private static void SetText(Label label, string text)
+        {
+            if (label.text != text)
+            {
+                label.text = text;
+            }
+        }
+
+        private static bool Shown(VisualElement element) => element.style.display.value != DisplayStyle.None;
+
+        private static void SetShown(VisualElement element, bool shown) =>
+            element.style.display = shown ? DisplayStyle.Flex : DisplayStyle.None;
     }
 }

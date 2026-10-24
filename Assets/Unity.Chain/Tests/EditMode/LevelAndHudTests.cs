@@ -3,6 +3,7 @@ using MindAttic.Chain;
 using MindAttic.Chain.Core;
 using NUnit.Framework;
 using UnityEngine;
+using UnityEngine.UIElements;
 
 namespace MindAttic.Chain.Tests
 {
@@ -372,6 +373,65 @@ namespace MindAttic.Chain.Tests
             _rig.SpawnEnemy(_rig.Player.MacePosition.ToUnity(), hp: 0.75f);
             _rig.Step();
             Assert.AreEqual(0.75f, hud.GrappledHp.Value, 1e-5f);
+            hud.Refresh();
+            Assert.AreEqual(HudText.Grappled(0.75f), hud.GrappledText);
+        }
+
+        [Test]
+        public void Hud_IsAUiToolkitTree_ShowingHpAndScore_FromTheWorldsEvents()
+        {
+            var hud = _rig.Track(new GameObject("Hud")).AddComponent<GameHud>();
+            hud.Session = Session;
+            Assert.IsNotNull(hud.Root, "the HUD root is built in code");
+            Assert.AreEqual(PickingMode.Ignore, hud.Root.pickingMode, "the HUD lets clicks through");
+            Assert.AreEqual(HudText.Hp(Session.State.Hp), hud.HpText);
+            Assert.AreEqual(HudText.Score(0), hud.ScoreText);
+            Assert.IsNull(hud.GrappledText, "nothing is grappled");
+            Assert.IsNull(hud.BannerText, "no banner while playing");
+            Assert.AreEqual(0f, hud.OverlayDim);
+
+            Session.State.Config.HurtDelay = 0f;
+            Session.State.TryHurt(0);
+            hud.Refresh();
+            Assert.AreEqual(HudText.Hp(Session.State.Hp), hud.HpText, "the HP line follows the world");
+
+            var panel = hud.AddPanel(new VisualElement { name = "later-panel" });
+            Assert.AreSame(hud.Root, panel.parent, "later panels go on the HUD root");
+            Assert.AreEqual(hud.Root.childCount - 1, hud.Root.IndexOf(panel), "and draw over the HUD's own layers");
+        }
+
+        [Test]
+        public void Hud_ShowsThePauseBanner_OverADimOverlay()
+        {
+            var hud = _rig.Track(new GameObject("Hud")).AddComponent<GameHud>();
+            hud.Session = Session;
+            _ = hud.Root;
+
+            Assert.IsTrue(Session.Submit(new Pause(_rig.Id, true)));
+            Assert.AreEqual(HudText.Paused, hud.BannerText, "the pause event refreshes the HUD");
+            Assert.AreEqual(GameHud.PauseDim, hud.OverlayDim, 1e-5f);
+
+            Assert.IsTrue(Session.Submit(new Pause(_rig.Id, false)));
+            Assert.IsNull(hud.BannerText);
+            Assert.AreEqual(0f, hud.OverlayDim);
+        }
+
+        [Test]
+        public void Hud_GameOver_DarkensByTheFade_WithoutThePipelineLight()
+        {
+            var hud = _rig.Track(new GameObject("Hud")).AddComponent<GameHud>();
+            hud.Session = Session;
+            _ = hud.Root;
+            Session.State.Config.HurtDelay = 0f;
+            _rig.SpawnEnemy(new Vector2(-0.5f, 0f));
+            for (var i = 0; i < 300 && !Session.State.IsGameOver; i++) { _rig.Step(); }
+            Assert.IsTrue(Session.State.IsGameOver);
+            _rig.Step();
+            hud.Refresh();
+
+            Assert.AreEqual(HudText.GameOver, hud.BannerText);
+            Assert.Greater(hud.GameOverDim, 0f, "the fade has begun");
+            Assert.AreEqual(hud.GameOverDim, hud.OverlayDim, 1e-5f, "with no scene light the HUD shows the fade");
         }
     }
 }
