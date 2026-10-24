@@ -30,9 +30,24 @@ namespace MindAttic.Chain.EditorTools
         private const string ChainFolder = "Assets/Unity.Chain/Art/Chain/";
         private const string BackgroundFolder = "Assets/Unity.Chain/Art/Background/";
 
+        /// <summary>Form1.vb Startup's loading pictures (UNI-T58), 640 x 480 each, drawn stretched over the window.</summary>
+        private const string LoadingFolder = "Assets/Unity.Chain/Resources/UI/Load/";
+
         private void OnPreprocessTexture()
         {
             var path = assetPath.Replace('\\', '/');
+            if (path.StartsWith(LoadingFolder))
+            {
+                // A plain UI texture at its own 640 x 480: not rounded to a power of two, no mipmaps, not tiled.
+                var picture = (TextureImporter)assetImporter;
+                picture.textureType = TextureImporterType.Default;
+                picture.npotScale = TextureImporterNPOTScale.None;
+                picture.mipmapEnabled = false;
+                picture.wrapMode = TextureWrapMode.Clamp;
+                picture.filterMode = FilterMode.Bilinear;
+                return;
+            }
+
             bool centered;
             var tiled = false;
 

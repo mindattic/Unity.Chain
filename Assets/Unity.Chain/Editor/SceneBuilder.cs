@@ -18,6 +18,9 @@ namespace MindAttic.Chain.EditorTools
     public static class SceneBuilder
     {
         public const string ScenePath = "Assets/Scenes/Main.unity";
+
+        /// <summary>The scene the player opens on (UNI-T58): Form1.vb Startup's loading picture, which then loads Main.</summary>
+        public const string SplashScenePath = "Assets/Scenes/Splash.unity";
         private const string LineMaterialPath = "Assets/Unity.Chain/Materials/ChainLine.mat";
         private const string ZoneMaterialPath = "Assets/Unity.Chain/Materials/ZoneLine.mat";
 
@@ -57,10 +60,50 @@ namespace MindAttic.Chain.EditorTools
 
             Directory.CreateDirectory(Path.GetDirectoryName(ScenePath) !);
             EditorSceneManager.SaveScene(scene, ScenePath);
+
+            // The splash goes with it: the player opens on it, and it loads the scene just written.
+            BuildSplashSceneOnly();
             RegisterInBuildSettings();
             AssetDatabase.SaveAssets();
 
-            Debug.Log($"SceneBuilder: wrote {ScenePath} and registered it in Build Settings.");
+            Debug.Log($"SceneBuilder: wrote {SplashScenePath} and {ScenePath} and registered them, in that order, in Build Settings.");
+        }
+
+        /// <summary>
+        /// Builds the Splash scene alone (UNI-T58): a black camera and the <see cref="SplashScreen"/>, Form1.vb Startup's
+        /// random loading picture, which loads Main once it is up. Registered first in Build Settings, so a build opens on it.
+        /// </summary>
+        [MenuItem("MindAttic/Chain/Build Splash Scene")]
+        public static void BuildSplashScene()
+        {
+            if (!Application.isBatchMode && !EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+            {
+                return;
+            }
+
+            BuildSplashSceneOnly();
+            RegisterInBuildSettings();
+            AssetDatabase.SaveAssets();
+            Debug.Log($"SceneBuilder: wrote {SplashScenePath} and registered it first in Build Settings.");
+        }
+
+        private static void BuildSplashSceneOnly()
+        {
+            var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+
+            // Form1's BackColor: black wherever the picture is not (only before its panel is up).
+            var cameraGo = new GameObject("Splash Camera") { tag = "MainCamera" };
+            var camera = cameraGo.AddComponent<Camera>();
+            camera.orthographic = true;
+            camera.clearFlags = CameraClearFlags.SolidColor;
+            camera.backgroundColor = Color.black;
+            cameraGo.transform.position = new Vector3(0f, 0f, -10f);
+
+            var splash = new GameObject("SplashScreen").AddComponent<SplashScreen>();
+            splash.NextScene = Path.GetFileNameWithoutExtension(ScenePath);
+
+            Directory.CreateDirectory(Path.GetDirectoryName(SplashScenePath) !);
+            EditorSceneManager.SaveScene(scene, SplashScenePath);
         }
 
         private static LevelBounds CreateLevelBounds()
@@ -278,21 +321,24 @@ namespace MindAttic.Chain.EditorTools
             return material;
         }
 
+        /// <summary>Splash first (the scene a build opens on), then Main, then anything else already listed.</summary>
         private static void RegisterInBuildSettings()
         {
-            var scenes = EditorBuildSettings.scenes;
-            foreach (var existing in scenes)
+            var updated = new System.Collections.Generic.List<EditorBuildSettingsScene>
             {
-                if (existing.path == ScenePath)
+                new EditorBuildSettingsScene(SplashScenePath, true),
+                new EditorBuildSettingsScene(ScenePath, true),
+            };
+
+            foreach (var existing in EditorBuildSettings.scenes)
+            {
+                if (existing.path != SplashScenePath && existing.path != ScenePath)
                 {
-                    return;
+                    updated.Add(existing);
                 }
             }
 
-            var updated = new EditorBuildSettingsScene[scenes.Length + 1];
-            scenes.CopyTo(updated, 0);
-            updated[scenes.Length] = new EditorBuildSettingsScene(ScenePath, true);
-            EditorBuildSettings.scenes = updated;
+            EditorBuildSettings.scenes = updated.ToArray();
         }
 
         private static void SetPrivateField(Object target, string fieldName, Object value)

@@ -124,6 +124,9 @@ namespace MindAttic.Chain.Core
         /// <summary>Zone.vb's hit box overlay (the E key), in the original's screen units (UNI-T56).</summary>
         public HudZone Zone { get; private set; }
 
+        /// <summary>Form1.vb Startup's loading picture: how many <c>load640_&lt;n&gt;</c> it picks from (UNI-T58).</summary>
+        public LoadingScreen Loading { get; private set; }
+
         public HudPort Port { get; private set; }
 
         internal static HudData Read(SettingsReader r)
@@ -150,6 +153,7 @@ namespace MindAttic.Chain.Core
             data.DrawFps = r.Flag("drawFps");
             data.Menu = HudMenu.Read(r);
             data.Zone = HudZone.Read(r);
+            data.Loading = LoadingScreen.Read(r);
 
             var port = r.Section("port");
             data.Port = new HudPort(

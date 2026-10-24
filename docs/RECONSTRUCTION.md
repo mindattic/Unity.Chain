@@ -37,7 +37,8 @@ out and `loadTerrain` reads an unset `DataRow`. The only persisted data is the r
 
 ## 2. How the original runs
 
-`Form1.Startup` shows a random `gfx\gui\load\load640_<1..12>.jpg` while it builds the `Engine`, hides the
+`Form1.Startup` shows a random `gfx\gui\load\load640_<1..12>.jpg` while it builds the `Engine` (ported as the
+Splash scene, UNI-T58, BIBLE V23), hides the
 Windows cursor, takes the mouse exclusively through DirectInput, then loops
 `getInput()` / `oneFrameRender()` / `Application.DoEvents()` with no frame cap and **no time step**: every
 physics number is "per frame". The window is a 640x480 borderless black form titled `*** UNDER DEVELOPMENT ***`.
