@@ -1,6 +1,5 @@
 using MindAttic.Chain.Core;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 namespace MindAttic.Chain
 {
@@ -17,9 +16,6 @@ namespace MindAttic.Chain
     [RequireComponent(typeof(LineRenderer))]
     public sealed class ChainController : MonoBehaviour
     {
-        [Header("Follow (F key)")]
-        [SerializeField] private InputAction toggleFollow = new InputAction("Toggle Follow", InputActionType.Button, "<Keyboard>/f");
-
         [Header("Rendering")]
         [Tooltip("Blend between the previous and current physics step when drawing.")]
         [SerializeField] private bool interpolate = true;
@@ -297,18 +293,6 @@ namespace MindAttic.Chain
             if (Session != null)
             {
                 Session.Retune(Player);
-            }
-        }
-
-        private void OnEnable() => toggleFollow.Enable();
-
-        private void OnDisable() => toggleFollow.Disable();
-
-        private void Update()
-        {
-            if (toggleFollow.WasPressedThisFrame())
-            {
-                ToggleFollow();
             }
         }
 

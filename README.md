@@ -35,13 +35,16 @@ In development, rebuilding the original to full parity. On main and tested:
   24-minute day; the original's never moved), on a URP 2D global light, L toggling it (`LightingState`, `SceneLight`;
   it shows once UNI-T18 commits the 2D pipeline, until then the HUD shows the game-over fade)
 - level bounds and a camera that fits or follows (`Level/`), sound and music players (`Audio/`, no clips yet)
+- every input from one Input System action asset built in code, with keyboard, mouse and gamepad bindings; a
+  gamepad's left stick steers like the mouse and J switches it off and on (`Input/ChainControls`, `Input/SeatInput`,
+  `Core/Input/SteerInput`, `input.json`)
 - the scene and the Windows player generated in code (`Editor/SceneBuilder`, `Editor/PlayerBuilder`)
 
 Every tuning figure is data: the original's own figures in `Assets/StreamingAssets/Settings/*.json`, validated
 on load and mapped to world units in one place (`Core/Settings`, see [BIBLE §6](docs/BIBLE.md)).
 
 Still to come, in build order:
-the Input System action asset, URP assets, Unity.Shared settings, a UI Toolkit HUD, the original's art and sound,
+URP assets, Unity.Shared settings, a UI Toolkit HUD, the original's art and sound,
 and the remaining keys and screens. The full list, one ticket per step, is
 [docs/RECONSTRUCTION.md §6](docs/RECONSTRUCTION.md); open tickets are in the MindAttic ticket database
 (`tickets ticket list --repo Unity.Chain`).
@@ -77,16 +80,22 @@ tested by `Tests/Core.Tests` (`dotnet test Tests/Core.Tests`, or `./run-core-tes
 
 ## Controls
 
-| Input | Effect |
-|---|---|
-| Mouse | fly |
-| Left button (hold, release) | arm the grapple, throw what it holds |
-| `[` / `]` | shorten / lengthen the chain |
-| P or Escape | pause |
-| L | lighting on / off |
+| Keyboard and mouse | Gamepad | Effect |
+|---|---|---|
+| Mouse | left stick | fly |
+| Left button (hold, release) | right trigger or A (hold, release) | arm the grapple, throw what it holds |
+| `[` / `]` | left / right shoulder | shorten / lengthen the chain |
+| F | Y | chain follows the hand / hangs slack |
+| Pause, P or Escape | Start | pause |
+| R | Back (Select) | start over |
+| J | | gamepad stick steering on / off |
+| L | | lighting on / off |
+
+The bindings live in one `InputActionAsset` built in code (`Runtime/Input/ChainControls`); the stick's speed and
+dead zone are in `input.json`.
 
 The original's other keys (live spring, drag and gravity tuning, game speed, gem skins, backgrounds,
-shake, reset, debug views, the script console) are listed with their tickets in
+shake, debug views, the script console) are listed with their tickets in
 [docs/RECONSTRUCTION.md §3.5](docs/RECONSTRUCTION.md).
 
 ## Project layout

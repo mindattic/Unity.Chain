@@ -14,7 +14,7 @@ namespace MindAttic.Chain.Tests
     /// </summary>
     public class GameSettingsTests
     {
-        private static string ShippedFolder
+        internal static string ShippedFolder
         {
             get
             {
@@ -152,6 +152,27 @@ namespace MindAttic.Chain.Tests
             Assert.AreEqual(0.316f, settings.AudioTuning.SfxVolume, 0.001f, "-10 dB");
             Assert.AreEqual(1f, settings.AudioTuning.MusicVolume);
             Assert.IsTrue(settings.AudioTuning.RandomMusicStart);
+        }
+
+        [Test]
+        public void Input_HoldsInputVbsJoystick()
+        {
+            var settings = Load();
+
+            Assert.IsTrue(settings.Input.BJoystick);
+            Assert.AreEqual(1000f, settings.Input.JoyRange, "sfxVolume..+1000");
+            Assert.AreEqual(250f, settings.Input.JoyOutsideDeadZone);
+            Assert.IsTrue(settings.Steering.JoystickEnabled);
+            Assert.AreEqual(0.25f, settings.Steering.DeadZone, 1e-6f, "250 of 1000");
+            Assert.AreEqual(600f, settings.Steering.StickSpeed);
+        }
+
+        [Test]
+        public void Input_DeadZoneMustBeInsideTheRange()
+        {
+            var e = LoadFails(Patched(GameSettings.InputFile, text => text.Replace("\"joyOutsideDeadZone\": 250", "\"joyOutsideDeadZone\": 1000")));
+
+            StringAssert.Contains("input.json: 'joyOutsideDeadZone' must be below joyRange (1000)", e.Message);
         }
 
         // --- The mapping ------------------------------------------------------------------------

@@ -1,0 +1,10 @@
+{
+  "_source": "Input.vb's joystick: bJoystick starts on (it goes off only when no game controller is attached, and Form1.vb's J flips joystickToggle); initInput sets every axis's range to sfxVolume..+1000, that is -1000..1000, and an axis counts as pushed outside joyOutsideDeadZone 250. The original read the stick and bound it to nothing (BIBLE D14).",
+  "bJoystick": true,
+  "joyRange": 1000,
+  "joyOutsideDeadZone": 250,
+  "port": {
+    "_about": "Not in the original, which bound the stick to nothing: how far a fully pushed gamepad stick steers, in mouse counts a second, so the angel's Ratio3D turns it into distance exactly as it does the mouse. 600 is about one original screen height a second (1 / Ratio3D is 585 counts).",
+    "stickSpeed": 600
+  }
+}

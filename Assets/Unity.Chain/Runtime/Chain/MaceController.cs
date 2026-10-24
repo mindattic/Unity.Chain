@@ -1,13 +1,13 @@
 using MindAttic.Chain.Core;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 namespace MindAttic.Chain
 {
     /// <summary>
     /// The heavy end of one player's chain. One link index (<c>Mace</c> in Chain.vb, default 6,
     /// adjustable 1-12 at runtime) is the business end: it is drawn bigger (3.5x the link) as a
-    /// spiked ball and everything past it is hidden. The <c>[</c> and <c>]</c> keys send
+    /// spiked ball and everything past it is hidden. The <c>[</c> and <c>]</c> keys (the seat's
+    /// ChainShorter and ChainLonger actions, <see cref="SeatInput"/>) send
     /// <see cref="ChangeChainLength"/> commands with this player's id; the world moves the mace link,
     /// ends the live chain on it and gives it the mace's mass. The mace's tuning (its link and range, mass,
     /// hit radius, damage per speed, draw scale) is chain.json's, which this component can override at run
@@ -24,10 +24,6 @@ namespace MindAttic.Chain
         [Header("Rendering")]
         [Tooltip("The spiked-ball sprite (or any transform) drawn at the mace link.")]
         [SerializeField] private Transform maceVisual;
-
-        [Header("Input")]
-        [SerializeField] private InputAction shorten = Button("Shorten Chain", "<Keyboard>/leftBracket", "<Keyboard>/minus", "<Keyboard>/numpadMinus");
-        [SerializeField] private InputAction lengthen = Button("Lengthen Chain", "<Keyboard>/rightBracket", "<Keyboard>/equals", "<Keyboard>/numpadPlus");
 
         // Run-time overrides of chain.json (null: the data file's figure).
         private float? _maceMass;
@@ -160,42 +156,6 @@ namespace MindAttic.Chain
             if (Chain.Session != null)
             {
                 Chain.Session.Retune(Chain.Player);
-            }
-        }
-
-        private static InputAction Button(string name, params string[] bindings)
-        {
-            var action = new InputAction(name, InputActionType.Button);
-            foreach (var binding in bindings)
-            {
-                action.AddBinding(binding);
-            }
-
-            return action;
-        }
-
-        private void OnEnable()
-        {
-            shorten.Enable();
-            lengthen.Enable();
-        }
-
-        private void OnDisable()
-        {
-            shorten.Disable();
-            lengthen.Disable();
-        }
-
-        private void Update()
-        {
-            if (shorten.WasPressedThisFrame())
-            {
-                Shorten();
-            }
-
-            if (lengthen.WasPressedThisFrame())
-            {
-                Lengthen();
             }
         }
 

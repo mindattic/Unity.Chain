@@ -1,11 +1,10 @@
 using MindAttic.Chain.Core;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 namespace MindAttic.Chain
 {
     /// <summary>
-    /// One player's grapple button (left mouse by default). Pressing it sends
+    /// One player's grapple button (the Grapple action, read by the seat's <see cref="SeatInput"/>). Pressing it sends
     /// <see cref="ArmGrapple"/> and letting go sends <see cref="ReleaseGrapple"/>, each with this
     /// player's id; the world arms the mace, catches the nearest enemy inside
     /// <see cref="CatchRadius"/> while armed, carries it on the mace, and on release throws it with
@@ -16,10 +15,6 @@ namespace MindAttic.Chain
     [DisallowMultipleComponent]
     public sealed class GrappleController : MonoBehaviour
     {
-        [Header("Input")]
-        [Tooltip("Read the left mouse button as the grapple button. Turn off to drive SetButtonHeld yourself.")]
-        [SerializeField] private bool useMouseButton = true;
-
         // Run-time overrides of chain.json (null: the data file's figure).
         private float? _catchRadius;
         private float? _throwMultiplier;
@@ -61,12 +56,6 @@ namespace MindAttic.Chain
 
         private PlayerSetup Data => Chain != null ? Chain.Settings.Player : SettingsStore.Current.Player;
 
-        public bool UseMouseButton
-        {
-            get => useMouseButton;
-            set => useMouseButton = value;
-        }
-
         /// <summary>Called when the chain's player is seated.</summary>
         public void Bind(ChainController chain) => _chain = chain;
 
@@ -77,7 +66,7 @@ namespace MindAttic.Chain
             setup.ThrowMultiplier = _throwMultiplier ?? setup.ThrowMultiplier;
         }
 
-        /// <summary>Sets the grapple button state, for custom input or tests: a change is sent as a command.</summary>
+        /// <summary>Sets the grapple button state (the seat's input, or tests): a change is sent as a command.</summary>
         public void SetButtonHeld(bool held)
         {
             if (held == _buttonHeld)
@@ -101,17 +90,6 @@ namespace MindAttic.Chain
             {
                 Chain.Session.Retune(Chain.Player);
             }
-        }
-
-        private void Update()
-        {
-            if (!useMouseButton)
-            {
-                return;
-            }
-
-            var mouse = Mouse.current;
-            SetButtonHeld(mouse != null && mouse.leftButton.isPressed);
         }
 
         // Never leave an enemy held by a button nobody can let go of.

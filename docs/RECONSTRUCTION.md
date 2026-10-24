@@ -127,26 +127,26 @@ Every binding of the original, with its state:
 
 | Input | Effect | Status / ticket |
 |---|---|---|
-| Mouse delta | steer | ported (Input System) |
-| Left button | arm grapple while held; release throws | ported |
+| Mouse delta | steer | ported (Steer action, UNI-T34) |
+| Left button | arm grapple while held; release throws | ported (Grapple action; gamepad right trigger or A) |
 | Right, wheel button | right: nothing; wheel: set an unused blank cursor | dead |
-| `[` `]` | mace index -1/+1 (1..12) | ported |
-| Minus / Equals | `gameSpeed` -/+0.01 (min 0); only displayed, never applied | missing, UNI-T52 |
+| `[` `]` | mace index -1/+1 (1..12) | ported (ChainShorter / ChainLonger actions; gamepad shoulders) |
+| Minus / Equals | `gameSpeed` -/+0.01 (min 0); only displayed, never applied | missing, UNI-T52 (no longer bound to chain length, UNI-T34) |
 | Ins/Del, Home/End, PgUp/PgDn | tune resistance, gravity, spring | missing, UNI-T51 |
-| F | `followMouse` toggle | ported (`ChainController` Toggle Follow action, UNI-T47) |
+| F | `followMouse` toggle | ported (UNI-T47; ToggleFollow action, gamepad Y, UNI-T34) |
 | U | gem link skins | missing, UNI-T41 |
-| R | `Reset` | missing, UNI-T48 |
+| R | `Reset` | bound (Reset action sends `ResetGame`, gamepad Back, UNI-T34); what it restores, UNI-T48 |
 | 0 | `shakeScreen(0.02)` | missing, UNI-T49 |
-| L | lighting toggle | ported (`SceneLight`); off is unlit rather than frozen (BIBLE D16) |
+| L | lighting toggle | ported (`SceneLight`, the Debug map's ToggleLighting); off is unlit rather than frozen (BIBLE D16) |
 | B / N | beach / utopia background (a second `Case Keys.B` for the background toggle is unreachable) | missing, UNI-T40 |
 | E | zone (hit box) overlay, default on | missing, UNI-T56 |
 | F1, F2, F3 | wireframe, textures, culling (D3D render states) | missing, UNI-T56 |
 | F4 | FPS counter | missing, UNI-T50 |
 | Tab | menu panel | missing, UNI-T55 |
-| Pause | pause | partial (P/Esc today), UNI-T54 |
+| Pause | pause | ported (Pause action: Pause, P, Esc, gamepad Start); Esc's quit, UNI-T54 |
 | Esc | quit | missing, UNI-T54 |
 | F12 | toggle fullscreen and restart the engine (config) | missing, UNI-T59 |
-| J | joystick toggle; the joystick code reads axes and buttons and binds nothing | missing as plumbing, UNI-T34 |
+| J | joystick toggle; the joystick code reads axes and buttons and binds nothing | fixed: the gamepad drives the actions, its stick steers like the mouse, J switches the stick (BIBLE D14, UNI-T34) |
 | Numpad + Enter / 4 6 / 8 2, X, Z | debug camera | missing, UNI-T57 |
 | ` (grave) | scripter console | missing, UNI-T60, UNI-T61 |
 | Arrow keys, `btnAttack`..`btnDashRight` | declared; no effect | dead |
@@ -230,7 +230,7 @@ Checked against `AGENTS.md` (the owner's rebuild standard) and the reference rep
 | Tests outside Unity | Done: `Tests/Core.Tests`, run by `run-core-tests.ps1` | UNI-T31 |
 | Commands and events | Done: one `GameWorld` in Core, stepped only by `GameSession`; players send `GameCommand`s with a `PlayerId`, presentation plays `GameEvent`s (BIBLE §5.3) | UNI-T32 |
 | Data-driven content | Done: JSON data files in `StreamingAssets/Settings` holding the original's figures, validated on load and read by Core's `GameSettings` through `ISettingsSource`, one mapping (`space.json`) to the port's units (BIBLE §6) | UNI-T33 |
-| Input System | Package installed and `activeInputHandler` is Input System only, but input is read by polling `Keyboard.current` and `Mouse.current`; no action asset, no gamepad | UNI-T34 |
+| Input System | Done: one `InputActionAsset` built in code (`ChainControls`), keyboard, mouse and gamepad bindings, read per seat by `SeatInput` into that seat's commands; nothing polls `Keyboard.current` or `Mouse.current` | UNI-T34 |
 | URP | Package installed, `GraphicsSettings` points at a pipeline asset that is not in the repo (UNI-T18) | UNI-T18 |
 | Unity.Shared profiles and settings | Package not referenced; no profile, volumes are per-component fields | UNI-T36 |
 | UI | `GameHud` is IMGUI (`OnGUI`), not UI Toolkit or the shared components | UNI-T37 |

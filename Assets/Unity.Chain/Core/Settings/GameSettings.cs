@@ -11,11 +11,12 @@ namespace MindAttic.Chain.Core
     /// <list type="number">
     /// <item><b>The files</b> hold the original's own figures, named and valued exactly as its source has them, in
     /// its own units (screen space, per frame): <see cref="Chain"/>, <see cref="Angel"/>, <see cref="Enemies"/>,
-    /// <see cref="Item"/>, <see cref="Game"/>, <see cref="Lighting"/>, <see cref="Camera"/>, <see cref="Audio"/>.
+    /// <see cref="Item"/>, <see cref="Game"/>, <see cref="Lighting"/>, <see cref="Camera"/>, <see cref="Audio"/>,
+    /// <see cref="Input"/>.
     /// A figure the original never had (a circle radius where it tested rectangles, the camera rig's follow) sits in
     /// that file's <c>port</c> object, in world units and seconds, and is never mapped.</item>
     /// <item><b>The port's values</b> (<see cref="Player"/>, <see cref="World"/>, <see cref="Heart"/>,
-    /// <see cref="Light"/>, <see cref="CameraTuning"/>, <see cref="AudioTuning"/>, <see cref="MaceScale"/>) are
+    /// <see cref="Light"/>, <see cref="CameraTuning"/>, <see cref="AudioTuning"/>, <see cref="MaceScale"/>, <see cref="Steering"/>) are
     /// worked out once, here, by <see cref="OriginalSpace"/> (space.json), the one original-to-port mapping.</item>
     /// </list>
     /// </summary>
@@ -33,11 +34,12 @@ namespace MindAttic.Chain.Core
         public const string LightingFile = "lighting.json";
         public const string CameraFile = "camera.json";
         public const string AudioFile = "audio.json";
+        public const string InputFile = "input.json";
 
         /// <summary>Every data file the registry reads.</summary>
         public static readonly string[] Files =
         {
-            SpaceFile, ChainFile, AngelFile, EnemiesFile, ItemFile, GameFile, LightingFile, CameraFile, AudioFile,
+            SpaceFile, ChainFile, AngelFile, EnemiesFile, ItemFile, GameFile, LightingFile, CameraFile, AudioFile, InputFile,
         };
 
         private GameSettings()
@@ -53,6 +55,7 @@ namespace MindAttic.Chain.Core
         public LightingData Lighting { get; private set; }
         public CameraData Camera { get; private set; }
         public AudioData Audio { get; private set; }
+        public InputData Input { get; private set; }
 
         /// <summary>The original-to-port mapping (space.json).</summary>
         public OriginalSpace Mapping { get; private set; }
@@ -75,6 +78,9 @@ namespace MindAttic.Chain.Core
 
         /// <summary>The mace's draw size relative to a link while the chain follows (Chain.vb: 3.5).</summary>
         public float MaceScale { get; private set; }
+
+        /// <summary>How a player's stick adds to their mouse steering (input.json: Input.vb's joystick, BIBLE D14).</summary>
+        public SteerInput.Settings Steering { get; private set; }
 
         /// <summary>
         /// Reads and validates every data file from <paramref name="source"/>, then maps them to the port. Throws a
@@ -100,6 +106,7 @@ namespace MindAttic.Chain.Core
                 Lighting = Read(source, LightingFile, errors, LightingData.Read),
                 Camera = Read(source, CameraFile, errors, CameraData.Read),
                 Audio = Read(source, AudioFile, errors, AudioData.Read),
+                Input = Read(source, InputFile, errors, InputData.Read),
             };
 
             if (errors.Count > 0)
@@ -271,6 +278,10 @@ namespace MindAttic.Chain.Core
                 randomMusicStart: Audio.RndMusicPos,
                 port: Audio.Port);
             MaceScale = chain.MaceScale;
+            Steering = new SteerInput.Settings(
+                joystickEnabled: Input.BJoystick,
+                deadZone: Input.JoyOutsideDeadZone / Input.JoyRange,
+                stickSpeed: Input.Port.StickSpeed);
         }
     }
 
@@ -670,5 +681,43 @@ namespace MindAttic.Chain.Core
         /// <summary>Sound.vb's rndMusicPos: the music starts at a random point.</summary>
         public bool RandomMusicStart { get; }
         public AudioPort Swing { get; }
+    }
+
+    /// <summary>input.json: Input.vb's joystick (its range and dead zone, in its own units) and the port's stick speed.</summary>
+    public sealed class InputData
+    {
+        public bool BJoystick { get; private set; }
+        public float JoyRange { get; private set; }
+        public float JoyOutsideDeadZone { get; private set; }
+        public InputPort Port { get; private set; }
+
+        internal static InputData Read(SettingsReader r)
+        {
+            var data = new InputData
+            {
+                BJoystick = r.Flag("bJoystick"),
+                JoyRange = r.Positive("joyRange"),
+                JoyOutsideDeadZone = r.Number("joyOutsideDeadZone", 0f),
+            };
+
+            r.Check(data.JoyOutsideDeadZone < data.JoyRange, "joyOutsideDeadZone", $"must be below joyRange ({data.JoyRange})");
+
+            var port = r.Section("port");
+            data.Port = new InputPort(stickSpeed: port.Number("stickSpeed", 0f));
+            port.Done();
+            return data;
+        }
+    }
+
+    /// <summary>input.json's port-only figures.</summary>
+    public readonly struct InputPort
+    {
+        public InputPort(float stickSpeed)
+        {
+            StickSpeed = stickSpeed;
+        }
+
+        /// <summary>Mouse counts a second a fully pushed stick steers by (the original bound the stick to nothing).</summary>
+        public float StickSpeed { get; }
     }
 }

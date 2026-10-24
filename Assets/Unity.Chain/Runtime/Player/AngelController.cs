@@ -1,13 +1,12 @@
 using MindAttic.Chain.Core;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 namespace MindAttic.Chain
 {
     /// <summary>
-    /// One player's angel: their input and the angel's look. It reads the mouse delta and sends it to
-    /// the authority as a <see cref="SteerAngel"/> command with this player's id, and P or Escape as
-    /// <see cref="TogglePause"/>; then it draws the angel where the world's <see cref="AngelFlight"/>
+    /// One player's angel: their steering and the angel's look. Its <see cref="SeatInput"/> (required) reads the
+    /// seat's controls; this sends the steer to the authority as a <see cref="SteerAngel"/> command with this
+    /// player's id, and Pause as <see cref="TogglePause"/> (<see cref="SendInput"/>); then it draws the angel where the world's <see cref="AngelFlight"/>
     /// says (position, facing, wing-flap frame) and moves the optional hand-socket transform to the
     /// hand. It never moves the angel itself. Its tuning (sensitivity, hover, flap, hand offset: angel.json)
     /// comes from the data files through the session's <see cref="GameSettings"/>; what this component adds
@@ -16,6 +15,7 @@ namespace MindAttic.Chain
     /// <c>port.boundsMargin</c>; with no level, the camera's orthographic view, then the default arena.
     /// </summary>
     [DisallowMultipleComponent]
+    [RequireComponent(typeof(SeatInput))]
     public sealed class AngelController : MonoBehaviour
     {
         [Header("Player")]
@@ -122,8 +122,8 @@ namespace MindAttic.Chain
         }
 
         /// <summary>
-        /// This frame's input: the mouse delta steers, P or Escape pauses. Called from <c>Update</c>;
-        /// public so tests can drive it. Returns true if the steer was applied.
+        /// This frame's input: the steer (mouse delta plus stick, in mouse counts) and whether Pause was pressed.
+        /// Called by the seat's <see cref="SeatInput"/>; public so tests can drive it. Returns true if the steer was applied.
         /// </summary>
         public bool SendInput(Vector2 mouseDelta, float deltaTime, bool pausePressed = false)
         {
@@ -166,15 +166,6 @@ namespace MindAttic.Chain
                 Cursor.lockState = CursorLockMode.None;
                 Cursor.visible = true;
             }
-        }
-
-        private void Update()
-        {
-            var mouse = Mouse.current;
-            var keyboard = Keyboard.current;
-            var delta = mouse != null ? mouse.delta.ReadValue() : Vector2.zero;
-            var pause = keyboard != null && (keyboard.pKey.wasPressedThisFrame || keyboard.escapeKey.wasPressedThisFrame);
-            SendInput(delta, Time.deltaTime, pause);
         }
 
         private void OnValidate()

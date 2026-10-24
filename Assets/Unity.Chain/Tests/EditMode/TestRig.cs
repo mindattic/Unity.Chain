@@ -44,7 +44,6 @@ namespace MindAttic.Chain.Tests
             if (grapple)
             {
                 Grapple = chainGo.AddComponent<GrappleController>();
-                Grapple.UseMouseButton = false;
             }
 
             Angel.Chain = Chain;

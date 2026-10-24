@@ -1,6 +1,5 @@
 using MindAttic.Chain.Core;
 using UnityEngine;
-using UnityEngine.InputSystem;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
 
@@ -10,7 +9,7 @@ namespace MindAttic.Chain
     /// Plays the Core <see cref="LightingState"/> (Lights.vb's <c>renderLight</c>) on a URP 2D global
     /// light: each fixed step it walks the Day, Dusk, Night, Morning tint and sets the light's colour to
     /// the session's ambient (the game-over fade, <see cref="GameState.AmbientLevel"/>) times that tint.
-    /// L toggles lighting (<c>bLighting</c>). It only reads the session; it never changes the game.
+    /// L (the Debug map's ToggleLighting, <see cref="ChainControls"/>) toggles lighting (<c>bLighting</c>). It only reads the session; it never changes the game.
     ///
     /// The time of day carries over the scene reload a new round makes, as the original's Reset left
     /// the cycle running; lighting is switched back on each round (Root.vb's Reset).
@@ -28,6 +27,7 @@ namespace MindAttic.Chain
         private static LightingState s_carried;
 
         private LightingState _state;
+        private ChainControls _controls;
         private GameSession _subscribed;
 
         public LightingState State => _state ?? (_state = TakeState());
@@ -143,9 +143,20 @@ namespace MindAttic.Chain
         {
             Subscribe();
             Apply();
+            (_controls ?? (_controls = new ChainControls())).Debug.Enable();
         }
 
-        private void OnDisable() => Unsubscribe();
+        private void OnDisable()
+        {
+            Unsubscribe();
+            _controls?.Debug.Disable();
+        }
+
+        private void OnDestroy()
+        {
+            _controls?.Dispose();
+            _controls = null;
+        }
 
         private void Subscribe()
         {
@@ -181,8 +192,7 @@ namespace MindAttic.Chain
 
         private void Update()
         {
-            var keyboard = Keyboard.current;
-            if (keyboard != null && keyboard.lKey.wasPressedThisFrame)
+            if (_controls != null && _controls.ToggleLighting.WasPressedThisFrame())
             {
                 ToggleLighting();
             }
