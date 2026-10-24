@@ -235,6 +235,118 @@ namespace MindAttic.Chain.Tests
         }
 
         [Test]
+        public void CameraRig_Perspective_IsCameraVbsCameraAsData()
+        {
+            var rig = MakeCamera(16f / 9f);
+            var lens = rig.Perspective;
+
+            Assert.AreEqual(Mathf.PI / 4f, lens.Fov, 1e-5f, "45 degrees");
+            Assert.AreEqual(4f / 3f, lens.Aspect, 1e-5f);
+            Assert.Less(lens.EyeZ, 0f, "the eye at z -1, in front of the z 0 plane");
+        }
+
+        [Test]
+        public void CameraRig_NumpadMoves_PanAndZoomTheFramedView_UNI_T57()
+        {
+            var level = MakeLevel(new Vector2(2f, 1f), new Vector2(16f, 9f));
+            var rig = MakeCamera(16f / 9f);
+            rig.Level = level;
+            rig.Mode = CameraFramingMode.FitLevel;
+            rig.Snap();
+            var size = rig.Camera.orthographicSize;
+            var step = rig.Perspective.StepSpeed;
+
+            rig.Strafe(+1, 1f / 60f); // numpad 6, one frame
+            Assert.AreEqual(2f + step / 60f, rig.transform.position.x, 1e-4f, "strafe_left: cam.X += camSPD");
+            Assert.AreEqual(Quaternion.identity, rig.transform.rotation, "eye and target together: still straight on");
+            rig.Frame(0.1f);
+            Assert.AreEqual(2f + step / 60f, rig.LookPoint.x, 1e-4f, "kept on top of the framing");
+
+            rig.Lift(-1, 1f / 60f); // numpad 2
+            Assert.AreEqual(1f - rig.Perspective.LiftSpeed / 60f, rig.LookPoint.y, 1e-4f, "move_down");
+
+            rig.MoveForward(+1, 10f / 60f); // numpad plus, ten frames: the eye 0.88 of the way
+            Assert.AreEqual(size * 0.88f, rig.Camera.orthographicSize, 1e-3f, "nearer the plane the view shows less");
+            Assert.AreEqual(-10f, rig.transform.position.z, 1e-4f, "the camera stays at its depth");
+        }
+
+        [Test]
+        public void CameraRig_XKey_SlantsTheView_AndShakeScreensRestoreStraightensIt()
+        {
+            var rig = MakeCamera(16f / 9f);
+            rig.Mode = CameraFramingMode.FitLevel;
+            rig.Snap();
+
+            rig.Isometric(+1, 1f / 60f); // X, one frame: cam.X and cam.Y += 0.25
+            var forward = rig.transform.forward;
+            Assert.Less(forward.x, 0f, "the eye moved up and right, so it looks back left");
+            Assert.Less(forward.y, 0f, "and down");
+            Assert.AreEqual(forward.x, forward.y, 1e-4f, "on x and y alike");
+            Assert.AreEqual(Vector2.zero, rig.LookPoint, "still looking at the target");
+            var ahead = rig.transform.position + forward * 10f;
+            Assert.AreEqual(0f, ahead.x, 1e-3f);
+            Assert.AreEqual(0f, ahead.y, 1e-3f);
+            Assert.AreEqual(0f, ahead.z, 1e-3f);
+
+            rig.ShakeScreen(); // shake starts False: the restore, target = cam
+            Assert.AreEqual(Quaternion.identity, rig.transform.rotation, "straight again");
+            var eye = rig.View.Eye.ToUnity();
+            Assert.AreEqual(eye, rig.LookPoint, "now looking at the plane under the eye");
+
+            rig.Recenter();
+            Assert.AreEqual(new Vector3(0f, 0f, -10f), rig.transform.position, "Root.vb's Reset");
+            Assert.IsFalse(rig.View.IsMoved);
+        }
+
+        [Test]
+        public void CameraRig_WhilePaused_TheViewWaitsForTheGame()
+        {
+            using (var testRig = new TestRig())
+            {
+                var rig = MakeCamera(16f / 9f);
+                rig.Mode = CameraFramingMode.FitLevel;
+                rig.Session = testRig.Session;
+                rig.Snap();
+                var before = rig.transform.position;
+
+                testRig.Session.Submit(new Pause(testRig.Id, true));
+                rig.Strafe(+1, 1f);
+                Assert.AreEqual(before, rig.transform.position, "Engine.vb rebuilds the camera only while not paused");
+                Assert.Greater(rig.View.Eye.X, 0f, "but Input.vb still took the key");
+
+                testRig.Session.Submit(new Pause(testRig.Id, false));
+                rig.Strafe(0, 0f);
+                Assert.Greater(rig.transform.position.x, before.x, "shown once the game runs");
+                rig.Session = null;
+            }
+        }
+
+        [Test]
+        public void ChainControls_NumpadXAndZ_AreTheDebugCamera()
+        {
+            using (var controls = new ChainControls())
+            {
+                var keys = new[]
+                {
+                    (controls.CameraForward, "<Keyboard>/numpadPlus"),
+                    (controls.CameraBackward, "<Keyboard>/numpadEnter"),
+                    (controls.CameraLeft, "<Keyboard>/numpad4"),
+                    (controls.CameraRight, "<Keyboard>/numpad6"),
+                    (controls.CameraUp, "<Keyboard>/numpad8"),
+                    (controls.CameraDown, "<Keyboard>/numpad2"),
+                    (controls.Isometric, "<Keyboard>/x"),
+                    (controls.Deisometric, "<Keyboard>/z"),
+                };
+
+                foreach (var (action, path) in keys)
+                {
+                    Assert.AreEqual(path, action.bindings[0].path, action.name);
+                    Assert.AreSame(controls.Debug, action.actionMap, action.name);
+                }
+            }
+        }
+
+        [Test]
         public void ChainControls_ZeroKey_IsShakeScreen()
         {
             using (var controls = new ChainControls())

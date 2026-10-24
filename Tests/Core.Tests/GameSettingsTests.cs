@@ -251,6 +251,32 @@ namespace MindAttic.Chain.Tests
         }
 
         [Test]
+        public void Shipped_Camera_IsCameraVbsPerspectiveAndDebugKeys()
+        {
+            var camera = Load().Camera;
+            Assert.AreEqual(System.MathF.PI / 4f, camera.Fov, 1e-6f, "Camera.vb: Fov = Math.PI / 4");
+            Assert.AreEqual(4f / 3f, camera.Aspect, 1e-6f, "PerspectiveFovLH(Fov, 4 / 3, ...)");
+            Assert.AreEqual(-1f, camera.CamZ, "cam = (0, 0, -1)");
+            Assert.AreEqual(0.012f, camera.CamSpd, 1e-7f, "Chain.vb: camSPD");
+            Assert.AreEqual(0.02f, camera.MoveStep, 1e-7f, "move_up / move_down");
+            Assert.AreEqual(0.25f, camera.IsometricStep, 1e-7f, "isometric / deisometric");
+
+            var debug = Load().DebugCameraSettings;
+            Assert.AreEqual(-9f, debug.EyeZ, 1e-5f, "z -1 x 9");
+            Assert.AreEqual(0.012f * 9f * 60f, debug.StepSpeed, 1e-4f, "per frame at 60 fps");
+            Assert.AreEqual(0.02f * 9f * 60f, debug.LiftSpeed, 1e-4f);
+            Assert.AreEqual(0.25f * 9f * 60f, debug.IsometricSpeed, 1e-3f);
+            Assert.AreEqual(4f / 3f, debug.Aspect, 1e-6f);
+        }
+
+        [Test]
+        public void Camera_EyeBehindThePlane_FailsToLoad()
+        {
+            var e = LoadFails(Patched(GameSettings.CameraFile, text => text.Replace("\"camZ\": -1", "\"camZ\": 1")));
+            StringAssert.Contains("camZ", e.Message);
+        }
+
+        [Test]
         public void Shipped_HeartIsHeartFloatsDefault()
         {
             var heart = AtScale(1f).Heart;

@@ -1,5 +1,6 @@
 using MindAttic.Chain.Core;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 namespace MindAttic.Chain
 {
@@ -13,6 +14,15 @@ namespace MindAttic.Chain
     /// 0 (the Debug map's ShakeScreen, <see cref="ChainControls"/>) is Root.vb's <c>shakeScreen</c>: the
     /// <see cref="ScreenShake"/> offset, laid on top of the framing and taken off again before the next one, so the
     /// shake never feeds the follow or its smoothing.
+    ///
+    /// Input.vb's camera keys (the Debug map's CameraForward/Backward/Left/Right/Up/Down, Isometric, Deisometric) move
+    /// Camera.vb's camera, a Core <see cref="DebugCamera"/> (<see cref="View"/>), on top of the framing too: its target
+    /// moves the point the camera looks at, the eye's distance to that target scales the orthographic size (the
+    /// original's perspective sees less as it nears the plane), and an eye off its target's axis (X and Z) turns the
+    /// camera to look at the target at that slant. The original's perspective itself (<see cref="Perspective"/>: 45
+    /// degrees, 4:3, z -1 looking at z 0) is kept as data; the rig draws orthographic (BIBLE V1). The keys are read every
+    /// frame, paused too, as Input.vb polls them; like Engine.vb's <c>initCamera</c>, the view takes the move only while
+    /// the game runs.
     /// </summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(Camera))]
@@ -41,9 +51,23 @@ namespace MindAttic.Chain
         private Camera _camera;
 
         private ScreenShake _shake;
-        // The shake offset on the transform now, taken off before each framing so the base view is what is framed.
+        // The shake offset on the view now, laid on after each framing so the base view is what is framed.
         private Vector2 _appliedShake;
         private ChainControls _controls;
+
+        private DebugCamera _view;
+        // Where the framing put the view's centre and its orthographic size, before the shake and the debug camera.
+        private Vector2 _framedCenter;
+        private float _framedSize;
+        private bool _hasFramed;
+        // The debug camera as the view last took it (Engine.vb rebuilds the camera only while not paused).
+        private Vector2 _shownEye;
+        private Vector2 _shownTarget;
+        private float _shownEyeZ;
+        private bool _hasShown;
+        // How far behind the point it looks at the camera sits (its z distance as the scene placed it).
+        private float _depth;
+        private Vector2 _lookPoint;
 
         public CameraFramingMode Mode
         {
@@ -112,12 +136,56 @@ namespace MindAttic.Chain
         /// <summary>The shake offset on the camera now, world units.</summary>
         public Vector2 ShakeOffset => _appliedShake;
 
+        /// <summary>Camera.vb's camera, moved by Input.vb's numpad, X and Z keys (camera.json, world units).</summary>
+        public DebugCamera View => _view ?? (_view = new DebugCamera(SettingsStore.Current.DebugCameraSettings));
+
+        /// <summary>Camera.vb's lens and start, kept as data: fov pi / 4, aspect 4:3, the eye at z -1 (world units) looking at z 0.</summary>
+        public DebugCamera.Settings Perspective => View.Config;
+
+        /// <summary>The point the camera looks at now, world units: the framed centre plus the shake and the debug camera's target.</summary>
+        public Vector2 LookPoint => _hasFramed ? _lookPoint : (Vector2)transform.position;
+
         /// <summary>0: Root.vb's <c>shakeScreen</c>, the view jumps or is put back, at once. Returns the new offset.</summary>
         public Vector2 ShakeScreen()
         {
             Shake.Shake();
-            ApplyShake();
+            if (Shake.Armed)
+            {
+                // The restore is target = cam: the debug camera's target goes back under its eye too.
+                View.LookStraight();
+                TakeView();
+            }
+
+            Place();
             return _appliedShake;
+        }
+
+        /// <summary>Numpad plus or Enter (+1 / -1) held <paramref name="seconds"/>: the eye nearer or further.</summary>
+        public void MoveForward(int direction, float seconds)
+        {
+            View.MoveForward(direction, seconds);
+            Refresh();
+        }
+
+        /// <summary>Numpad 6 or 4 (+1 / -1) held <paramref name="seconds"/>: eye and target along x.</summary>
+        public void Strafe(int direction, float seconds)
+        {
+            View.Strafe(direction, seconds);
+            Refresh();
+        }
+
+        /// <summary>Numpad 8 or 2 (+1 / -1) held <paramref name="seconds"/>: eye and target along y.</summary>
+        public void Lift(int direction, float seconds)
+        {
+            View.Lift(direction, seconds);
+            Refresh();
+        }
+
+        /// <summary>X or Z (+1 / -1) held <paramref name="seconds"/>: the eye alone, on x and y.</summary>
+        public void Isometric(int direction, float seconds)
+        {
+            View.Isometric(direction, seconds);
+            Refresh();
         }
 
         /// <summary>Reads camera.json's framing the first time it is needed.</summary>
@@ -139,13 +207,13 @@ namespace MindAttic.Chain
 
         public Camera Camera => _camera != null ? _camera : _camera = GetComponent<Camera>();
 
-        /// <summary>The world rect the camera currently shows.</summary>
+        /// <summary>The world rect the camera currently shows (on the plane it looks at, ignoring a slant).</summary>
         public Rect ViewRect
         {
             get
             {
                 var half = CameraFraming.HalfExtents(Camera.orthographicSize, Camera.aspect).ToUnity();
-                return new Rect((Vector2)transform.position - half, half * 2f);
+                return new Rect(LookPoint - half, half * 2f);
             }
         }
 
@@ -154,13 +222,17 @@ namespace MindAttic.Chain
 
         /// <summary>
         /// Root.vb's Reset for the camera: <c>cam</c> and <c>target</c> back at the origin (x 0, y 0, where
-        /// every angel starts again), so a shake or a debug pan is undone, then framed with no smoothing.
+        /// every angel starts again, the eye at z -1), so a shake or a debug move is undone, then framed with no smoothing.
         /// </summary>
         public void Recenter()
         {
             Shake.Recenter();
+            View.Recenter();
+            TakeView();
             _appliedShake = Vector2.zero;
-            transform.position = new Vector3(0f, 0f, transform.position.z);
+            _framedCenter = Vector2.zero;
+            _framedSize = Camera.orthographicSize;
+            _hasFramed = true;
             Snap();
         }
 
@@ -173,23 +245,24 @@ namespace MindAttic.Chain
             var cam = Camera;
             cam.orthographic = true;
             var levelRect = ResolveLevel(out var hasLevel);
-            var current = (Vector2)transform.position - _appliedShake;
+            var current = _hasFramed ? _framedCenter : (Vector2)transform.position;
             Vector2 next;
+            float size;
 
             if (mode == CameraFramingMode.FitLevel)
             {
                 if (!hasLevel)
                 {
-                    PlaceAt(current);
+                    PlaceAt(current, _hasFramed ? _framedSize : cam.orthographicSize);
                     return;
                 }
 
-                cam.orthographicSize = CameraFraming.FitOrthographicSize(levelRect.size.ToCore(), cam.aspect, padding);
+                size = CameraFraming.FitOrthographicSize(levelRect.size.ToCore(), cam.aspect, padding);
                 next = levelRect.center;
             }
             else
             {
-                cam.orthographicSize = followSize;
+                size = followSize;
                 var half = CameraFraming.HalfExtents(followSize, cam.aspect);
                 var follow = ResolveTarget();
                 var currentCore = current.ToCore();
@@ -211,18 +284,86 @@ namespace MindAttic.Chain
                 next = smoothed.ToUnity();
             }
 
-            PlaceAt(next);
+            PlaceAt(next, size);
         }
 
-        /// <summary>Puts the camera at <paramref name="center"/> plus the shake.</summary>
-        private void PlaceAt(Vector2 center)
+        /// <summary>Frames the view at <paramref name="center"/> and <paramref name="size"/>, then lays the shake and the debug camera on top.</summary>
+        private void PlaceAt(Vector2 center, float size)
         {
-            _appliedShake = _shake != null ? _shake.Offset.ToUnity() : Vector2.zero;
-            transform.position = new Vector3(center.x + _appliedShake.x, center.y + _appliedShake.y, transform.position.z);
+            _framedCenter = center;
+            _framedSize = size;
+            _hasFramed = true;
+            Place();
         }
 
-        /// <summary>Moves the camera from the old shake to the new one, keeping its framed centre.</summary>
-        private void ApplyShake() => PlaceAt((Vector2)transform.position - _appliedShake);
+        /// <summary>
+        /// Puts the camera on the framed centre plus the shake and the debug camera as last taken: it looks at that point
+        /// plus the target, from the eye's slant, with the framed size times the eye's zoom.
+        /// </summary>
+        private void Place()
+        {
+            if (!_hasFramed)
+            {
+                _framedCenter = transform.position;
+                _framedSize = Camera.orthographicSize;
+                _hasFramed = true;
+            }
+
+            if (!_hasShown)
+            {
+                TakeView();
+            }
+
+            if (_depth <= 0f)
+            {
+                _depth = transform.position.z < 0f ? -transform.position.z : 10f;
+            }
+
+            _appliedShake = _shake != null ? _shake.Offset.ToUnity() : Vector2.zero;
+            _lookPoint = _framedCenter + _appliedShake + _shownTarget;
+
+            var slant = _shownTarget - _shownEye;
+            var look = new Vector3(slant.x, slant.y, -_shownEyeZ);
+            var start = View.StartDistance;
+            Camera.orthographicSize = _framedSize * (start > 0f ? look.magnitude / start : 1f);
+
+            var point = new Vector3(_lookPoint.x, _lookPoint.y, 0f);
+            if (slant == Vector2.zero)
+            {
+                transform.rotation = Quaternion.identity;
+                transform.position = point - Vector3.forward * _depth;
+            }
+            else
+            {
+                // LookAtLH's up is +y, as Unity's: the same left-handed look from the eye to the target.
+                var forward = look.normalized;
+                transform.rotation = Quaternion.LookRotation(forward, Vector3.up);
+                transform.position = point - forward * _depth;
+            }
+        }
+
+        /// <summary>The view takes the debug camera as it is now (Engine.vb's <c>initCamera</c>).</summary>
+        private void TakeView()
+        {
+            var view = View;
+            _shownEye = view.Eye.ToUnity();
+            _shownTarget = view.Target.ToUnity();
+            _shownEyeZ = view.EyeZ;
+            _hasShown = true;
+        }
+
+        /// <summary>After a key moved the debug camera: the view takes it now unless the game is paused.</summary>
+        private void Refresh()
+        {
+            if (!IsPaused)
+            {
+                TakeView();
+            }
+
+            Place();
+        }
+
+        private bool IsPaused => session != null && session.World.State.IsPaused;
 
         private Rect ResolveLevel(out bool hasLevel)
         {
@@ -257,7 +398,9 @@ namespace MindAttic.Chain
                 var follow = ResolveTarget();
                 if (follow != null)
                 {
-                    transform.position = new Vector3(follow.position.x, follow.position.y, transform.position.z);
+                    _framedCenter = follow.position;
+                    _framedSize = Camera.orthographicSize;
+                    _hasFramed = true;
                 }
             }
 
@@ -292,11 +435,45 @@ namespace MindAttic.Chain
 
         private void Update()
         {
-            if (_controls != null && _controls.ShakeScreen.WasPressedThisFrame())
+            if (_controls == null)
+            {
+                return;
+            }
+
+            if (_controls.ShakeScreen.WasPressedThisFrame())
             {
                 ShakeScreen();
             }
+
+            // Input.vb polls the camera keys every frame, paused or not: real seconds held. LateUpdate shows the move.
+            var dt = Time.unscaledDeltaTime;
+            var forward = Held(_controls.CameraForward, _controls.CameraBackward);
+            var strafe = Held(_controls.CameraRight, _controls.CameraLeft);
+            var lift = Held(_controls.CameraUp, _controls.CameraDown);
+            var iso = Held(_controls.Isometric, _controls.Deisometric);
+            if (forward != 0)
+            {
+                View.MoveForward(forward, dt);
+            }
+
+            if (strafe != 0)
+            {
+                View.Strafe(strafe, dt);
+            }
+
+            if (lift != 0)
+            {
+                View.Lift(lift, dt);
+            }
+
+            if (iso != 0)
+            {
+                View.Isometric(iso, dt);
+            }
         }
+
+        /// <summary>+1 while only <paramref name="plus"/> is held, -1 while only <paramref name="minus"/> is, else 0 (the original's two steps cancel).</summary>
+        private static int Held(InputAction plus, InputAction minus) => (plus.IsPressed() ? 1 : 0) - (minus.IsPressed() ? 1 : 0);
 
         private void Subscribe()
         {
@@ -322,8 +499,16 @@ namespace MindAttic.Chain
             }
         }
 
-        // Scaled time: while paused (timeScale 0) the camera holds still with the game.
-        private void LateUpdate() => Frame(Time.deltaTime);
+        // Scaled time: while paused (timeScale 0) the camera holds still with the game, and the debug view waits too.
+        private void LateUpdate()
+        {
+            if (!IsPaused)
+            {
+                TakeView();
+            }
+
+            Frame(Time.deltaTime);
+        }
 
         private void OnDrawGizmosSelected()
         {
@@ -333,7 +518,7 @@ namespace MindAttic.Chain
             }
 
             Gizmos.color = Color.green;
-            Gizmos.DrawWireCube(transform.position, new Vector3(deadZone.x * 2f, deadZone.y * 2f, 0f));
+            Gizmos.DrawWireCube(LookPoint, new Vector3(deadZone.x * 2f, deadZone.y * 2f, 0f));
         }
     }
 }

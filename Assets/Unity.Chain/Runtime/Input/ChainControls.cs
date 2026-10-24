@@ -20,10 +20,12 @@ namespace MindAttic.Chain
     /// <see cref="SceneLight"/>), ShakeScreen (Form1.vb's 0, read by <see cref="CameraRig"/>), and, read by
     /// <see cref="GameHud"/>, ToggleFps (F4), ToggleMenu (Tab), ToggleWireframe (F1), ToggleTextures (F2),
     /// ToggleCulling (F3) and ConfigureVideo (F12), and ToggleZones (Form1.vb's E, Zone.vb's hit boxes, flipped by
-    /// <see cref="GameHud"/> and drawn by <see cref="HitZoneOverlay"/>). Later debug keys join this map.</item>
+    /// <see cref="GameHud"/> and drawn by <see cref="HitZoneOverlay"/>), and, read while held by <see cref="CameraRig"/>,
+    /// Input.vb's camera keys (UNI-T57): CameraForward and CameraBackward (numpad plus and Enter), CameraLeft and
+    /// CameraRight (numpad 4 and 6), CameraUp and CameraDown (numpad 8 and 2), Isometric and Deisometric (X and Z).
+    /// Later debug keys join this map.</item>
     /// </list>
-    /// Input.vb's and Form1.vb's keys keep their bindings; Minus and Equals stay free for game speed (UNI-T52)
-    /// and the numpad for the debug camera (UNI-T57), as the original has them.
+    /// Input.vb's and Form1.vb's keys keep their bindings, as the original has them.
     /// </summary>
     public sealed class ChainControls : IDisposable
     {
@@ -86,6 +88,22 @@ namespace MindAttic.Chain
         public InputAction ConfigureVideo => Debug["ConfigureVideo"];
         /// <summary>Form1.vb's E: <c>bZone = Not bZone</c>, Zone.vb's hit box overlay.</summary>
         public InputAction ToggleZones => Debug["ToggleZones"];
+        /// <summary>Input.vb's numpad plus: <c>move_forward</c>, <c>cam.Z += camSPD</c> every frame it is held.</summary>
+        public InputAction CameraForward => Debug["CameraForward"];
+        /// <summary>Input.vb's numpad Enter: <c>move_backward</c>, <c>cam.Z -= camSPD</c>.</summary>
+        public InputAction CameraBackward => Debug["CameraBackward"];
+        /// <summary>Input.vb's numpad 4: <c>strafe_right</c>, which moves <c>cam.X</c> and <c>target.X</c> by -camSPD (the view goes left).</summary>
+        public InputAction CameraLeft => Debug["CameraLeft"];
+        /// <summary>Input.vb's numpad 6: <c>strafe_left</c>, <c>cam.X</c> and <c>target.X</c> by +camSPD (the view goes right).</summary>
+        public InputAction CameraRight => Debug["CameraRight"];
+        /// <summary>Input.vb's numpad 8: <c>move_up</c>, <c>cam.Y</c> and <c>target.Y</c> by +0.02.</summary>
+        public InputAction CameraUp => Debug["CameraUp"];
+        /// <summary>Input.vb's numpad 2: <c>move_down</c>, by -0.02.</summary>
+        public InputAction CameraDown => Debug["CameraDown"];
+        /// <summary>Input.vb's X: <c>isometric</c>, <c>cam.X</c> and <c>cam.Y</c> by +0.25, the target left alone.</summary>
+        public InputAction Isometric => Debug["Isometric"];
+        /// <summary>Input.vb's Z: <c>deisometric</c>, by -0.25.</summary>
+        public InputAction Deisometric => Debug["Deisometric"];
 
         /// <summary>A new asset with the game's two maps and every binding.</summary>
         public static InputActionAsset BuildAsset()
@@ -130,6 +148,15 @@ namespace MindAttic.Chain
             Button(debug, "ConfigureVideo", "<Keyboard>/f12");
             // Form1.vb's E (UNI-T56): Zone.vb's hit boxes.
             Button(debug, "ToggleZones", "<Keyboard>/e");
+            // Input.vb's camera keys (UNI-T57), read while held: Camera.vb's move, strafe and isometric.
+            Button(debug, "CameraForward", "<Keyboard>/numpadPlus");
+            Button(debug, "CameraBackward", "<Keyboard>/numpadEnter");
+            Button(debug, "CameraLeft", "<Keyboard>/numpad4");
+            Button(debug, "CameraRight", "<Keyboard>/numpad6");
+            Button(debug, "CameraUp", "<Keyboard>/numpad8");
+            Button(debug, "CameraDown", "<Keyboard>/numpad2");
+            Button(debug, "Isometric", "<Keyboard>/x");
+            Button(debug, "Deisometric", "<Keyboard>/z");
 
             return asset;
         }

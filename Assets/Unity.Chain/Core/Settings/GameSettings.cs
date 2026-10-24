@@ -81,6 +81,9 @@ namespace MindAttic.Chain.Core
         /// <summary>The 0 key's screen shake: the most one draw moves the view, world units (<see cref="ScreenShake"/>).</summary>
         public float ShakeAmount { get; private set; }
 
+        /// <summary>Camera.vb's camera and the numpad, X and Z keys that move it, world units and seconds (<see cref="DebugCamera"/>, UNI-T57).</summary>
+        public DebugCamera.Settings DebugCameraSettings { get; private set; }
+
         public AudioTuning AudioTuning { get; private set; }
 
         /// <summary>The mace's draw size relative to a link while the chain follows (Chain.vb: 3.5).</summary>
@@ -303,6 +306,14 @@ namespace MindAttic.Chain.Core
 
             CameraTuning = Camera.Port;
             ShakeAmount = m.Length(Camera.ShakeAmount);
+            DebugCameraSettings = new DebugCamera.Settings(
+                fov: Camera.Fov,
+                aspect: Camera.Aspect,
+                eyeZ: m.Length(Camera.CamZ),
+                stepSpeed: m.Speed(Camera.CamSpd),
+                liftSpeed: m.Speed(Camera.MoveStep),
+                isometricSpeed: m.Speed(Camera.IsometricStep),
+                minDistance: m.Length(Camera.MinDistance));
             AudioTuning = new AudioTuning(
                 sfxVolume: AudioData.Linear(Audio.SfxVolume),
                 musicVolume: AudioData.Linear(Audio.MusicVolume),
@@ -663,8 +674,26 @@ namespace MindAttic.Chain.Core
     /// <summary>camera.json: Camera.vb's perspective (kept as data for the debug camera, UNI-T57) and the port's rig.</summary>
     public sealed class CameraData
     {
+        /// <summary>Camera.vb's <c>Fov</c>, radians (pi / 4).</summary>
         public float Fov { get; private set; }
+
+        /// <summary>Camera.vb's <c>PerspectiveFovLH</c> aspect (4 / 3).</summary>
+        public float Aspect { get; private set; }
+
+        /// <summary>Camera.vb's <c>cam.Z</c> (-1), screen units; the target is on z 0.</summary>
         public float CamZ { get; private set; }
+
+        /// <summary>Chain.vb's <c>camSPD</c> (0.012): numpad plus/Enter and 4/6, screen units a frame.</summary>
+        public float CamSpd { get; private set; }
+
+        /// <summary>Camera.vb's <c>move_up</c>/<c>move_down</c> (0.02): numpad 8/2, screen units a frame.</summary>
+        public float MoveStep { get; private set; }
+
+        /// <summary>Camera.vb's <c>isometric</c>/<c>deisometric</c> (0.25): X/Z, screen units a frame.</summary>
+        public float IsometricStep { get; private set; }
+
+        /// <summary>The port's nearest approach of the debug eye to the plane, screen units (BIBLE D26).</summary>
+        public float MinDistance { get; private set; }
 
         /// <summary>Form1.vb's 0 key: <c>shakeScreen(0.02)</c>, the most one draw moves the look target, screen units.</summary>
         public float ShakeAmount { get; private set; }
@@ -676,7 +705,11 @@ namespace MindAttic.Chain.Core
             var data = new CameraData
             {
                 Fov = r.Number("Fov", 0.01f, 3.1f),
-                CamZ = r.Number("camZ"),
+                Aspect = r.Number("aspect", 0.01f),
+                CamZ = r.Number("camZ", max: -0.0001f),
+                CamSpd = r.Number("camSPD", 0f),
+                MoveStep = r.Number("moveStep", 0f),
+                IsometricStep = r.Number("isometricStep", 0f),
                 ShakeAmount = r.Number("shakeAmount", 0f),
             };
 
@@ -687,6 +720,7 @@ namespace MindAttic.Chain.Core
                 followSize: port.Number("followSize", 0.01f),
                 deadZone: port.Pair("deadZone", 0f),
                 sharpness: port.Number("sharpness", 0f));
+            data.MinDistance = port.Number("minDistance", 0.0001f);
             port.Done();
             return data;
         }

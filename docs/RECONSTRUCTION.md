@@ -148,7 +148,7 @@ Every binding of the original, with its state:
 | Esc | quit (`bRunning = False`, `Finalize`, the form closes; works paused) | ported (Quit action: Escape -> Core `QuitGame` -> `QuitRequested`; `GameSession` ends the application, or stops play mode in the Editor; UNI-T54). Escape closing the scripter is UNI-T61's |
 | F12 | toggle fullscreen and restart the engine (config) | ported (UNI-T55; the Debug map's ConfigureVideo flips the profile's window mode in place, no restart, BIBLE V21); the settings screen it will open is UNI-T59 |
 | J | joystick toggle; the joystick code reads axes and buttons and binds nothing | fixed: the gamepad drives the actions, its stick steers like the mouse, J switches the stick (BIBLE D14, UNI-T34) |
-| Numpad + Enter / 4 6 / 8 2, X, Z | debug camera | missing, UNI-T57 |
+| Numpad + Enter / 4 6 / 8 2, X, Z | debug camera | ported, UNI-T57: the Debug map's CameraForward/Backward/Left/Right/Up/Down, Isometric, Deisometric, read held by `CameraRig` into a Core `DebugCamera` (BIBLE V1, D26; the anchor move is dead, V22) |
 | ` (grave) | scripter console | missing, UNI-T60, UNI-T61 |
 | Arrow keys, `btnAttack`..`btnDashRight` | declared; no effect | dead |
 
@@ -174,7 +174,7 @@ Every binding of the original, with its state:
 |---|---|---|
 | Ambient + material tint | `AmbientColor` (white) and an r/g/b material colour set each frame | ported: `LightingState` tint times `GameState.Ambient`, on a URP 2D global light (`SceneLight`) |
 | Day cycle | Day, Dusk, Night, Morning with `dayLength` 1e10 s, so it never advances in play | ported (`LightingState`) at a 1440 s day (BIBLE D6) |
-| Camera | perspective 45 degrees, z -1, 4:3, rebuilt each frame from `cam` and `target` | rebuild uses an orthographic fit | deliberate deviation; debug camera UNI-T57 |
+| Camera | perspective 45 degrees, z -1, 4:3, rebuilt each unpaused frame from `cam` and `target` | orthographic fit; the perspective kept as data (`camera.json`, `CameraRig.Perspective`), `cam`/`target` as `DebugCamera` on top of the fit | deliberate deviation (BIBLE V1); debug camera ported, UNI-T57 |
 | Background | 2.4 x 0.83 quad at x -0.56, `beach.png` default | missing, UNI-T40 |
 | Brick room | `Cube.vb` cube 67x55x38 around the camera, textured `brick.jpg`; hidden behind the background | missing, UNI-T40 |
 | Screen shake | alternates a random offset and a restore | ported (UNI-T49): `ScreenShake` offsets the rig's framing right and down by two draws of 0..0.02 screen each, the next press restores; the original's draws were always 0 (BIBLE D19) |

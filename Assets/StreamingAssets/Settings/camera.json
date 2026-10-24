@@ -1,14 +1,19 @@
 {
-  "_source": "Camera.vb: Fov (Math.PI / 4) and cam z, kept as data for the debug camera (UNI-T57); the port draws with an orthographic rig (BIBLE V1). Form1.vb: shakeAmount, the 0 key's shakeScreen(0.02), screen units (UNI-T49).",
+  "_source": "Camera.vb: Fov (Math.PI / 4), the 4:3 aspect of PerspectiveFovLH and cam z -1 looking at target z 0, the debug camera's start (UNI-T57; the port draws it with its orthographic rig, BIBLE V1). Chain.vb: camSPD 0.012, a held frame of numpad plus/Enter (cam z) and numpad 4/6 (cam and target x). Camera.vb: move_up/move_down's 0.02 (numpad 8/2, cam and target y) and isometric/deisometric's 0.25 (X/Z, cam x and y). Form1.vb: shakeAmount, the 0 key's shakeScreen(0.02). Screen units, per frame.",
   "Fov": 0.7853982,
+  "aspect": 1.3333334,
   "camZ": -1,
+  "camSPD": 0.012,
+  "moveStep": 0.02,
+  "isometricStep": 0.25,
   "shakeAmount": 0.02,
   "port": {
-    "_about": "The camera rig, not in the original; world units and seconds. mode is FitLevel or Follow.",
+    "_about": "The camera rig, not in the original; world units and seconds. mode is FitLevel or Follow. minDistance (screen units) is how near the debug camera's eye comes to the plane it looks at; the original walked through it (BIBLE D26).",
     "mode": "FitLevel",
     "padding": 0,
     "followSize": 4.5,
     "deadZone": [1.5, 1],
-    "sharpness": 6
+    "sharpness": 6,
+    "minDistance": 0.012
   }
 }
