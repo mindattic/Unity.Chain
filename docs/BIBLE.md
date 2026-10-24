@@ -184,7 +184,7 @@ Nothing tunes the game from the Inspector any more.
   re-checked against the scaled rectangles: hit 0.3, catch 0.35, enemy 0.3, angel contact 0.4, hand (0.3, 0).
 - **Validated on load**: every key must be present, of its type and in range, unknown keys are reported (a typo is
   not silently ignored), and cross-checks hold (`Mace` within `maceMin..maceMax`, `seekCap` no more than the
-  enemies). One load reports every problem, each with its file, key and line (`SettingsException`); the game logs
+  enemies, `hangBackFar` beyond `hangBackNear`). One load reports every problem, each with its file, key and line (`SettingsException`); the game logs
   them and does not start on bad data. `Tests/Core.Tests/GameSettingsTests` loads the shipped files.
 
 | File | Holds | Original source |
@@ -192,7 +192,7 @@ Nothing tunes the game from the Inspector any more.
 | `space.json` | the original-to-port mapping (length scale, frame rate) | (the port; D9) |
 | `chain.json` | `maxLinks`, `segLength`, `springK`, `resistance`, `gravity`, `stopVel`/`stopAcc`, overhead boost and `linkSize`, link mass, `Mace` and its 1-12 range, `followMouse` and the 3.5x mace scale (UNI-T47); port: wall bounce, hit, catch and throw, damage per speed | `Chain.vb`, `Form1.vb` |
 | `angel.json` | `Ratio3D`, `hoverMax`/`hoverRate`, `flapRate` and frames, `maxHP`, `hurtDelay`, `angelSize` and its hit rectangle; port: hand offset, bounds margin, contact radius | `Angel.vb` |
-| `enemies.json` | `maxEnemy`, `seekSpd`, `resistSPD`, `flockSpd`, mass range, load and reset HP, Cautious's 6 x seekSpd; port: radius, the Seek cap (UNI-T65, every enemy until then) | `Enemy.vb`, `Root.vb` |
+| `enemies.json` | `maxEnemy`, `seekSpd`, `resistSPD`, `flockSpd`, mass range, load and reset HP, Cautious's 6 x seekSpd; port: radius, the Seek cap (4) and the hang-back band `hangBackNear`/`hangBackFar` (screen units, mapped; D18) | `Enemy.vb`, `Root.vb` |
 | `item.json` | the heart's size, fall, sway (`floatSPD`, `floatAcc`, `floatMaxSPD`), start, wrap, heal and hit rectangle | `Item.vb` |
 | `game.json` | score per damage, HP per contact | `Engine.vb` |
 | `lighting.json` | day length (1440 s, D6), tint step | `Lights.vb` |
@@ -231,12 +231,13 @@ Status: **fixed** (on main), **planned** (the ticket that fixes it).
 | D15 | The background toggle key is unreachable: a second `Case Keys.B` sits below the first | `Form1.OnKeyDown` | B and N both reach their backgrounds | planned, UNI-T40 |
 | D16 | The lighting toggle freezes instead of switching off: with `bLighting` false `renderLight` just stops updating the device, so the last ambient and tint stay on screen (and the game-over fade stops showing); and `Reset` has a stray `b = True` among its flags that snaps blue to 255 mid-cycle | `Lights.vb` `renderLight`, `Root.vb` `Reset` | L off shows the scene untinted, still dimmed by the game-over fade, with the cycle held where it is; a new round turns lighting back on and leaves the time of day running, as `Reset` otherwise does | fixed (UNI-T46) |
 | D17 | With F (`followMouse`) off the mace keeps an invisible hit box where it was: `renderChain` stops rebuilding `rectMace`, but `checkMaceImpact` still tests enemies against the stale rectangle, so enemies that wander into that spot are hit and caught by a mace that is somewhere else | `Chain.vb` `renderChain`, `Engine.vb` `checkMaceImpact` | with follow off the mace neither hits nor catches (`ChainFollow.MaceHits`); the springs go slack and the mace draws at link size, as in the original | fixed (UNI-T47) |
+| D18 | Every enemy comes at once: `renderEnemy` codes a `Cautious` and an `Align` AI, but `loadEnemy`, `Reset` and the Hurt recovery only ever set `Seek`, so all 14 close on the angel together and the two states can never be reached; and `Cautious`, meant to hang back, negates `getSlope`'s already-outward vector, so as written it would charge at 6 x seekSpd | `Enemy.vb` `loadEnemy`, `renderEnemy`; `Root.vb` `Reset`, `getSlope` | only `seekCap` enemies (4) Seek at a time; the rest wait in a hang-back band around their angel: `Align` stalks in at seekSpd on each axis (3.24 u/s) to `hangBackNear` (0.3 screen, 2.7 u), then `Cautious` backs straight off at 6 x seekSpd x distance / mass (2.16/s) out to `hangBackFar` (0.45, 4.05 u), and round again. When a seeker is hurt, grabbed or killed the waiting enemy nearest its angel takes the slot; a recovered seeker over the cap sends the farthest seeker back to wait. Waiting enemies can be hit and grabbed, as Engine.vb allows anything not Hurt or Grabbed. An `Align` enemy level with the angel on an axis holds still on it instead of flipping sign every frame (`EnemyBrain`, `GameWorld.AllocateSeekSlots`, `enemies.json`) | fixed (UNI-T65) |
 
 Not restored, on purpose: stubs with no body (`ExtraLife`, `Health5`, `Health20`, `Money` items; `Center` and
 `Wander` motions; the `Wander`, `Retreat`, `Limbo`, `Death` AI states; `angelAI.Hurt`; `bRicochet`; the terrain
 lines; the cursors; `renderTime`, `renderDate`, `levelText`; `SetupLights`). Restoring them would mean inventing the
-behaviour, not fixing it. `Cautious` and `Align` have code but no rule for when they apply; they stay out unless the
-owner decides otherwise.
+behaviour, not fixing it. `Cautious` and `Align` had code but no rule for when they apply; the owner gave them one
+(D18).
 
 ## 8. Deliberate deviations {#UNI-§8}
 

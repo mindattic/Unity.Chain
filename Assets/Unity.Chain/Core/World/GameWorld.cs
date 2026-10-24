@@ -36,14 +36,11 @@ namespace MindAttic.Chain.Core
             public float FlockSpeed;
             public EnemyBrain.Settings Brain;
             /// <summary>
-            /// How many enemies may Seek at once (UNI-T65, not yet applied: until then every enemy seeks, as in
-            /// the original). The rest would hang back in Cautious or stalk in Align.
+            /// How many enemies may Seek at once (UNI-T65; the original lets all 14). The rest hang back in
+            /// Cautious or stalk in Align (<see cref="EnemyBrain.Settings"/>), and the nearest takes a slot
+            /// as soon as one opens: a seeker hurt, grabbed or killed.
             /// </summary>
             public int SeekCap;
-            /// <summary>Enemy.vb Cautious: the speed it backs away at before its mass divides it (6 x seekSpd), units/s.</summary>
-            public float CautiousSpeed;
-            /// <summary>Enemy.vb Align: the fixed speed it stalks at on each axis (seekSpd), units/s.</summary>
-            public float AlignSpeed;
 
             public static EnemySetup Default => new EnemySetup
             {
@@ -54,9 +51,7 @@ namespace MindAttic.Chain.Core
                 Radius = 0.3f,
                 FlockSpeed = EnemyBrain.DefaultFlockSpeed,
                 Brain = EnemyBrain.Settings.Default,
-                SeekCap = 14,
-                CautiousSpeed = 6f * 0.006f * EnemyBrain.OriginalFrameRate,
-                AlignSpeed = 0.006f * EnemyBrain.OriginalFrameRate,
+                SeekCap = 4,
             };
         }
 
@@ -192,6 +187,11 @@ namespace MindAttic.Chain.Core
             var hi = Calc.Max(setup.MassMin, setup.MassMax);
             var rolled = mass ?? (hi - lo < 1e-6f ? lo : lo + (float)_random.NextDouble() * (hi - lo));
             var brain = new EnemyBrain(hp ?? setup.Hp, rolled, setup.Brain);
+            if (SeekerCount() >= setup.SeekCap)
+            {
+                brain.Wait((SeekPoint(position) - position).Magnitude);
+            }
+
             var enemy = new EnemyEntity(new EnemyId(_nextEnemyId++), brain, position, Calc.Max(0f, setup.Radius));
             _enemies.Add(enemy);
             Emit(new EnemySpawned(enemy.Id, position));
@@ -226,6 +226,76 @@ namespace MindAttic.Chain.Core
 
             _enemies.Clear();
         }
+
+        /// <summary>How many enemies are seeking now (held against <see cref="EnemySetup.SeekCap"/>).</summary>
+        public int SeekerCount()
+        {
+            var seekers = 0;
+            foreach (var enemy in _enemies)
+            {
+                if (enemy.State == EnemyState.Seek)
+                {
+                    seekers++;
+                }
+            }
+
+            return seekers;
+        }
+
+        /// <summary>
+        /// The Seek cap (UNI-T65): while fewer than the cap seek, the waiting enemy nearest its angel takes
+        /// a slot; while more do (a hurt enemy recovered into Seek, or the cap was lowered), the seeker
+        /// farthest from its angel goes back to waiting.
+        /// </summary>
+        private void AllocateSeekSlots()
+        {
+            var cap = Calc.Max(0, Config.Enemies.SeekCap);
+            var seekers = SeekerCount();
+
+            while (seekers < cap)
+            {
+                var next = Extreme(waiting: true, nearest: true);
+                if (next == null)
+                {
+                    break;
+                }
+
+                next.Brain.Promote();
+                seekers++;
+            }
+
+            while (seekers > cap)
+            {
+                var last = Extreme(waiting: false, nearest: false);
+                last.Brain.Wait(DistanceToSeekPoint(last));
+                seekers--;
+            }
+        }
+
+        /// <summary>The waiting (or seeking) enemy nearest to (or farthest from) the angel it homes on.</summary>
+        private EnemyEntity Extreme(bool waiting, bool nearest)
+        {
+            EnemyEntity best = null;
+            var bestDistance = 0f;
+            foreach (var enemy in _enemies)
+            {
+                if (waiting ? !enemy.Brain.IsWaiting : enemy.State != EnemyState.Seek)
+                {
+                    continue;
+                }
+
+                var distance = DistanceToSeekPoint(enemy);
+                if (best == null || (nearest ? distance < bestDistance : distance > bestDistance))
+                {
+                    best = enemy;
+                    bestDistance = distance;
+                }
+            }
+
+            return best;
+        }
+
+        private float DistanceToSeekPoint(EnemyEntity enemy) => (SeekPoint(enemy.Position) - enemy.Position).Magnitude;
 
         /// <summary>Random points inside <paramref name="area"/>, <paramref name="count"/> of them.</summary>
         public static Vec2[] RandomPositions(Rect2 area, int count, Random random)
@@ -419,12 +489,14 @@ namespace MindAttic.Chain.Core
         }
 
         /// <summary>
-        /// Every free enemy moves by its brain's velocity plus the flocking push from each live, ungrabbed
+        /// The Seek cap is kept first (<see cref="AllocateSeekSlots"/>); then every free enemy moves by its brain's velocity plus the flocking push from each live, ungrabbed
         /// enemy it overlaps; a thrown one knocks every hittable enemy it touches. Overlaps are judged on
         /// where everyone stood at the start of the step, so the order enemies move in does not matter.
         /// </summary>
         private void StepEnemies(float deltaTime)
         {
+            AllocateSeekSlots();
+
             var count = _enemies.Count;
             if (_snapshot.Length < count)
             {

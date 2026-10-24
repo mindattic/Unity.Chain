@@ -115,7 +115,9 @@ namespace MindAttic.Chain.Tests
             Assert.AreEqual(0.2f, enemies.LoadHP);
             Assert.AreEqual(1f, enemies.ResetHP);
             Assert.AreEqual(6f, enemies.CautiousSeekMultiple);
-            Assert.AreEqual(14, enemies.Port.SeekCap, "every enemy may seek, as in the original, until UNI-T65");
+            Assert.AreEqual(4, enemies.Port.SeekCap, "UNI-T65: four seek at once, the other ten wait");
+            Assert.AreEqual(0.3f, enemies.Port.HangBackNear);
+            Assert.AreEqual(0.45f, enemies.Port.HangBackFar);
         }
 
         [Test]
@@ -230,7 +232,11 @@ namespace MindAttic.Chain.Tests
             Assert.AreEqual(0.06f, world.Enemies.FlockSpeed, 1e-6f, "UNI-T35's 0.06 at scale 1");
             Assert.AreEqual(3.6f, world.Enemies.Brain.HurtDeceleration, 1e-4f, "resistSPD 0.001 a frame squared");
             Assert.AreEqual(0.06f, world.Enemies.Brain.RecoverSpeed, 1e-6f);
-            Assert.AreEqual(2.16f, world.Enemies.CautiousSpeed, 1e-5f, "6 x seekSpd a frame");
+            Assert.AreEqual(2.16f, world.Enemies.Brain.CautiousRate, 1e-5f, "6 x seekSpd a frame");
+            Assert.AreEqual(0.36f, world.Enemies.Brain.AlignSpeed, 1e-6f, "seekSpd a frame");
+            Assert.AreEqual(0.3f, world.Enemies.Brain.HangBackNear, 1e-6f);
+            Assert.AreEqual(0.45f, world.Enemies.Brain.HangBackFar, 1e-6f);
+            Assert.AreEqual(4, world.Enemies.SeekCap);
             Assert.AreEqual(30, world.Session.MaxHp);
             Assert.AreEqual(0.25f, world.Session.HurtDelay);
             Assert.AreEqual(1000f, world.Session.PointsPerDamage);
@@ -264,6 +270,10 @@ namespace MindAttic.Chain.Tests
             Assert.AreEqual(3.6f, settings.Heart.StartY, 1e-6f);
             Assert.AreEqual(0.54f, settings.World.Enemies.FlockSpeed, 1e-5f);
             Assert.AreEqual(0.36f, settings.World.Enemies.Brain.SeekRate, 1e-6f, "a rate, not a length");
+            Assert.AreEqual(2.16f, settings.World.Enemies.Brain.CautiousRate, 1e-5f, "Cautious's 6 x seekSpd is a rate too");
+            Assert.AreEqual(3.24f, settings.World.Enemies.Brain.AlignSpeed, 1e-5f, "Align's seekSpd a frame is a speed: 0.006 x 9 x 60");
+            Assert.AreEqual(2.7f, settings.World.Enemies.Brain.HangBackNear, 1e-5f);
+            Assert.AreEqual(4.05f, settings.World.Enemies.Brain.HangBackFar, 1e-5f);
             Assert.AreEqual(AtScale(1f).Player.HitRadius, settings.Player.HitRadius, "port figures are never mapped");
         }
 
@@ -290,6 +300,8 @@ namespace MindAttic.Chain.Tests
             }
 
             Assert.AreEqual(14, world.Enemies.Count);
+            Assert.AreEqual(4, world.SeekerCount(), "the shipped Seek cap");
+            Assert.AreEqual(10, world.Enemies.Count(e => e.Brain.IsWaiting), "the rest hang back or stalk");
             Assert.AreEqual(6, world.Players[0].MaceIndex);
         }
 
@@ -353,6 +365,14 @@ namespace MindAttic.Chain.Tests
             var e = LoadFails(Patched(GameSettings.ChainFile, text => text.Replace("\"wallBounce\": 0.5", "\"wallBounce\": 1.5")));
 
             StringAssert.Contains("chain.json.port: 'wallBounce' must be between 0 and 1 (is 1.5)", e.Message);
+        }
+
+        [Test]
+        public void HangBack_FarMustBeBeyondNear()
+        {
+            var e = LoadFails(Patched(GameSettings.EnemiesFile, text => text.Replace("\"hangBackFar\": 0.45", "\"hangBackFar\": 0.2")));
+
+            StringAssert.Contains("hangBackFar", e.Message);
         }
 
         [Test]

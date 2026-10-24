@@ -236,10 +236,14 @@ namespace MindAttic.Chain.Core
                         HurtDeceleration = m.Acceleration(enemies.ResistSPD),
                         // A_near_B(dX, 0, resistSPD): it recovers once both axes are within one step of still.
                         RecoverSpeed = m.Speed(enemies.ResistSPD),
+                        // Cautious's velocity is 6 x seekSpd x distance a frame: a rate like seekSpd's, no length in it.
+                        CautiousRate = enemies.CautiousSeekMultiple * seekRate,
+                        // Align's is a flat seekSpd a frame on each axis: a speed.
+                        AlignSpeed = m.Speed(enemies.SeekSpd),
+                        HangBackNear = m.Length(enemies.Port.HangBackNear),
+                        HangBackFar = m.Length(enemies.Port.HangBackFar),
                     },
                     SeekCap = enemies.Port.SeekCap,
-                    CautiousSpeed = m.Speed(enemies.CautiousSeekMultiple * enemies.SeekSpd),
-                    AlignSpeed = m.Speed(enemies.SeekSpd),
                 },
             };
 
@@ -472,8 +476,11 @@ namespace MindAttic.Chain.Core
             var port = r.Section("port");
             data.Port = new EnemyPort(
                 radius: port.Positive("radius"),
-                seekCap: port.Integer("seekCap", 0));
+                seekCap: port.Integer("seekCap", 0),
+                hangBackNear: port.Positive("hangBackNear"),
+                hangBackFar: port.Positive("hangBackFar"));
             port.Check(data.Port.SeekCap <= data.MaxEnemy + 1, "seekCap", $"must not be above the enemy count, maxEnemy + 1 ({data.MaxEnemy + 1})");
+            port.Check(data.Port.HangBackFar > data.Port.HangBackNear, "hangBackFar", $"must be beyond hangBackNear ({data.Port.HangBackNear})");
             port.Done();
             return data;
         }
@@ -482,16 +489,22 @@ namespace MindAttic.Chain.Core
     /// <summary>enemies.json's port-only figures.</summary>
     public readonly struct EnemyPort
     {
-        public EnemyPort(float radius, int seekCap)
+        public EnemyPort(float radius, int seekCap, float hangBackNear, float hangBackFar)
         {
             Radius = radius;
             SeekCap = seekCap;
+            HangBackNear = hangBackNear;
+            HangBackFar = hangBackFar;
         }
 
         /// <summary>An enemy's collision circle, world units.</summary>
         public float Radius { get; }
         /// <summary>How many enemies may Seek at once (UNI-T65); the enemy count lets every one seek, as the original does.</summary>
         public int SeekCap { get; }
+        /// <summary>A waiting enemy stalking in (Align) turns Cautious this close to the angel, screen units (mapped).</summary>
+        public float HangBackNear { get; }
+        /// <summary>A Cautious enemy backing off turns to Align this far from the angel, screen units (mapped).</summary>
+        public float HangBackFar { get; }
     }
 
     /// <summary>item.json: Item.vb's Health10 heart, in its own units.</summary>

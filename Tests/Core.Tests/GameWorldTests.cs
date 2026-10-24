@@ -733,6 +733,137 @@ namespace MindAttic.Chain.Tests
             Assert.AreEqual(enemy.Id, hit.Enemy);
         }
 
+        // --- The Seek cap (UNI-T65) ------------------------------------------------------------
+
+        /// <summary>A world with no flocking and the given Seek cap, the player's angel at the origin.</summary>
+        private static GameWorld CappedWorld(int cap, out PlayerEntity player)
+        {
+            var settings = GameWorld.Settings.Default;
+            settings.Enemies.Count = 0;
+            settings.Enemies.FlockSpeed = 0f;
+            settings.Enemies.SeekCap = cap;
+            var world = new GameWorld(settings, new Random(1));
+            player = world.AddPlayer(P0, PlayerSetup.Default);
+            return world;
+        }
+
+        [Test]
+        public void SeekCap_OnlyThatManySeek_TheRestWait()
+        {
+            var world = CappedWorld(2, out var player);
+            for (var i = 0; i < 6; i++)
+            {
+                world.SpawnEnemy(player.AngelPosition + new Vec2(6f, -3f + i), 1f, 100f);
+            }
+
+            world.Step(Dt);
+
+            Assert.AreEqual(2, world.SeekerCount());
+            Assert.AreEqual(4, world.Enemies.Count(e => e.Brain.IsWaiting));
+        }
+
+        [Test]
+        public void SeekCap_OfTheWholeWave_IsTheOriginal_EveryoneSeeks()
+        {
+            var world = CappedWorld(14, out var player);
+            for (var i = 0; i < 14; i++)
+            {
+                world.SpawnEnemy(player.AngelPosition + new Vec2(6f, -3f + i * 0.4f), 1f, 100f);
+            }
+
+            world.Step(Dt);
+
+            Assert.AreEqual(14, world.SeekerCount());
+        }
+
+        [Test]
+        public void SeekSlot_FreedByAKill_GoesToTheNearestWaitingEnemy()
+        {
+            var world = CappedWorld(1, out var player);
+            var seeker = world.SpawnEnemy(player.AngelPosition + new Vec2(5f, 0f), 1f, 100f);
+            var far = world.SpawnEnemy(player.AngelPosition + new Vec2(-7f, 0f), 1f, 100f);
+            var near = world.SpawnEnemy(player.AngelPosition + new Vec2(0f, 4f), 1f, 100f);
+            Assert.AreEqual(EnemyState.Seek, seeker.State);
+            Assert.IsTrue(far.Brain.IsWaiting && near.Brain.IsWaiting);
+
+            seeker.Brain.Damage(1000f);
+            world.Step(Dt);
+
+            Assert.AreEqual(EnemyState.Seek, near.State, "the nearest waiting enemy takes the slot");
+            Assert.IsTrue(far.Brain.IsWaiting);
+        }
+
+        [Test]
+        public void SeekSlot_FreedByAHurtSeeker_IsTaken_AndTheRecoveredOneMayWaitAgain()
+        {
+            var world = CappedWorld(1, out var player);
+            var seeker = world.SpawnEnemy(player.AngelPosition + new Vec2(5f, 0f), 1f, 100f);
+            var waiting = world.SpawnEnemy(player.AngelPosition + new Vec2(0f, 4f), 1f, 100f);
+
+            seeker.Brain.Hit(new Vec2(0.5f, 0f), 0f);
+            world.Step(Dt);
+
+            Assert.AreEqual(EnemyState.Hurt, seeker.State);
+            Assert.AreEqual(EnemyState.Seek, waiting.State);
+
+            for (var i = 0; i < 200 && seeker.State == EnemyState.Hurt; i++)
+            {
+                world.Step(Dt);
+            }
+
+            world.Step(Dt);
+            Assert.AreEqual(1, world.SeekerCount(), "never more than the cap");
+        }
+
+        [Test]
+        public void WaitingEnemies_HoldTheHangBack_NeitherReachingNorLeavingTheAngel()
+        {
+            var world = CappedWorld(0, out var player);
+            var config = world.Config.Enemies.Brain;
+            var enemies = new[]
+            {
+                world.SpawnEnemy(player.AngelPosition + new Vec2(7f, 0f), 1f, 100f),
+                world.SpawnEnemy(player.AngelPosition + new Vec2(-1f, 0.5f), 2f, 100f),
+                world.SpawnEnemy(player.AngelPosition + new Vec2(3f, -4f), 1.5f, 100f),
+            };
+
+            for (var i = 0; i < 500; i++)
+            {
+                world.Step(Dt);
+            }
+
+            var sawCautious = false;
+            var sawAlign = false;
+            for (var i = 0; i < 300; i++)
+            {
+                world.Step(Dt);
+                foreach (var enemy in enemies)
+                {
+                    var distance = (enemy.Position - player.AngelPosition).Magnitude;
+                    Assert.Greater(distance, config.HangBackNear * 0.8f, "never closes on the angel");
+                    Assert.Less(distance, config.HangBackFar * 1.4f, "never runs off");
+                    sawCautious |= enemy.State == EnemyState.Cautious;
+                    sawAlign |= enemy.State == EnemyState.Align;
+                }
+            }
+
+            Assert.IsTrue(sawCautious && sawAlign, "they back off and stalk in turn");
+            Assert.AreEqual(0, world.SeekerCount());
+        }
+
+        [Test]
+        public void WaitingEnemy_CanStillBeHit()
+        {
+            var world = CappedWorld(0, out var player);
+            Swing(world, P0);
+            var enemy = world.SpawnEnemy(player.MacePosition, 1f, 100f);
+            Assert.IsTrue(enemy.Brain.IsWaiting);
+            world.TakeEvents();
+            world.Step(Dt);
+
+            Assert.AreEqual(enemy.Id, world.TakeEvents().OfType<EnemyHit>().Single().Enemy);
+        }
+
         [Test]
         public void RemovedPlayer_IsGone_AndTheirCommandsAreIgnored()
         {

@@ -10,8 +10,10 @@
   "resetHP": 1.0,
   "cautiousSeekMultiple": 6,
   "port": {
-    "_about": "Not in the original. radius is world units, never mapped. seekCap (UNI-T65) is how many enemies may Seek at once; 14 lets every one seek, as the original does.",
+    "_about": "Not in the original. radius is world units, never mapped. seekCap (UNI-T65) is how many enemies may Seek at once (14 would let every one seek, as the original does); 4 keeps a steady stream at the angel, one or two to a side, that a swing or two can answer, while the other ten circle and close in the moment a seeker is hurt, grabbed or killed. hangBackNear and hangBackFar (screen units, mapped by space.json) are the band the waiting ten hold: Align stalks in to the near edge, one angel width (angelSize 0.3) out, and Cautious backs off to the far edge, half as far again.",
     "radius": 0.3,
-    "seekCap": 14
+    "seekCap": 4,
+    "hangBackNear": 0.3,
+    "hangBackFar": 0.45
   }
 }

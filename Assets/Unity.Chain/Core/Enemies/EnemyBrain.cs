@@ -4,8 +4,20 @@ namespace MindAttic.Chain.Core
 {
     public enum EnemyState
     {
-        /// <summary>Homing on the angel (Enemy.vb's Seek AI).</summary>
+        /// <summary>Homing on the angel (Enemy.vb's Seek AI). Only the world's Seek cap of enemies do at once.</summary>
         Seek,
+
+        /// <summary>
+        /// Waiting for a Seek slot, too close: backs away from the angel at 6 x seekSpd x distance / mass
+        /// (Enemy.vb's Cautious AI, its sign fixed, BIBLE D18) until it is out at the hang-back's far edge.
+        /// </summary>
+        Cautious,
+
+        /// <summary>
+        /// Waiting for a Seek slot, out of range: stalks in at seekSpd on each axis (Enemy.vb's Align AI)
+        /// until it reaches the hang-back's near edge.
+        /// </summary>
+        Align,
 
         /// <summary>Knocked back by the mace or a thrown enemy; coasts and slows, then seeks again.</summary>
         Hurt,
@@ -19,7 +31,8 @@ namespace MindAttic.Chain.Core
 
     /// <summary>
     /// One enemy's rules from Enemy.vb/Engine.vb, free of Unity physics so it can be tested:
-    /// it seeks the angel with a velocity proportional to the distance; a mace hit sets its
+    /// it seeks the angel (or, while the world's Seek cap is full, hangs back in Cautious or stalks in
+    /// Align, UNI-T65) with a velocity proportional to the distance; a mace hit sets its
     /// velocity to the mace's velocity divided by its mass, takes HP, and leaves it Hurt (it
     /// cannot be hit or grabbed again until it has slowed to a stop); a thrown enemy is Hurt
     /// too and knocks any enemy it touches the same way, without damage. Velocities are world
@@ -53,11 +66,27 @@ namespace MindAttic.Chain.Core
             /// <summary>A Hurt enemy slower than this on both axes recovers and seeks again.</summary>
             public float RecoverSpeed;
 
+            /// <summary>Cautious: backing-away velocity per unit of distance from the angel before mass divides it, per second (6 x seekSpd/frame).</summary>
+            public float CautiousRate;
+
+            /// <summary>Align: the fixed stalking speed on each axis, units/s (seekSpd/frame).</summary>
+            public float AlignSpeed;
+
+            /// <summary>A waiting enemy that stalks in this close to the angel turns Cautious and backs off, units.</summary>
+            public float HangBackNear;
+
+            /// <summary>A Cautious enemy backed out this far turns to Align and stalks in again, units.</summary>
+            public float HangBackFar;
+
             public static Settings Default => new Settings
             {
                 SeekRate = 0.36f,
                 HurtDeceleration = 6f,
                 RecoverSpeed = 0.05f,
+                CautiousRate = 6f * 0.36f,
+                AlignSpeed = 0.006f * OriginalFrameRate * OriginalSpace.ArenaLengthScale,
+                HangBackNear = 0.3f * OriginalSpace.ArenaLengthScale,
+                HangBackFar = 0.45f * OriginalSpace.ArenaLengthScale,
             };
         }
 
@@ -75,7 +104,28 @@ namespace MindAttic.Chain.Core
         public bool IsAlive => State != EnemyState.Dead;
 
         /// <summary>Enemy.vb only lets the mace hit (or grab) an enemy that is alive, not Hurt and not held.</summary>
-        public bool CanBeHit => State == EnemyState.Seek;
+        public bool CanBeHit => State == EnemyState.Seek || IsWaiting;
+
+        /// <summary>Hanging back (Cautious) or stalking (Align) until the world gives it a Seek slot.</summary>
+        public bool IsWaiting => State == EnemyState.Cautious || State == EnemyState.Align;
+
+        /// <summary>The world's Seek cap is full: a seeking enemy waits, Cautious inside the hang-back, Align outside it.</summary>
+        public void Wait(float distanceToTarget)
+        {
+            if (State == EnemyState.Seek)
+            {
+                State = distanceToTarget < Config.HangBackNear ? EnemyState.Cautious : EnemyState.Align;
+            }
+        }
+
+        /// <summary>A Seek slot is free: a waiting enemy takes it.</summary>
+        public void Promote()
+        {
+            if (IsWaiting)
+            {
+                State = EnemyState.Seek;
+            }
+        }
 
         public EnemyBrain(float hp = 1f, float mass = 1f, Settings? settings = null)
         {
@@ -88,14 +138,39 @@ namespace MindAttic.Chain.Core
         /// <summary>
         /// Advances the AI one step and returns the velocity to move with. Seek heads for
         /// <paramref name="seekPoint"/>; Hurt slows each axis toward zero and recovers below
-        /// <see cref="Settings.RecoverSpeed"/>. Grabbed and Dead do not move on their own.
+        /// <see cref="Settings.RecoverSpeed"/>. Waiting, Cautious backs straight away from it at
+        /// <see cref="Settings.CautiousRate"/> x distance / mass until <see cref="Settings.HangBackFar"/> out,
+        /// then Align stalks in at <see cref="Settings.AlignSpeed"/> on each axis until
+        /// <see cref="Settings.HangBackNear"/>. Grabbed and Dead do not move on their own.
         /// </summary>
         public Vec2 Step(Vec2 position, Vec2 seekPoint, float deltaTime)
         {
+            var offset = seekPoint - position;
             switch (State)
             {
                 case EnemyState.Seek:
-                    Velocity = (seekPoint - position) * Config.SeekRate;
+                    Velocity = offset * Config.SeekRate;
+                    break;
+
+                case EnemyState.Cautious:
+                    if (offset.Magnitude >= Config.HangBackFar)
+                    {
+                        State = EnemyState.Align;
+                        goto case EnemyState.Align;
+                    }
+
+                    Velocity = -offset * (Config.CautiousRate / Mass);
+                    break;
+
+                case EnemyState.Align:
+                    if (offset.Magnitude <= Config.HangBackNear)
+                    {
+                        State = EnemyState.Cautious;
+                        Velocity = -offset * (Config.CautiousRate / Mass);
+                        break;
+                    }
+
+                    Velocity = new Vec2(AlignAxis(offset.X, deltaTime), AlignAxis(offset.Y, deltaTime));
                     break;
 
                 case EnemyState.Hurt:
@@ -181,6 +256,21 @@ namespace MindAttic.Chain.Core
         {
             var step = Calc.Max(0f, speed) * deltaTime;
             return new Vec2(AwaySign(self.X - other.X, tieBreak) * step, AwaySign(self.Y - other.Y, tieBreak) * step);
+        }
+
+        /// <summary>
+        /// Align on one axis: seekSpd toward the angel. The original flips sign every frame once level; this
+        /// moves only the rest of the way instead, so a level enemy holds still rather than shimmering.
+        /// </summary>
+        private float AlignAxis(float offset, float deltaTime)
+        {
+            var speed = Calc.Max(0f, Config.AlignSpeed);
+            if (deltaTime > 0f && Calc.Abs(offset) < speed * deltaTime)
+            {
+                return offset / deltaTime;
+            }
+
+            return Calc.Sign(offset) * speed;
         }
 
         private static float AwaySign(float difference, int tieBreak)
