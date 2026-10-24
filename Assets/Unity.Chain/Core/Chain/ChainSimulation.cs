@@ -3,8 +3,15 @@ namespace MindAttic.Chain.Core
     /// <summary>
     /// Spring-chain physics ported from Philip Winston's "Elastic Trail" (2000) and the
     /// Chain.vb/DirectX game built on it (2005). See docs/chain-physics.md for the source
-    /// reading and the two fixes made versus the original VB.NET port (both-neighbor spring
-    /// pull, and dt-scaled integration instead of per-frame units).
+    /// reading. UNI-T45 settled every deviation from Chain.vb's own behaviour back to a data
+    /// default (<see cref="Settings.PullBothNeighbors"/>, <see cref="Settings.SimulateAllLinks"/>,
+    /// <see cref="Settings.Link1DropPerSecond"/>, <see cref="Settings.MaceOffsetPerSecond"/>): the
+    /// port pulls each link from its previous neighbour only (as the port's own <c>If/ElseIf</c>
+    /// always did, not both neighbours as *Elastic Trail* did), simulates every link whether or not
+    /// it is drawn, and carries the port's two stray per-frame drift lines as settings instead of
+    /// dropping them. <see cref="GameWorld.Step"/> cuts real time into sub-steps close to the
+    /// original's own frame length (<see cref="TimeScale"/>) so this integration keeps the original's
+    /// discrete feel at any host frame rate.
     /// </summary>
     public sealed class ChainSimulation
     {
@@ -29,6 +36,46 @@ namespace MindAttic.Chain.Core
             /// </summary>
             public readonly float OverheadMargin;
 
+            /// <summary>
+            /// Whether a link is pulled by both neighbours, as *Elastic Trail* did, instead of only the
+            /// previous one (Chain.vb's <c>If l &gt; 0 Then ... ElseIf l &lt; maxLinks - 1 ...</c>: since
+            /// <c>l</c> only ever runs 1..maxLinks, the <c>If</c> always takes the first branch and the
+            /// <c>ElseIf</c> is dead code, so the port's own chain was pulled from the previous link only,
+            /// BIBLE D7). False (the original's own behaviour) by default; true is the rebuild's earlier
+            /// choice, kept only where a caller asks for it explicitly (UNI-T45).
+            /// </summary>
+            public readonly bool PullBothNeighbors;
+
+            /// <summary>
+            /// Whether every link past <see cref="ActiveLinkCount"/> keeps simulating (Chain.vb's
+            /// <c>animateChain</c> always loops all <c>maxLinks</c> links regardless of <c>Mace</c>; only
+            /// <c>renderChain</c>'s draw loop stops at <c>Mace</c>, BIBLE V3/§7 UNI-T45). True (matching the
+            /// original) by default: <see cref="ActiveLinkCount"/> then governs only the mace link and what
+            /// is drawn, never what the tail does. False parks the inactive tail on the last active link
+            /// instead (the rebuild's earlier choice, kept only where asked for explicitly).
+            /// </summary>
+            public readonly bool SimulateAllLinks;
+
+            /// <summary>
+            /// Chain.vb's stray "'fix" line in <c>renderChain</c>: <c>link(1).Y -= 0.0004</c>, applied to
+            /// link 1 every frame with no condition at all (not even <c>followMouse</c>), world units per
+            /// second (BIBLE D8 §7). 0 (no drift) in the bare <see cref="Default"/>; chain.json maps the
+            /// original's own figure onto it (UNI-T45). Applied once a fixed step, not scaled by how many
+            /// times the original's draw loop happened to repeat the line (it re-runs once per drawn link
+            /// up to the mace, so as shipped it actually dropped link 1 by 0.0004 x (Mace + 1) a frame; the
+            /// port takes the original's single figure once a step, as the ticket settles it).
+            /// </summary>
+            public readonly float Link1DropPerSecond;
+
+            /// <summary>
+            /// Chain.vb's <c>maceOffset</c> (-0.012, -0.012): added straight to <c>link(Mace)</c>'s position
+            /// every frame while following, cumulatively, instead of as a one-off sprite offset (BIBLE D8
+            /// §7), world units per second. Applied to link index <c>ActiveLinkCount - 1</c> (the live mace
+            /// link) while <see cref="IsFollowing"/>. Zero in the bare <see cref="Default"/>; chain.json maps
+            /// the original's own figure onto it (UNI-T45).
+            /// </summary>
+            public readonly Vec2 MaceOffsetPerSecond;
+
             public Settings(
                 float segmentLength,
                 float springConstant,
@@ -37,7 +84,11 @@ namespace MindAttic.Chain.Core
                 float stopVelocity,
                 float stopAcceleration,
                 float overheadBoost = 1f,
-                float overheadMargin = 0f)
+                float overheadMargin = 0f,
+                bool pullBothNeighbors = false,
+                bool simulateAllLinks = true,
+                float link1DropPerSecond = 0f,
+                Vec2 maceOffsetPerSecond = default)
             {
                 SegmentLength = segmentLength;
                 SpringConstant = springConstant;
@@ -47,6 +98,10 @@ namespace MindAttic.Chain.Core
                 StopAcceleration = stopAcceleration;
                 OverheadBoost = overheadBoost;
                 OverheadMargin = overheadMargin;
+                PullBothNeighbors = pullBothNeighbors;
+                SimulateAllLinks = simulateAllLinks;
+                Link1DropPerSecond = link1DropPerSecond;
+                MaceOffsetPerSecond = maceOffsetPerSecond;
             }
 
             /// <summary>These settings with <see cref="Resistance"/>, <see cref="Gravity"/> and <see cref="SpringConstant"/> replaced (Chain.vb's live-tuned three).</summary>
@@ -58,7 +113,11 @@ namespace MindAttic.Chain.Core
                 StopVelocity,
                 StopAcceleration,
                 OverheadBoost,
-                OverheadMargin);
+                OverheadMargin,
+                PullBothNeighbors,
+                SimulateAllLinks,
+                Link1DropPerSecond,
+                MaceOffsetPerSecond);
 
             public static Settings Default => new Settings(
                 segmentLength: 0.2f,
@@ -149,7 +208,10 @@ namespace MindAttic.Chain.Core
 
         public void Step(float deltaTime)
         {
-            var end = _activeLinkCount;
+            // Chain.vb's animateChain always loops every link (1..maxLinks), whether or not it is drawn
+            // (BIBLE V3/§7); SimulateAllLinks keeps that default, so ActiveLinkCount governs only the mace
+            // link and what is drawn.
+            var end = Config.SimulateAllLinks ? _positions.Length : _activeLinkCount;
             var anchorY = _positions[0].Y;
             for (var i = 1; i < end; i++)
             {
@@ -157,7 +219,7 @@ namespace MindAttic.Chain.Core
                 if (IsFollowing)
                 {
                     spring += SpringForce(i, i - 1);
-                    if (i < end - 1)
+                    if (Config.PullBothNeighbors && i < end - 1)
                     {
                         spring += SpringForce(i, i + 1);
                     }
@@ -190,11 +252,28 @@ namespace MindAttic.Chain.Core
                 _positions[i] = position;
             }
 
-            // Park the inactive tail on the current end link.
-            for (var i = end; i < _positions.Length; i++)
+            // Chain.vb's stray "'fix" line: link(1).Y -= 0.0004, every frame, unconditionally (BIBLE D8).
+            if (_positions.Length > 1 && (Config.Link1DropPerSecond != 0f))
             {
-                _positions[i] = _positions[end - 1];
-                _velocities[i] = _velocities[end - 1];
+                _positions[1] = _positions[1].WithY(_positions[1].Y - Config.Link1DropPerSecond * deltaTime);
+            }
+
+            // Chain.vb's maceOffset: added to the live mace link's position every frame while following,
+            // cumulatively (BIBLE D8).
+            if (IsFollowing && (Config.MaceOffsetPerSecond.X != 0f || Config.MaceOffsetPerSecond.Y != 0f))
+            {
+                var maceIndex = Calc.Clamp(_activeLinkCount - 1, 1, _positions.Length - 1);
+                _positions[maceIndex] += Config.MaceOffsetPerSecond * deltaTime;
+            }
+
+            // Park the inactive tail on the current end link (only when the tail is not itself simulated).
+            if (!Config.SimulateAllLinks)
+            {
+                for (var i = end; i < _positions.Length; i++)
+                {
+                    _positions[i] = _positions[end - 1];
+                    _velocities[i] = _velocities[end - 1];
+                }
             }
         }
 

@@ -179,7 +179,10 @@ namespace MindAttic.Chain.Tests
             for (var i = 0; i < 50; i++) { _world.Step(Dt); }
 
             Assert.Less(_player.MacePosition.Y, _player.Flight.HandSocket.Y);
-            Assert.AreEqual(_player.MacePosition, _player.Chain.GetPosition(_player.Chain.LinkCount - 1));
+            // SimulateAllLinks's default (true, BIBLE V3/D8, UNI-T45) keeps every link beyond the active count
+            // animating on its own, as Chain.vb's animateChain always did, rather than parking it on the mace;
+            // the invariant that survives shortening is that the mace is still the last active link.
+            Assert.AreEqual(_player.Chain.ActiveLinkCount - 1, _player.MaceIndex, "the mace is the last active link after shortening");
         }
 
         [Test]
@@ -219,7 +222,10 @@ namespace MindAttic.Chain.Tests
             Assert.AreEqual(P0, hit.Player);
             Assert.AreEqual(enemy.Id, hit.Enemy);
             Assert.AreEqual(velocity, hit.MaceVelocity);
-            Assert.AreEqual(velocity.Magnitude * 0.05f, hit.Damage, 1e-4f);
+            // MaceDamageFormula.Original (the default, UNI-T45/BIBLE D11): Engine.vb's checkMaceImpact,
+            // abs(dX + dY/2) of the mass-divided impact velocity (mass 1 here, so the velocity itself),
+            // at PlayerSetup.Default's VelocityToOriginalScale of 1.
+            Assert.AreEqual(Math.Abs(velocity.X + velocity.Y * 0.5f), hit.Damage, 1e-4f);
             Assert.AreEqual(EnemyState.Hurt, enemy.State);
             Assert.AreEqual(velocity, enemy.Velocity);
             Assert.AreEqual(100f - hit.Damage, enemy.Hp, 1e-4f);
@@ -586,10 +592,14 @@ namespace MindAttic.Chain.Tests
             Assert.AreEqual(29, hurt.Hp);
 
             world.Step(0.1f);
-            world.Step(0.1f);
             Assert.AreEqual(29, world.State.Hp, "inside the 0.25 s hurt delay");
+
+            // PhysicsStepRate's 60 fps sub-stepping (BIBLE D9, UNI-T45) crosses the 0.25 s delay partway
+            // through this step (at game time 16/60 s), not only on a whole 0.1 s boundary.
             world.Step(0.1f);
             Assert.AreEqual(28, world.State.Hp);
+            world.Step(0.1f);
+            Assert.AreEqual(28, world.State.Hp, "still inside the next 0.25 s delay");
         }
 
         [Test]
@@ -626,7 +636,9 @@ namespace MindAttic.Chain.Tests
             world.Submit(new ChangeChainLength(P0, 2));
             world.AddHitScoreForTest(1f);
 
-            for (var i = 0; i < 30; i++) { world.Step(Dt); }
+            // HpOvershoot's default of 1 (BIBLE D10, UNI-T45) takes one hit past zero, not just to zero,
+            // to end the game: 30 HP needs 31 hits.
+            for (var i = 0; i < 31; i++) { world.Step(Dt); }
             Assert.IsTrue(world.State.IsGameOver);
             var events = world.TakeEvents();
             Assert.AreEqual(1, events.OfType<GameOver>().Count());

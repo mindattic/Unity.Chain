@@ -30,6 +30,23 @@ namespace MindAttic.Chain.Core
     }
 
     /// <summary>
+    /// Which formula a mace hit computes its damage with (chain.json's <c>port</c>, UNI-T45, BIBLE D11).
+    /// </summary>
+    public enum MaceDamageFormula
+    {
+        /// <summary>
+        /// Engine.vb's <c>checkMaceImpact</c>: <c>abs(dX + dY/2)</c> of the mass-divided impact velocity, in
+        /// the original's own per-frame screen-space units (<see cref="PlayerSetup.VelocityToOriginalScale"/>
+        /// converts back to them). Cancels to zero on certain diagonals, as the original's did (BIBLE D11);
+        /// this is the default, the original's own behaviour.
+        /// </summary>
+        Original,
+
+        /// <summary>The rebuild's own earlier formula: impact speed (the raw, not mass-divided, magnitude) x a damage-per-speed figure. Kept only where asked for explicitly.</summary>
+        SpeedTimesFactor,
+    }
+
+    /// <summary>
     /// One enemy's rules from Enemy.vb/Engine.vb, free of Unity physics so it can be tested:
     /// it seeks the angel (or, while the world's Seek cap is full, hangs back in Cautious or stalks in
     /// Align, UNI-T65) with a velocity proportional to the distance; a mace hit sets its
@@ -215,19 +232,38 @@ namespace MindAttic.Chain.Core
         }
 
         /// <summary>
-        /// A mace hit at <paramref name="impactVelocity"/>: knocked back at impact / mass and
-        /// damaged by impact speed x <paramref name="damagePerSpeed"/>. Returns the damage dealt
-        /// (0 if it could not be hit).
+        /// A mace hit at <paramref name="impactVelocity"/>: knocked back at impact / mass (<see cref="Knock"/>)
+        /// and damaged by one of two formulas (<see cref="MaceDamageFormula"/>). The default,
+        /// <see cref="MaceDamageFormula.Original"/>, is Engine.vb's own <c>abs(dX + dY/2)</c> of that same
+        /// mass-divided velocity, converted back to the original's per-frame units by
+        /// <paramref name="velocityToOriginalScale"/> (BIBLE D11); <see cref="MaceDamageFormula.SpeedTimesFactor"/>
+        /// is the rebuild's own earlier formula, the raw impact speed (not mass-divided) x
+        /// <paramref name="damagePerSpeed"/>. Returns the damage dealt (0 if it could not be hit).
         /// </summary>
-        public float Hit(Vec2 impactVelocity, float damagePerSpeed)
+        public float Hit(
+            Vec2 impactVelocity,
+            float damagePerSpeed,
+            MaceDamageFormula formula = MaceDamageFormula.Original,
+            float velocityToOriginalScale = 1f)
         {
             if (!CanBeHit)
             {
                 return 0f;
             }
 
-            var damage = impactVelocity.Magnitude * Calc.Max(0f, damagePerSpeed);
             Knock(impactVelocity);
+
+            float damage;
+            if (formula == MaceDamageFormula.SpeedTimesFactor)
+            {
+                damage = impactVelocity.Magnitude * Calc.Max(0f, damagePerSpeed);
+            }
+            else
+            {
+                var original = Velocity * velocityToOriginalScale;
+                damage = Calc.Abs(original.X + original.Y * 0.5f);
+            }
+
             Damage(damage);
             return damage;
         }

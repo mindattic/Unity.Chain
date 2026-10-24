@@ -190,7 +190,9 @@ namespace MindAttic.Chain.Tests
             brain.Promote();
             Assert.AreEqual(EnemyState.Seek, brain.State);
 
-            brain.Hit(Vec2.One, 0.01f);
+            // SpeedTimesFactor so this hit stays a non-lethal Hurt regardless of the default formula
+            // (MaceDamageFormula.Original, UNI-T45): this test is about Promote/Wait, not damage.
+            brain.Hit(Vec2.One, 0.01f, MaceDamageFormula.SpeedTimesFactor);
             brain.Promote();
             brain.Wait(10f);
             Assert.AreEqual(EnemyState.Hurt, brain.State);

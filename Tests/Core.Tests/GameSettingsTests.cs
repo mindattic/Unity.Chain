@@ -351,11 +351,13 @@ namespace MindAttic.Chain.Tests
                 world.Step(1f / 60f);
             }
 
-            // The first wave spawns at loadEnemy's weaker HP (UNI-T70): one of the ten waiting enemies
-            // takes enough incidental chain contact in this first second to die before ever seeking.
-            Assert.AreEqual(13, world.Enemies.Count);
+            // UNI-T45's settled chain defaults (the previous-link-only spring pull, BIBLE D7; the 60 fps
+            // sub-stepping, BIBLE D9) changed the mace's first-second path enough that no enemy now takes
+            // incidental chain contact before the first wave finishes spawning (loadEnemy's weaker HP,
+            // UNI-T70, still matters once play starts).
+            Assert.AreEqual(14, world.Enemies.Count);
             Assert.AreEqual(4, world.SeekerCount(), "the shipped Seek cap");
-            Assert.AreEqual(9, world.Enemies.Count(e => e.Brain.IsWaiting), "the rest hang back or stalk");
+            Assert.AreEqual(10, world.Enemies.Count(e => e.Brain.IsWaiting), "the rest hang back or stalk");
             Assert.AreEqual(6, world.Players[0].MaceIndex);
         }
 

@@ -175,7 +175,7 @@ namespace MindAttic.Chain.Tests
             Assert.IsNotNull(hud.Document, "GameHud built no UIDocument.");
             Assert.IsNotNull(hud.Document.panelSettings, "GameHud's UIDocument has no PanelSettings.");
             Assert.IsNotNull(hud.Root.panel, "The HUD root is not in a panel.");
-            Assert.AreEqual(HudText.Hp(session.State.Hp), hud.HpText, "The HUD does not show the world's HP.");
+            Assert.AreEqual(HudText.Hp(session.State.Hp, session.State.Config.HpOvershoot), hud.HpText, "The HUD does not show the world's HP.");
             Assert.AreEqual(HudText.Score(session.State.Score), hud.ScoreText, "The HUD does not show the world's score.");
             Assert.Greater(
                 Vector2.Distance(startingMacePosition, chain.GetLinkPosition(mace.MaceIndex)), 0.0001f,

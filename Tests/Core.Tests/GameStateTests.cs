@@ -28,18 +28,26 @@ namespace MindAttic.Chain.Tests
         [Test]
         public void HpRunsOut_GameOver_OnceAndFinal()
         {
-            var state = new GameState(new GameState.Settings { MaxHp = 2, HurtDelay = 0f, ContactDamage = 1, PointsPerDamage = 1000f });
+            // HpOvershoot: 1 (the default, matching GameState.Settings.Default; BIBLE D10, UNI-T45) is
+            // Engine.vb's renderDisplay drawing HP + 1 bars and GameOver only ending below zero: a MaxHp
+            // of 2 takes one hit past zero, not just to zero, to end.
+            var state = new GameState(new GameState.Settings { MaxHp = 2, HurtDelay = 0f, ContactDamage = 1, PointsPerDamage = 1000f, HpOvershoot = 1 });
             var gameOvers = 0;
             state.GameOver += () => gameOvers++;
 
             state.TryHurt(0f);
             Assert.IsFalse(state.IsGameOver);
-            state.TryHurt(1f);
+            Assert.AreEqual(1, state.Hp);
 
-            Assert.IsTrue(state.IsGameOver);
+            state.TryHurt(1f);
+            Assert.IsFalse(state.IsGameOver, "Engine.vb's GameOver only ends below zero, not at zero (BIBLE D10)");
             Assert.AreEqual(0, state.Hp);
+
+            state.TryHurt(2f);
+            Assert.IsTrue(state.IsGameOver);
+            Assert.AreEqual(-1, state.Hp);
             Assert.AreEqual(1, gameOvers);
-            Assert.IsFalse(state.TryHurt(2f));
+            Assert.IsFalse(state.TryHurt(3f));
             Assert.AreEqual(1, gameOvers);
             Assert.IsFalse(state.SetPaused(true), "a finished game cannot be paused");
             Assert.AreEqual(0, state.AddHitScore(1f), "no scoring after game over");

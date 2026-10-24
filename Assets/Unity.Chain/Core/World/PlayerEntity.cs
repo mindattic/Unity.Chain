@@ -36,8 +36,18 @@ namespace MindAttic.Chain.Core
         public float MaceMass;
         /// <summary>Radius of the mace's hit circle, world units.</summary>
         public float HitRadius;
-        /// <summary>Damage per world unit per second of mace speed at impact.</summary>
+        /// <summary>Damage per world unit per second of mace speed at impact (<see cref="MaceDamageFormula.SpeedTimesFactor"/> only).</summary>
         public float DamagePerSpeed;
+        /// <summary>Which formula a mace hit computes its damage with (chain.json's <c>port</c>, UNI-T45, BIBLE D11).</summary>
+        public MaceDamageFormula DamageFormula;
+        /// <summary>
+        /// Converts a mass-divided impact velocity (world units/second) back to the original's own per-frame
+        /// screen-space units, for <see cref="MaceDamageFormula.Original"/>'s <c>abs(dX + dY/2)</c> (BIBLE D11):
+        /// <c>OriginalSpace.ToOriginalSpeed(1f)</c> when built from the data files. 1 (no conversion) for a
+        /// <see cref="Default"/> built with no data file, since its chain figures are not the original's own
+        /// screen-space numbers either.
+        /// </summary>
+        public float VelocityToOriginalScale;
 
         /// <summary>Radius around the mace that catches an enemy while the grapple is armed.</summary>
         public float CatchRadius;
@@ -65,6 +75,8 @@ namespace MindAttic.Chain.Core
             MaceMass = 1f,
             HitRadius = 0.25f,
             DamagePerSpeed = 0.05f,
+            DamageFormula = MaceDamageFormula.Original,
+            VelocityToOriginalScale = 1f,
             CatchRadius = 0.3f,
             ThrowMultiplier = 1f,
             ContactRadius = 0.35f,
@@ -264,6 +276,7 @@ namespace MindAttic.Chain.Core
             setup.WallBounce = Calc.Clamp01(setup.WallBounce);
             setup.Skins = setup.Skins ?? LinkSkins.Plain;
             setup.MaceMode = Enum.IsDefined(typeof(MaceMode), setup.MaceMode) ? setup.MaceMode : MaceMode.SpikeBall;
+            setup.DamageFormula = Enum.IsDefined(typeof(MaceDamageFormula), setup.DamageFormula) ? setup.DamageFormula : MaceDamageFormula.Original;
             return setup;
         }
     }

@@ -15,7 +15,12 @@ namespace MindAttic.Chain
         public const string Paused = "- PAUSE -";
         public const string GameOver = "GAME OVER";
 
-        public static string Hp(int hp) => "HP : " + new string('|', Mathf.Max(0, hp));
+        /// <summary>
+        /// Engine.vb's <c>renderDisplay</c>: <c>For n = 0 To Angel(0).HP</c> draws <c>hp + bonus</c> bars
+        /// (<paramref name="bonus"/> is <see cref="GameState.Settings.HpOvershoot"/>, BIBLE D10; 0 draws
+        /// exactly <paramref name="hp"/>).
+        /// </summary>
+        public static string Hp(int hp, int bonus = 0) => "HP : " + new string('|', Mathf.Max(0, hp + bonus));
 
         public static string Score(int score) => "Score : " + score.ToString(CultureInfo.InvariantCulture);
 

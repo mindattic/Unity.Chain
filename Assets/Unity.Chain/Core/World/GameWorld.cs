@@ -81,6 +81,15 @@ namespace MindAttic.Chain.Core
             /// </summary>
             public float GameSpeedRate;
 
+            /// <summary>
+            /// The original's own frame rate (BIBLE D9), steps a second: <see cref="Step"/> cuts real time into
+            /// sub-steps close to 1 / this many seconds (<see cref="TimeScale.Substeps(float,float,float)"/>), so the
+            /// chain's discrete integration keeps the original's feel whatever the host's own frame rate is. 60
+            /// (space.json's <c>framesPerSecond</c>, the same figure every per-frame data file is converted at)
+            /// by default; 0 falls back to the coarser speed-only rule.
+            /// </summary>
+            public float PhysicsStepRate;
+
             public static Settings Default => new Settings
             {
                 Session = GameState.Settings.Default,
@@ -88,6 +97,7 @@ namespace MindAttic.Chain.Core
                 Heart = HeartFloat.Settings.Default,
                 GameSpeed = 1f,
                 GameSpeedRate = 0.6f,
+                PhysicsStepRate = 60f,
             };
         }
 
@@ -626,7 +636,7 @@ namespace MindAttic.Chain.Core
                 return;
             }
 
-            var substeps = TimeScale.Substeps(GameSpeed);
+            var substeps = TimeScale.Substeps(GameSpeed, deltaTime, Config.PhysicsStepRate);
             if (substeps == 0)
             {
                 return;
@@ -873,7 +883,7 @@ namespace MindAttic.Chain.Core
                     continue;
                 }
 
-                var damage = enemy.Brain.Hit(velocity, player.Setup.DamagePerSpeed);
+                var damage = enemy.Brain.Hit(velocity, player.Setup.DamagePerSpeed, player.Setup.DamageFormula, player.Setup.VelocityToOriginalScale);
                 var points = State.AddHitScore(damage);
                 var killed = !enemy.IsAlive;
                 Emit(new EnemyHit(player.Id, enemy.Id, damage, velocity, points, killed));

@@ -29,10 +29,13 @@ For each link `i` (1..N), pulled by its neighbor(s):
    move fast and settle into a hang when you stop.
 
 The original JS pulls each link toward **both** neighbors (two independent `if`s). The VB.NET port
-turned that into `If / ElseIf`, so in practice only the previous-neighbor spring ever fires — the
-chain is pulled from the head only, not from both ends. That reads as an unintentional regression
-introduced in the 2005 port, not a deliberate design change, so the Unity version restores the
-JS original: both-neighbor pull.
+turned that into `If / ElseIf`, so in practice only the previous-neighbor spring ever fires (`l`
+only ever runs 1..`maxLinks`, so the `If` always takes the first branch and the `ElseIf` is dead
+code) — the chain is pulled from the head only, not from both ends. **Update, U.CHN-T45 (BIBLE
+D7):** this reads like an unintentional regression against the JS original, but Chain.vb is itself
+the game the rebuild ports, not *Elastic Trail*, so the owner settled it as a data default matching
+Chain.vb's own shipped behaviour (`ChainSimulation.Settings.PullBothNeighbors`, false by default);
+the JS original's both-neighbor pull is kept as an explicit opt-in, not the port's default.
 
 ## Game-specific layers in Chain.vb / Angel.vb
 
@@ -46,10 +49,12 @@ JS original: both-neighbor pull.
   trailing naturally. (The source comment says "mace", but the code applies it to every link
   whose spring pulls up while it is above `link(0).Y - linkSize`; the port does the same.)
 - **Shorten/lengthen**: `[`/`]` move `Mace` down/up by one (1–12). All 25 links keep simulating
-  in Chain.vb but only links 0..`Mace` are drawn. Because the port pulls each link by both
-  neighbors, an undrawn tail would drag on the mace, so the Unity version instead simulates only
-  links 0..`Mace` (`ChainSimulation.ActiveLinkCount`) and parks the rest on the mace, so
-  lengthening pays a new link out from the mace.
+  in Chain.vb but only links 0..`Mace` are drawn. **Update, U.CHN-T45 (BIBLE V3):** the Unity
+  version now matches that by default (`ChainSimulation.Settings.SimulateAllLinks`, true by
+  default): every link keeps simulating past `ActiveLinkCount`, and only drawing stops at the
+  mace. Parking the inactive tail on the mace and paying a new link out from there (false) is kept
+  as an explicit opt-in, needed only if `PullBothNeighbors` (above) is also opted into, since an
+  undrawn both-pulled tail would otherwise drag on the mace.
 - **In Unity**: `MaceController` owns the mace index (default 6, 1–12, `[`/`]`, `-`/`=`), the
   mace link's mass (default 1, as in Chain.vb) and the spiked-ball visual (3.5x the chain's line
   width, render-only offset). The overhead boost (default 2x) and its margin (default 0.25 world
@@ -66,9 +71,12 @@ JS original: both-neighbor pull.
   swept circle: each step it sweeps a mace-sized circle (`Sweep.CircleCast`) from the mace link's
   previous position to its current one against every enemy's circle, plus an overlap at the end, so
   fast swings cannot tunnel. Each `EnemyEntity` (its own `IGrappleTarget`) runs `EnemyBrain`, the
-  Seek/Hurt/Grabbed/Dead rules above; the `Enemy` component only draws it. One deliberate change: damage is mace
-  speed x `damagePerSpeed`, not Engine.vb's `|dX + dY/2|`, which cancels to zero on some
-  diagonal swings. Enemy-vs-enemy flocking separation (`checkFlocking`) is ported: each `Enemy` step it is pushed
+  Seek/Hurt/Grabbed/Dead rules above; the `Enemy` component only draws it. **Update, U.CHN-T45
+  (BIBLE D11):** damage is a data setting (`EnemyBrain.MaceDamageFormula`): `Original` by default,
+  Engine.vb's own `|dX + dY/2|` of the mass-divided impact velocity (converted back to the
+  original's per-frame units, `PlayerSetup.VelocityToOriginalScale`), cancelling to zero on the
+  same diagonal swings the original did; mace speed x `damagePerSpeed` (`SpeedTimesFactor`) is kept
+  as an explicit opt-in. Enemy-vs-enemy flocking separation (`checkFlocking`) is ported: each `Enemy` step it is pushed
   `flockSpeed` (default 0.06 u/s: `flockSpd` 0.0005 per frame x 2 because `checkFlocking` loops every ordered pair so each overlapping pair is pushed twice a frame, x 60 fps; the port's units are the original's, as `seekSpd` 0.006 is 0.36) per axis away from every live, non-grabbed enemy its circle
   overlaps (the original's range test is commented out and `flockRange` 0.08 is never read, so any rectangle overlap pushes, as here; `EnemyBrain.FlockPush`; a perfect stack splits by enemy id). Enemy-vs-angel damage
   (`checkAngelHit`) is the same step's contact check.
@@ -97,18 +105,23 @@ JS original: both-neighbor pull.
   a dead zone and frame-rate independent smoothing, clamped inside the level (`Follow`);
   the `GameWorld` (pure rules in `GameState`) checks enemy contact with a circle, ignoring
   grabbed and dead enemies, scores every mace hit, pauses on the Pause/P command and on game over
-  fades out and resets itself (see Game over below); `GameHud` draws the original's lines with IMGUI. One deliberate
-  change: the original drew `HP + 1` bars and ended the game below zero (31 hits from 30 HP); the
-  port shows exactly HP bars and ends at 0.
-- Two things in `renderChain` look like leftover hacks rather than intended behavior and are
-  **not** being ported as-is: `link(Mace).X/Y += maceOffset` is applied unconditionally every
-  frame (a cumulative drift bug, not a one-time sprite-alignment offset), and a stray
-  `link(1).Y -= 0.0004` is marked `'fix` in the source with no explanation. The Unity version
-  applies the mace sprite offset as a render-only transform, not a position mutation, and has no
-  equivalent fudge term — if the real game turns out to need one, it'll be re-derived from how it
-  actually looks in-engine, not copied blind.
-- Frame-rate dependence (no `dt` scaling) is also not being carried forward: Unity's physics core
-  runs on `Time.fixedDeltaTime` so chain behavior stays consistent across refresh rates.
+  fades out and resets itself (see Game over below); `GameHud` draws the original's lines with IMGUI.
+  **Update, U.CHN-T45 (BIBLE D10):** HP overshoot is a data setting (`GameState.Settings.HpOvershoot`):
+  1 by default, matching the original exactly (the HUD shows `HP + 1` bars and the game ends below
+  zero, 31 hits from 30 HP); 0 shows exactly HP bars and ends at 0, kept as an explicit opt-in.
+- Two things in `renderChain` look like leftover hacks rather than intended behavior: `link(Mace).X/Y
+  += maceOffset` is applied unconditionally every frame (a cumulative drift, not a one-time
+  sprite-alignment offset), and a stray `link(1).Y -= 0.0004` is marked `'fix` in the source with no
+  explanation. **Update, U.CHN-T45 (BIBLE D8):** both are now data settings
+  (`ChainSimulation.Settings.MaceOffsetPerSecond` and `Link1DropPerSecond`): zero by default (the
+  mace sprite offset stays a render-only transform, no position mutation, with no fudge term), but
+  chain.json maps the original's own figures onto them, so the shipped game carries both drifts, as
+  the original does.
+- Frame-rate dependence (no `dt` scaling) is also settled as a data default, not simply dropped:
+  **update, U.CHN-T45 (BIBLE D9)**, `GameWorld.Settings.PhysicsStepRate` (60 by default, from
+  space.json's `framesPerSecond`) cuts real time into sub-steps close to the original's own frame
+  length (`TimeScale.Substeps`), so the chain's discrete per-frame integration keeps the original's
+  feel at any host frame rate, not only at exactly 60 fps.
 
 ## Default tuning (starting point, to be re-tuned by feel in-engine)
 

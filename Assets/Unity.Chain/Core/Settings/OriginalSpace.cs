@@ -46,6 +46,9 @@ namespace MindAttic.Chain.Core
 
         public float Speed(float perFrame) => perFrame * LengthScale * FramesPerSecond;
 
+        /// <summary>A pair of per-frame lengths (Chain.vb's <c>maceOffset</c>, the stray link(1) drop) as a world-units-per-second drift.</summary>
+        public Vec2 Speed(Vec2 perFrame) => perFrame * (LengthScale * FramesPerSecond);
+
         public float Acceleration(float perFrameSquared) => perFrameSquared * LengthScale * FramesPerSecond * FramesPerSecond;
 
         public Vec2 Acceleration(Vec2 perFrameSquared) => perFrameSquared * (LengthScale * FramesPerSecond * FramesPerSecond);
@@ -70,5 +73,12 @@ namespace MindAttic.Chain.Core
         /// <summary>The inverse of <see cref="Acceleration(float)"/>: world units per second squared back to screen units per frame squared.</summary>
         public float ToOriginalAcceleration(float acceleration) =>
             (float)((double)acceleration / ((double)LengthScale * FramesPerSecond * FramesPerSecond));
+
+        /// <summary>
+        /// The inverse of <see cref="Speed(float)"/>: world units per second back to the original's screen
+        /// units per frame (<see cref="PlayerSetup.VelocityToOriginalScale"/>, for the original's own damage
+        /// formula, BIBLE D11).
+        /// </summary>
+        public float ToOriginalSpeed(float perSecond) => (float)((double)perSecond / ((double)LengthScale * FramesPerSecond));
     }
 }

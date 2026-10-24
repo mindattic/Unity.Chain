@@ -408,7 +408,9 @@ namespace MindAttic.Chain
             SetShown(_status, !paused);
             SetShown(_fps, !paused && Options.DrawFps);
 
-            SetText(_hp, HudText.Hp(shown != null ? shown.Hp : state.Hp));
+            // HpOvershoot (BIBLE D10, U.CHN-T45) is local config, the same on host and client, so it is never
+            // part of the wire snapshot; only the HP figure itself follows the online shown-vs-local split.
+            SetText(_hp, HudText.Hp(shown != null ? shown.Hp : state.Hp, state.Config.HpOvershoot));
             SetText(_score, HudText.Score(shown != null ? shown.Score : state.Score));
             SetText(_clock, HudText.Clock(shown != null ? shown.RoundTime : session.World.RoundTime));
             SetText(_gameSpeed, HudText.GameSpeed(shown != null ? shown.GameSpeed : session.World.GameSpeed));

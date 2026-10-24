@@ -472,8 +472,12 @@ namespace MindAttic.Chain.Tests
             _rig.Step(0.1f);
             Assert.AreEqual(29, Session.State.Hp);
             _rig.Step(0.1f);
-            _rig.Step(0.1f);
             Assert.AreEqual(29, Session.State.Hp);
+
+            // PhysicsStepRate's 60 fps sub-stepping (BIBLE D9, UNI-T45) crosses the 0.25 s delay partway
+            // through this step (at game time 16/60 s), not only on a whole 0.1 s boundary.
+            _rig.Step(0.1f);
+            Assert.AreEqual(28, Session.State.Hp);
             _rig.Step(0.1f);
             Assert.AreEqual(28, Session.State.Hp);
 
@@ -536,7 +540,8 @@ namespace MindAttic.Chain.Tests
             Assert.IsFalse(state.AdvanceGameOver(), "nothing happens while playing");
             Assert.AreEqual(GameState.FullAmbient, state.Ambient);
 
-            for (var i = 0; i < state.MaxHp; i++) { state.TryHurt(i); }
+            // HpOvershoot's default of 1 (BIBLE D10, UNI-T45) takes one hit past zero, not just to zero.
+            for (var i = 0; i <= state.MaxHp; i++) { state.TryHurt(i); }
             Assert.IsTrue(state.IsGameOver);
 
             Assert.IsFalse(state.AdvanceGameOver());
@@ -602,7 +607,7 @@ namespace MindAttic.Chain.Tests
             hud.Session = Session;
             Assert.IsNotNull(hud.Root, "the HUD root is built in code");
             Assert.AreEqual(PickingMode.Ignore, hud.Root.pickingMode, "the HUD lets clicks through");
-            Assert.AreEqual(HudText.Hp(Session.State.Hp), hud.HpText);
+            Assert.AreEqual(HudText.Hp(Session.State.Hp, Session.State.Config.HpOvershoot), hud.HpText);
             Assert.AreEqual(HudText.Score(0), hud.ScoreText);
             Assert.IsNull(hud.GrappledText, "nothing is grappled");
             Assert.IsNull(hud.BannerText, "no banner while playing");
@@ -611,7 +616,7 @@ namespace MindAttic.Chain.Tests
             Session.State.Config.HurtDelay = 0f;
             Session.State.TryHurt(0);
             hud.Refresh();
-            Assert.AreEqual(HudText.Hp(Session.State.Hp), hud.HpText, "the HP line follows the world");
+            Assert.AreEqual(HudText.Hp(Session.State.Hp, Session.State.Config.HpOvershoot), hud.HpText, "the HP line follows the world");
 
             var panel = hud.AddPanel(new VisualElement { name = "later-panel" });
             Assert.AreSame(hud.Root, panel.parent, "later panels go on the HUD root");

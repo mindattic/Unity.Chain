@@ -15,6 +15,8 @@
   "maceMax": 12,
   "followMouse": true,
   "maceScale": 3.5,
+  "link1DropPerFrame": 0.0004,
+  "maceOffset": [-0.012, -0.012],
   "tuning": {
     "_source": "Form1.vb's live-tuning keys (UNI-T51): Insert/Delete changeResistance(+/-0.001), Home/End changeGravity(-/+0.00001) on gravity's y, PageUp/PageDown changeSpring(+/-0.001). Same units as the figures above (the HUD's Res/Grav/Spring readout).",
     "_limits": "Not in the original, which just added (BIBLE V19): resistance 0..1 (no negative drag, never more than a frame's speed), gravity's y -0.01 (4x the pull) .. 0.0025 (the pull reversed), spring 0.001 (one step above none) .. 0.25 (2.5x, under the stiffness the fixed step stays stable at with the overhead boost). A reset puts the figures above back.",
@@ -60,12 +62,14 @@
     }
   },
   "port": {
-    "_about": "Not in the original; world units and seconds, never mapped.",
+    "_about": "Not in the original; world units and seconds, never mapped. pullBothNeighbors and simulateAllLinks are UNI-T45's settled deviations: both false/true reproduce Chain.vb's own behaviour (its If/ElseIf only ever pulls the previous link, BIBLE D7; animateChain always loops every link, BIBLE V3/D8); true/false are the rebuild's earlier choices, kept only where this file asks for them explicitly.",
     "keepInArena": true,
     "wallBounce": 0.5,
     "hitRadius": 0.3,
     "damagePerSpeed": 0.05,
     "catchRadius": 0.35,
-    "throwMultiplier": 1
+    "throwMultiplier": 1,
+    "pullBothNeighbors": false,
+    "simulateAllLinks": true
   }
 }

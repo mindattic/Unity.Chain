@@ -67,12 +67,12 @@ but unreachable or does nothing; not ported, recorded here), **n/a** (DirectX pl
 
 | Behaviour | Original | Rebuild | Status / ticket |
 |---|---|---|---|
-| Links | 26 (`maxLinks` 25, index 0..25), each with X, Y, dX, dY, texture, mass 1; link 0 is the anchor | `ChainSimulation`, up to 25 links, only 0..mace simulated | ported, deviation (UNI-T45) |
-| Spring | Hooke past `segLength` 0.002, `springK` 0.1, from `link(l-1)` **only** (the `If l > 0 / ElseIf` always takes the first branch); JS original pulled from both | pulls from both neighbours | deliberate deviation, settle in UNI-T45 |
-| Integration | semi-implicit Euler per frame, drag `resistance` 0.25, gravity (0, -0.0025), jitter stop 1e-7 | per fixed step, scaled | ported, deviation (UNI-T45) |
+| Links | 26 (`maxLinks` 25, index 0..25), each with X, Y, dX, dY, texture, mass 1; link 0 is the anchor | `ChainSimulation`, 26 links; `SimulateAllLinks` (chain.json's `port.simulateAllLinks`) true by default so every link simulates whether or not it is drawn, matching `animateChain`; false parks the inactive tail on the mace instead (kept only where asked for explicitly) | settled, default matches (U.CHN-T45, BIBLE V3) |
+| Spring | Hooke past `segLength` 0.002, `springK` 0.1, from `link(l-1)` **only** (the `If l > 0 / ElseIf` always takes the first branch); JS original pulled from both | `PullBothNeighbors` (chain.json's `port.pullBothNeighbors`) false by default, pulling from the previous link only, matching Chain.vb's own `If/ElseIf`; true pulls from both neighbours as the JS original did, kept only where asked for explicitly | settled, default matches (U.CHN-T45, BIBLE D7) |
+| Integration | semi-implicit Euler per frame, drag `resistance` 0.25, gravity (0, -0.0025), jitter stop 1e-7 | per fixed step, `PhysicsStepRate` (60 by default, space.json's `framesPerSecond`) cutting real time into sub-steps close to the original's own frame length, so the discrete integration keeps its feel at any host frame rate | settled (U.CHN-T45, BIBLE D9) |
 | Mace | link index `Mace` (6; keys `[` / `]` 1..12), drawn at 3.5x scale, hit rectangle `rectMace`; `texMace`, `texMaceGrapple` while the button is held | `MaceController`, ball visual (art UNI-T19); grapple swap to `maceSkins.files.grapple` (mace2.png) while `Grapple.IsArmed`, reverting to the current mode's skin on release | ported, grapple swap fixed (U.CHN-T72; claimed but unported since UNI-T19, found by UNI-T43) |
 | Overhead boost | spring.Y doubled when pulling up and above `link(0).Y - linkSize` | `ChainController` 2x boost | ported |
-| Drift hacks | `link(Mace).X/Y += maceOffset` every frame (cumulative); `link(1).Y -= 0.0004` per frame | not ported (render-only offset) | deliberate deviation (UNI-T45) |
+| Drift hacks | `link(Mace).X/Y += maceOffset` every frame (cumulative); `link(1).Y -= 0.0004` per frame | `MaceOffsetPerSecond` and `Link1DropPerSecond` (chain.json's `maceOffset` and `link1DropPerFrame`, mapped to world units a second): zero in the bare `Settings.Default` (render-only, no fudge term), but chain.json maps the original's own figures onto them so the shipped game carries both drifts | settled, shipped default matches (U.CHN-T45, BIBLE D8) |
 | Wall bounce | commented out | `LevelBounds` bounce 0.5 | deliberate deviation (UNI-T45) |
 | `followMouse` (F key) | starts `True`, never reset; when false `animateChain` leaves every spring force zero (gravity and drag still act, so the chain falls away from the hand) and `renderChain` skips the mace's 3.5x scale, offset and `rectMace`, which is left where it last was | `ChainSimulation.IsFollowing`, `ChainFollow` (Core: `ToggleFollowCommand` with a player id -> `FollowChangedEvent`, the 3.5x and 1x mace scales), F action on `ChainController`; off, the mace draws at link size and neither hits nor catches (BIBLE D17) | ported, UNI-T47 |
 | Live tuning | Ins/Del resistance +/-0.001, Home/End gravity -/+0.00001, PgUp/PgDn spring +/-0.001 (`changeResistance`, `changeGravity` on `gravity.Y`, `changeSpring` just add, no limits; works paused), `changeBounce` unused | Core `TuneChain` command (player id, `ChainKnob`, steps) -> `ChainTuned` event, `ChainTuning` (chain.json's `tuning`: the steps and the port's limits, BIBLE V19), the Player map's six actions through `SeatInput` and `ChainController.Tune`; the HUD's Res/Grav/Spring readout follows; `GameWorld.Reset` restores the data files' figures | ported, UNI-T51 |
@@ -89,7 +89,7 @@ but unreachable or does nothing; not ported, recorded here), **n/a** (DirectX pl
 | Hover bob | triangle wave +/-0.01 in 0.001 steps per frame, applied to the draw offset | `AngelFlight` | ported |
 | Flap | 4 frames per facing, advance every 0.1 s, loops | frame logic in place, `angel_left1-4`/`angel_right1-4` wired | ported (UNI-T19) |
 | Bounds | X -0.6..0.5, Y -0.6..0.4 | `LevelBounds` | ported |
-| HP / hurt | 30 HP, 1 per enemy contact at most every 0.25 s, game over below 0 | `GameState` | ported (HP+1 quirk, UNI-T45) |
+| HP / hurt | 30 HP, 1 per enemy contact at most every 0.25 s, game over below 0 | `GameState`; `HpOvershoot` 1 by default (the HUD shows `Hp + 1` bars, game over once `Hp < 1 - HpOvershoot`, matching the original's own HP+1 quirk exactly); 0 is exactly `Hp` bars and game over at 0, kept only where asked for explicitly | settled, default matches (U.CHN-T45, BIBLE D10) |
 | Contact rect | X..X+0.06 by Y+0.03..Y+0.15 | physics circle | deliberate deviation |
 | `angelAI.Hurt` | sinks 0.01/frame; nothing ever sets it | none | dead |
 
@@ -104,7 +104,7 @@ but unreachable or does nothing; not ported, recorded here), **n/a** (DirectX pl
 | Grabbed | follows the mace link (+0.03, small random jitter), spins | `Grapple` in `GameWorld` | ported |
 | Thrown | velocity = mace velocity, **no drag, no end state** (it leaves the arena) | thrown rules | ported, check in UNI-T45 |
 | Dead | HP <= 0: skipped entirely (vanishes) | dead state | ported |
-| Mace hit | alive, not Hurt, not Grabbed: velocity = mace velocity / mass, damage = abs(dX + dY/2), score += damage * 1000; a held enemy takes the same | `GameWorld` mace step (swept circle, speed-based damage) | deliberate deviation (UNI-T45) |
+| Mace hit | alive, not Hurt, not Grabbed: velocity = mace velocity / mass, damage = abs(dX + dY/2), score += damage * 1000; a held enemy takes the same | `GameWorld` mace step (swept circle); `MaceDamageFormula.Original` by default, the original's own abs(dX + dY/2) of the mass-divided velocity (`VelocityToOriginalScale` converts back to the original's per-frame units); `SpeedTimesFactor` (mace speed x `damagePerSpeed`) kept only where asked for explicitly | settled, default matches (U.CHN-T45, BIBLE D11) |
 | Throw impact | thrown enemy knocks any overlapping enemy: v = thrown v / mass, Hurt | `EnemyBrain` | ported |
 | Flocking | overlapping live, not-grabbed pairs pushed apart by 0.0005 per axis, each pair visited twice a frame (so 0.001); range test commented out, `flockRange` unused | `EnemyBrain.FlockPush`, 0.06 u/s | ported, UNI-T23, UNI-T35 |
 | Animation | 7 frames (`Shadow\enemy1..7`), 0.1 s per frame, starts at a random frame (`loadEnemy`) | `EnemyBrain.Frame`, advanced in `Step` and read by `Enemy`'s view | ported, deviation: paused while Grabbed since the world does not step a held enemy's brain (UNI-T19) |
@@ -231,8 +231,10 @@ second line (D32). The console that types and runs them is `Scripter` and `Scrip
   a point-filtered, alpha-preserving 256x256 conversion) rather than inventing new art: the data governs, even
   where the data is blank.
 - Damage uses `abs(dX + dY/2)` of the *enemy's new* velocity (mace velocity / mass), so heavier enemies take less.
-- No step is time based: the original runs faster on a faster machine. The rebuild fixes the step; UNI-T45 matches
-  the felt speed at 60 fps.
+  This is now the shipped default (`MaceDamageFormula.Original`, U.CHN-T45, BIBLE D11).
+- No step is time based: the original runs faster on a faster machine. The rebuild fixes the step at a frame rate
+  close to the original's own (`PhysicsStepRate`, U.CHN-T45, BIBLE D9), matching the felt speed at any host frame
+  rate, not only exactly 60 fps.
 - The HUD text, clock, date and level text are all drawn through a `Write` that does nothing in the final source.
 
 ## 5. Standards audit (Unity best practice and the shared standards)

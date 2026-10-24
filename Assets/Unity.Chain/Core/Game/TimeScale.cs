@@ -50,5 +50,34 @@ namespace MindAttic.Chain.Core
             var n = (int)System.Math.Ceiling(speed - Slack);
             return n < 1 ? 1 : n > MaxSubsteps ? MaxSubsteps : n;
         }
+
+        /// <summary>
+        /// How many sub-steps <paramref name="deltaTime"/> real seconds (scaled by <paramref name="speed"/> of
+        /// game time) is cut into so each one lands close to 1 / <paramref name="physicsStepRate"/> seconds
+        /// (<c>GameWorld.Settings.PhysicsStepRate</c>, game.json's own frame rate, 60: BIBLE D9), whatever the
+        /// host's own frame rate is. The original's chain integration is a discrete per-frame recurrence, so
+        /// the port only feels the same if it keeps advancing in close to the original's own frame length,
+        /// not a single sub-step scaled to a longer or shorter host frame. At least one sub-step runs
+        /// whenever time should pass at all, and never more than <see cref="MaxSubsteps"/>.
+        /// <paramref name="physicsStepRate"/> no more than 0 falls back to <see cref="Substeps(float)"/>: the
+        /// coarser, speed-only rule (enough sub-steps that none is longer than <paramref name="deltaTime"/>
+        /// itself).
+        /// </summary>
+        public static int Substeps(float speed, float deltaTime, float physicsStepRate)
+        {
+            if (speed <= 0f || deltaTime <= 0f)
+            {
+                return 0;
+            }
+
+            if (physicsStepRate <= 0f)
+            {
+                return Substeps(speed);
+            }
+
+            var gameSeconds = (double)deltaTime * speed;
+            var n = (int)System.Math.Round(gameSeconds * physicsStepRate, System.MidpointRounding.AwayFromZero);
+            return n < 1 ? 1 : n > MaxSubsteps ? MaxSubsteps : n;
+        }
     }
 }

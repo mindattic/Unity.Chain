@@ -223,7 +223,11 @@ namespace MindAttic.Chain.Core
                     stopAcceleration: m.Acceleration(chain.StopAcc),
                     overheadBoost: chain.OverheadBoost,
                     // "Above the angel" is within one link size below link(0).
-                    overheadMargin: m.Length(chain.LinkSize)),
+                    overheadMargin: m.Length(chain.LinkSize),
+                    pullBothNeighbors: chain.Port.PullBothNeighbors,
+                    simulateAllLinks: chain.Port.SimulateAllLinks,
+                    link1DropPerSecond: m.Speed(chain.Link1DropPerFrame),
+                    maceOffsetPerSecond: m.Speed(chain.MaceOffset)),
                 KeepChainInArena = chain.Port.KeepInArena,
                 WallBounce = chain.Port.WallBounce,
                 Following = chain.FollowMouse,
@@ -236,6 +240,12 @@ namespace MindAttic.Chain.Core
                 MaceMass = chain.LinkMass,
                 HitRadius = chain.Port.HitRadius,
                 DamagePerSpeed = chain.Port.DamagePerSpeed,
+                // Engine.vb's checkMaceImpact abs(dX + dY/2) of the mass-divided impact velocity (BIBLE D11,
+                // UNI-T45) is the original's own behaviour and the default (MaceDamageFormula.Original);
+                // VelocityToOriginalScale converts a world-units/second velocity back to that formula's own
+                // per-frame screen-space units.
+                DamageFormula = MaceDamageFormula.Original,
+                VelocityToOriginalScale = m.ToOriginalSpeed(1f),
                 CatchRadius = chain.Port.CatchRadius,
                 ThrowMultiplier = chain.Port.ThrowMultiplier,
                 ContactRadius = angel.Port.ContactRadius,
@@ -250,6 +260,9 @@ namespace MindAttic.Chain.Core
                     HurtDelay = angel.HurtDelay,
                     ContactDamage = Game.ContactDamage,
                     PointsPerDamage = Game.PointsPerDamage,
+                    // Engine.vb's renderDisplay drew HP + 1 bars, and GameOver only ended the game below zero
+                    // (BIBLE D10, UNI-T45): the original's own behaviour, and the default.
+                    HpOvershoot = GameState.Settings.Default.HpOvershoot,
                 },
                 Enemies = new GameWorld.EnemySetup
                 {
@@ -280,6 +293,10 @@ namespace MindAttic.Chain.Core
                 GameSpeed = Game.GameSpeed,
                 // Input.vb's 0.01 a frame while Minus or Equals is held: a rate with no length in it.
                 GameSpeedRate = m.PerSecond(Game.GameSpeedStep),
+                // The original's own frame rate (BIBLE D9, UNI-T45): Step cuts real time into sub-steps close
+                // to its length, so the chain's discrete integration keeps the original's feel at any host
+                // frame rate.
+                PhysicsStepRate = Space.FramesPerSecond,
             };
 
             Heart = new HeartFloat.Settings
@@ -373,6 +390,12 @@ namespace MindAttic.Chain.Core
         public bool FollowMouse { get; private set; }
         public float MaceScale { get; private set; }
 
+        /// <summary>Chain.vb's renderChain "'fix" line: <c>link(1).Y -= 0.0004</c>, every frame, unconditionally (BIBLE D8, UNI-T45).</summary>
+        public float Link1DropPerFrame { get; private set; }
+
+        /// <summary>Chain.vb's <c>maceOffset</c> (-0.012, -0.012), added to the mace link's position every frame while following (BIBLE D8, UNI-T45).</summary>
+        public Vec2 MaceOffset { get; private set; }
+
         /// <summary>Form1.vb's live-tuning keys: steps and limits, in the file's own units (UNI-T51).</summary>
         public ChainTuningData Tuning { get; private set; }
 
@@ -403,6 +426,8 @@ namespace MindAttic.Chain.Core
                 MaceMax = r.Integer("maceMax", 1),
                 FollowMouse = r.Flag("followMouse"),
                 MaceScale = r.Positive("maceScale"),
+                Link1DropPerFrame = r.Number("link1DropPerFrame", 0f),
+                MaceOffset = r.Pair("maceOffset"),
             };
 
             r.Check(data.MaceMin <= data.MaceMax, "maceMin", $"must not be above maceMax ({data.MaceMax})");
@@ -432,7 +457,9 @@ namespace MindAttic.Chain.Core
                 hitRadius: port.Number("hitRadius", 0f),
                 damagePerSpeed: port.Number("damagePerSpeed", 0f),
                 catchRadius: port.Number("catchRadius", 0f),
-                throwMultiplier: port.Number("throwMultiplier", 0f));
+                throwMultiplier: port.Number("throwMultiplier", 0f),
+                pullBothNeighbors: port.Flag("pullBothNeighbors"),
+                simulateAllLinks: port.Flag("simulateAllLinks"));
             port.Done();
             return data;
         }
@@ -480,7 +507,7 @@ namespace MindAttic.Chain.Core
     /// <summary>chain.json's port-only figures, world units and seconds.</summary>
     public readonly struct ChainPort
     {
-        public ChainPort(bool keepInArena, float wallBounce, float hitRadius, float damagePerSpeed, float catchRadius, float throwMultiplier)
+        public ChainPort(bool keepInArena, float wallBounce, float hitRadius, float damagePerSpeed, float catchRadius, float throwMultiplier, bool pullBothNeighbors, bool simulateAllLinks)
         {
             KeepInArena = keepInArena;
             WallBounce = wallBounce;
@@ -488,6 +515,8 @@ namespace MindAttic.Chain.Core
             DamagePerSpeed = damagePerSpeed;
             CatchRadius = catchRadius;
             ThrowMultiplier = throwMultiplier;
+            PullBothNeighbors = pullBothNeighbors;
+            SimulateAllLinks = simulateAllLinks;
         }
 
         /// <summary>Links bounce off the arena (V4; Chain.vb's checkBounds is commented out).</summary>
@@ -495,11 +524,15 @@ namespace MindAttic.Chain.Core
         public float WallBounce { get; }
         /// <summary>The mace's hit circle (D12: a swept circle for Chain.vb's rectMace).</summary>
         public float HitRadius { get; }
-        /// <summary>Damage per world unit per second of mace speed (D11: speed for abs(dX + dY/2)).</summary>
+        /// <summary>Damage per world unit per second of mace speed (D11: speed for abs(dX + dY/2), <see cref="MaceDamageFormula.SpeedTimesFactor"/> only).</summary>
         public float DamagePerSpeed { get; }
         public float CatchRadius { get; }
         /// <summary>Launch velocity = mace velocity x this (the original throws at the mace's velocity: 1).</summary>
         public float ThrowMultiplier { get; }
+        /// <summary>See <see cref="ChainSimulation.Settings.PullBothNeighbors"/> (BIBLE D7, UNI-T45).</summary>
+        public bool PullBothNeighbors { get; }
+        /// <summary>See <see cref="ChainSimulation.Settings.SimulateAllLinks"/> (BIBLE V3/D8, UNI-T45).</summary>
+        public bool SimulateAllLinks { get; }
     }
 
     /// <summary>angel.json: Angel.vb, in its own units.</summary>
