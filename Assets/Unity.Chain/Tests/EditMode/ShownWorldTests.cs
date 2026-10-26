@@ -182,7 +182,9 @@ namespace MindAttic.Chain.Tests
             snapshot.Hp = 37;
             snapshot.Score = 1234;
             hud.Refresh();
-            Assert.AreEqual(HudText.Hp(37), hud.HpText);
+            // HpOvershoot (BIBLE D10, U.CHN-T45) is local config, the same for host and client, so the
+            // remote-shown HP still gets the "HP + 1 bars" bonus, just like this screen's own world would.
+            Assert.AreEqual(HudText.Hp(37, Session.State.Config.HpOvershoot), hud.HpText);
             Assert.AreEqual(HudText.Score(1234), hud.ScoreText);
             Assert.AreEqual(HudText.Clock(snapshot.RoundTime), hud.ClockText);
             Assert.AreEqual(HudText.GameSpeed(snapshot.GameSpeed), hud.GameSpeedText);
