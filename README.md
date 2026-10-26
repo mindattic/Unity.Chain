@@ -95,10 +95,43 @@ build.bat     # tools/build.ps1: the three -executeMethod calls above, logged to
 test.bat      # tools/test.ps1: Core.Tests, then EditMode and PlayMode (includes MainSceneSmokeTests)
 deploy.bat    # tools/deploy.ps1: build.bat if Assets/Packages/ProjectSettings changed, then
               # publish to C:\Apps\Unity.Chain, refresh the Desktop shortcut, and launch it
+play.bat      # tools/play.ps1: launch Builds/Windows/Unity.Chain.exe for manual/dev testing,
+              # muted by default (building it first if missing)
 ```
 
 The engine-free rules are tested by `Tests/Core.Tests` (`dotnet test Tests/Core.Tests`, or
 `./run-core-tests.ps1`).
+
+### Muted launches
+
+`play.bat` (`tools/play.ps1`) launches `Builds/Windows/Unity.Chain.exe` muted: it sets
+`MINDATTIC_CLI_MUTED=1` and passes `-muted`, so a CLI or agent starting the game for manual or dev
+testing never plays audio. It builds the player first (`tools/build.ps1`) if it is missing; pass
+`-Build` to rebuild, `-Sound` to launch with audio, or `-Wait` to wait for it to exit. The player's
+log is `Logs/play.log`. Same shape as Unity.QuickDuel's `play.ps1`.
+
+```powershell
+play.bat                      # muted
+powershell -File tools/play.ps1 -Sound   # with audio
+```
+
+Either switch also works on its own, against any Unity.Chain.exe:
+
+```powershell
+$env:MINDATTIC_CLI_MUTED = '1'; .\Builds\Windows\Unity.Chain.exe
+.\Builds\Windows\Unity.Chain.exe -muted
+```
+
+The mute is the shared `com.mindattic.unity.shared` session mute (Unity.Shared's `ProfilesBootstrap`,
+read before the first scene loads): it makes the current profile's common settings
+(`Profiles.Current.Settings.Common`) report music and sound-effect volume 0 and both muted, for that
+run only. `MusicPlayer` and `ChainAudio` (U.CHN-T36) already play at those volumes -- `MusicPlayer`
+zeroes and mutes its `AudioSource`, and `ChainAudio` never calls `PlayOneShot` once the computed
+volume is 0 -- so the mute is audible-off end to end without a separate `AudioListener` override.
+The player's saved `settings.json` is never written, so the next normal launch has sound. A profile
+whose own settings mute music or sound effects is honoured the same way. See also
+[Unity.Shared's README](https://github.com/mindattic/Unity.Shared#readme) ("Root override for tests
+and automation").
 
 ## Controls
 

@@ -227,6 +227,62 @@ namespace MindAttic.Chain.Tests
         }
 
         [Test]
+        public void SessionMuted_SilencesMusicAndSfxEndToEnd_WithoutTouchingTheProfile()
+        {
+            // U.CHN-T74: Profiles.SessionMuted is exactly what Unity.Shared's ProfilesBootstrap turns on
+            // from -muted / MINDATTIC_CLI_MUTED=1 before the first scene loads. Confirms that reaches
+            // Chain's own audio (ChainAudio, MusicPlayer) as audible-off, not just a reported flag nothing
+            // reads, and that it never touches the profile's saved settings.json.
+            var profile = _profiles.Current;
+            profile.Settings.Common.MusicVolume = 0.7f;
+            profile.Settings.Common.SfxVolume = 0.9f;
+            profile.SaveSettings();
+            var saved = File.ReadAllText(profile.SettingsPath);
+
+            Profiles.SessionMuted = true;
+            try
+            {
+                PlayerProfile.Store = StoreOver(profile); // forces PlayerProfile to Load() again, as it would on first use after the bootstrap
+                Assert.AreEqual(0f, PlayerProfile.Preferences.MusicVolume, 1e-6f);
+                Assert.AreEqual(0f, PlayerProfile.Preferences.SfxVolume, 1e-6f);
+                Assert.IsTrue(PlayerProfile.Preferences.MuteMusic);
+                Assert.IsTrue(PlayerProfile.Preferences.MuteSfx);
+
+                var musicGo = new GameObject("Music");
+                var sfxGo = new GameObject("Sfx");
+                var clip = AudioClip.Create("hit", 4410, 1, 44100, false);
+                try
+                {
+                    var music = musicGo.AddComponent<MusicPlayer>();
+                    music.Music = clip;
+                    music.Apply();
+                    var musicSource = musicGo.GetComponent<AudioSource>();
+                    Assert.AreEqual(0f, musicSource.volume, 1e-6f, "MusicPlayer did not zero its AudioSource while session-muted.");
+                    Assert.IsTrue(musicSource.mute, "MusicPlayer did not mute its AudioSource while session-muted.");
+
+                    var audio = sfxGo.AddComponent<ChainAudio>();
+                    audio.SetClips(ChainSound.Impact, new[] { clip });
+                    var volume = -1f;
+                    audio.Played += (s, c, v) => volume = v;
+                    audio.Play(ChainSound.Impact);
+                    Assert.AreEqual(0f, volume, "ChainAudio reported a non-zero volume while session-muted.");
+                }
+                finally
+                {
+                    Object.DestroyImmediate(musicGo);
+                    Object.DestroyImmediate(sfxGo);
+                    Object.DestroyImmediate(clip);
+                }
+
+                Assert.AreEqual(saved, File.ReadAllText(profile.SettingsPath), "settings.json was written while session-muted.");
+            }
+            finally
+            {
+                Profiles.SessionMuted = false;
+            }
+        }
+
+        [Test]
         public void TheStockVolumes_AreAudioJsons()
         {
             PlayerProfile.Store = new MemoryPreferencesStore();
