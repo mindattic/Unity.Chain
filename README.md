@@ -20,7 +20,7 @@ and at zero the light fades and the round starts again by itself.
 
 ## Status
 
-Every behaviour of the 2005 game is ported, fixed or recorded as a deliberate deviation or dead code; two deviations still await the owner (U.CHN-T76) (U.CHN-T63, [docs/RECONSTRUCTION.md §8](docs/RECONSTRUCTION.md)). On main and tested:
+Every behaviour of the 2005 game is ported, fixed or recorded as a deliberate deviation or dead code; the last two open ones, wall bounce and the window frame, are settled to the original's behaviour (U.CHN-T76, U.CHN-T63, [docs/RECONSTRUCTION.md §8](docs/RECONSTRUCTION.md)). On main and tested:
 
 - the spring chain (`ChainSimulation`, `ChainController`), the mace with `[` / `]` chain length and the overhead
   boost (`MaceController`)

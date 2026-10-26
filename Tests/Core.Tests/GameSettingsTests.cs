@@ -88,6 +88,34 @@ namespace MindAttic.Chain.Tests
         }
 
         [Test]
+        public void Shipped_ChainDoesNotBounceOffTheWalls_AsChainVbsCheckBoundsIsCommentedOut()
+        {
+            // BIBLE V4, settled by U.CHN-T76: the original's behaviour is the data default.
+            var setup = Load().Player;
+
+            Assert.IsFalse(Load().Chain.Port.KeepInArena);
+            Assert.IsFalse(setup.KeepChainInArena);
+        }
+
+        [Test]
+        public void ChainWallBounce_StaysReachableAsAnOption()
+        {
+            var settings = GameSettings.Load(Patched(GameSettings.ChainFile, text => text.Replace("\"keepInArena\": false", "\"keepInArena\": true")));
+
+            Assert.IsTrue(settings.Chain.Port.KeepInArena);
+        }
+
+        [Test]
+        public void Shipped_WindowIsForm1sBorderlessForm_AndOsFrameStaysReachable()
+        {
+            // BIBLE V12, settled by U.CHN-T76.
+            Assert.AreEqual(WindowFrame.Borderless, Load().Game.WindowFrame);
+
+            var osFrame = GameSettings.Load(Patched(GameSettings.GameFile, text => text.Replace("\"windowFrame\": \"Borderless\"", "\"windowFrame\": \"OsFrame\"")));
+            Assert.AreEqual(WindowFrame.OsFrame, osFrame.Game.WindowFrame);
+        }
+
+        [Test]
         public void Angel_HoldsAngelVb()
         {
             var angel = Load().Angel;

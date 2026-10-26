@@ -703,6 +703,16 @@ namespace MindAttic.Chain.Core
         }
     }
 
+    /// <summary>Which frame the windowed game has (game.json's <c>windowFrame</c>, BIBLE V12).</summary>
+    public enum WindowFrame
+    {
+        /// <summary>Form1.vb's borderless form: no title bar, no border. The default, the original's own behaviour.</summary>
+        Borderless,
+
+        /// <summary>The OS window frame the rebuild first shipped with; kept only where game.json asks for it.</summary>
+        OsFrame,
+    }
+
     /// <summary>game.json: Engine.vb's session rules, the game speed Root.vb's Reset starts a round at and Input.vb's Minus/Equals step.</summary>
     public sealed class GameData
     {
@@ -720,6 +730,9 @@ namespace MindAttic.Chain.Core
         /// </summary>
         public int HpOvershoot { get; private set; }
 
+        /// <summary>Form1.vb's borderless 640x480 form is the default (<see cref="WindowFrame.Borderless"/>, BIBLE V12, U.CHN-T76); <see cref="WindowFrame.OsFrame"/> keeps the earlier OS title bar and border.</summary>
+        public WindowFrame WindowFrame { get; private set; }
+
         internal static GameData Read(SettingsReader r) => new GameData
         {
             PointsPerDamage = r.Number("pointsPerDamage", 0f),
@@ -727,6 +740,7 @@ namespace MindAttic.Chain.Core
             GameSpeed = r.Number("gameSpeed", 0f),
             GameSpeedStep = r.Positive("gameSpeedStep"),
             HpOvershoot = r.Integer("hpOvershoot", 0),
+            WindowFrame = r.Choice<WindowFrame>("windowFrame"),
         };
     }
 

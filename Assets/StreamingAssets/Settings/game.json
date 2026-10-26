@@ -4,5 +4,6 @@
   "contactDamage": 1,
   "gameSpeed": 1.0,
   "gameSpeedStep": 0.01,
-  "hpOvershoot": 1
+  "hpOvershoot": 1,
+  "windowFrame": "Borderless"
 }

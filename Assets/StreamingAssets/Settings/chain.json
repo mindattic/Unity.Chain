@@ -62,8 +62,8 @@
     }
   },
   "port": {
-    "_about": "Not in the original; world units and seconds, never mapped. pullBothNeighbors, simulateAllLinks and maceDamageFormula are U.CHN-T45's settled deviations: false/true/Original reproduce Chain.vb's own behaviour (its If/ElseIf only ever pulls the previous link, BIBLE D7; animateChain always loops every link, BIBLE V3/D8; checkMaceImpact's abs(dX + dY/2) of the mass-divided velocity, BIBLE D11); true/false/SpeedTimesFactor are the rebuild's earlier choices, kept only where this file asks for them explicitly.",
-    "keepInArena": true,
+    "_about": "Not in the original; world units and seconds, never mapped. keepInArena, pullBothNeighbors, simulateAllLinks and maceDamageFormula are settled deviations (U.CHN-T45, and keepInArena U.CHN-T76: false, as checkBounds is commented out in Chain.vb, BIBLE V4; true bounces links off the arena at wallBounce): false/false/true/Original reproduce Chain.vb's own behaviour (its If/ElseIf only ever pulls the previous link, BIBLE D7; animateChain always loops every link, BIBLE V3/D8; checkMaceImpact's abs(dX + dY/2) of the mass-divided velocity, BIBLE D11); true/false/SpeedTimesFactor are the rebuild's earlier choices, kept only where this file asks for them explicitly.",
+    "keepInArena": false,
     "wallBounce": 0.5,
     "hitRadius": 0.3,
     "damagePerSpeed": 0.05,
