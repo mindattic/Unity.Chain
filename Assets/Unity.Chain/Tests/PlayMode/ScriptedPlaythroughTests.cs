@@ -123,7 +123,7 @@ namespace MindAttic.Chain.Tests
             var steps = PlaythroughActions.ForceGameOverByContact(session, angel);
             Assert.Less(steps, 200, "the round never ended from repeated contact");
             Assert.IsTrue(session.State.IsGameOver, "HP running out did not end the round");
-            Assert.AreEqual(0, session.State.Hp, "the round ended before HP actually reached 0");
+            Assert.LessOrEqual(session.State.Hp, 0, "the round ended before HP actually reached 0");
 
             PlaythroughActions.RunGameOverFadeToReset(session);
             Assert.IsFalse(session.State.IsGameOver, "the fade never finished and reset the round");

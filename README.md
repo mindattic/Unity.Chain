@@ -113,6 +113,7 @@ log is `Logs/play.log`. Same shape as Unity.QuickDuel's `play.ps1`.
 ```powershell
 play.bat                      # muted
 powershell -File tools/play.ps1 -Sound   # with audio
+powershell -File tools/play.ps1 -Capture "screen 1000"   # U.CHN-T62 scripted -demo run of the capture build (Builds/Capture), muted, exits non-zero on a failed shot
 ```
 
 Either switch also works on its own, against any Unity.Chain.exe:

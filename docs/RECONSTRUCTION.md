@@ -318,7 +318,7 @@ chain-physics.md (game over freezes until a click) is superseded by UNI-T28.
 ## 7. Scripted capture (U.CHN-T62)
 
 Row 41's "done, verified by play" is a capture-enabled Windows player (`MindAttic ▸ Capture ▸ Build Windows
-Player (Capture Enabled)`, `Builds/Capture/Unity.Chain.exe`) run with `-demo -capture video`. `-demo`
+Player (Capture Enabled)`, `Builds/Capture/Unity.Chain.exe`) run with `-demo -capture video` (`tools/play.ps1 -Capture video`, muted). `-demo`
 (`DemoBootstrap`) adds a `DemoSplashShot` to the Splash scene and a `ScriptedPlaythrough` to Main once it
 loads; both call the same public API real input and the EditMode tests already use
 (`GameSession.Submit`, `GameWorld.SpawnEnemy`, `AngelFlight.Teleport`, `GrappleController.SetButtonHeld`),
