@@ -73,7 +73,7 @@ but unreachable or does nothing; not ported, recorded here), **n/a** (DirectX pl
 | Mace | link index `Mace` (6; keys `[` / `]` 1..12), drawn at 3.5x scale, hit rectangle `rectMace`; `texMace`, `texMaceGrapple` while the button is held | `MaceController`, ball visual (art UNI-T19); grapple swap to `maceSkins.files.grapple` (mace2.png) while `Grapple.IsArmed`, reverting to the current mode's skin on release | ported, grapple swap fixed (U.CHN-T72; claimed but unported since UNI-T19, found by UNI-T43) |
 | Overhead boost | spring.Y doubled when pulling up and above `link(0).Y - linkSize` | `ChainController` 2x boost | ported |
 | Drift hacks | `link(Mace).X/Y += maceOffset` every frame (cumulative); `link(1).Y -= 0.0004` per frame | `MaceOffsetPerSecond` and `Link1DropPerSecond` (chain.json's `maceOffset` and `link1DropPerFrame`, mapped to world units a second): zero in the bare `Settings.Default` (render-only, no fudge term), but chain.json maps the original's own figures onto them so the shipped game carries both drifts | settled, shipped default matches (U.CHN-T45, BIBLE D8) |
-| Wall bounce | commented out | `LevelBounds` bounce 0.5 | deliberate deviation, kept (BIBLE V4): the original's bounce is commented out, the rebuild keeps the mace on screen with `LevelBounds`; `keepInLevel` turns it off |
+| Wall bounce | commented out | `LevelBounds` bounce 0.5 | deliberate deviation, kept for now and to settle with the owner (BIBLE V4, U.CHN-T76): the original's bounce is commented out, the rebuild keeps the mace on screen with `LevelBounds`; `keepInLevel` turns it off |
 | `followMouse` (F key) | starts `True`, never reset; when false `animateChain` leaves every spring force zero (gravity and drag still act, so the chain falls away from the hand) and `renderChain` skips the mace's 3.5x scale, offset and `rectMace`, which is left where it last was | `ChainSimulation.IsFollowing`, `ChainFollow` (Core: `ToggleFollowCommand` with a player id -> `FollowChangedEvent`, the 3.5x and 1x mace scales), F action on `ChainController`; off, the mace draws at link size and neither hits nor catches (BIBLE D17) | ported, UNI-T47 |
 | Live tuning | Ins/Del resistance +/-0.001, Home/End gravity -/+0.00001, PgUp/PgDn spring +/-0.001 (`changeResistance`, `changeGravity` on `gravity.Y`, `changeSpring` just add, no limits; works paused), `changeBounce` unused | Core `TuneChain` command (player id, `ChainKnob`, steps) -> `ChainTuned` event, `ChainTuning` (chain.json's `tuning`: the steps and the port's limits, BIBLE V19), the Player map's six actions through `SeatInput` and `ChainController.Tune`; the HUD's Res/Grav/Spring readout follows; `GameWorld.Reset` restores the data files' figures | ported, UNI-T51 |
 | Link skins | `loadChain` gives every link `texChain` (link.png); U key sets `link(1)`..`link(5).texture` to aqua, emerald, teardrop, tablet, pearl (16x16, magenta-keyed); nothing sets them back | Core `SkinLinks` command (player id) -> `LinksSkinned`, `PlayerEntity.HasGemSkins` / `LinkSkin` from chain.json's `skins` (`LinkSkins`, `LinkSkinData`), drawn by `LinkSkinView` over the line one link wide; the mace link stays the mace (BIBLE V25); works paused, no reset touches it | ported, UNI-T41 |
@@ -190,7 +190,7 @@ DirectSound `SecondaryBuffer`s are loaded for `sword_swing_1..7`, `sword_hit_1..
 (`rndMusicPos`, at init and on `Reset`). `playSFX` is **never called**, and `bSound` and `bMusic` both default to
 `False`, so the shipped game is silent. Volumes: music 0, sfx -1000, ambient -1500 (unused). The rebuild
 plays swing, hit, death, catch and throw sounds and loops music (more than the original) from the original's own clips
-(15 WAVs plus `music.ogg`, converted from the WMA; `throw.wav` is the one new clip, U.CHN-T71): UNI-T20. `defend` and `footstep` are unused in both. Volumes and mutes are the shared profile's since UNI-T36, with these as the stock ones; frmConfig's options screen (UNI-T59) sets them, and the ambient volume in Chain's own `game.ambientVolume`.
+(15 WAVs plus `music.ogg`, converted from the WMA; `throw.wav` is the one new clip, U.CHN-T71): UNI-T20. `footstep` is unused in both; `defend` is unused in the original and is the rebuild's catch sound. Volumes and mutes are the shared profile's since UNI-T36, with these as the stock ones; frmConfig's options screen (UNI-T59) sets them, and the ambient volume in Chain's own `game.ambientVolume`.
 
 ### 3.9 Script language (`Script.vb`)
 
@@ -370,11 +370,19 @@ one of four states. Nothing is **missing** and nothing is **partial**.
 |---|---|---|
 | Ported | every Chain, Angel, Enemy, Item, Input, Game rules, Lighting and Script row, including the two that were stale (Count and spawn, Game over) | the ticket in each row's last column, whose Ref names its test or commit; the whole path is also asserted end to end by `ScriptedPlaythroughTests` (U.CHN-T62) |
 | Fixed defect | the rows the original's source breaks (magnet unreachable, no HUD text, silent game, never-applied game speed, joystick, the shake key, FPS, zones, F2/F3, frmConfig, script LIGHT and arithmetic, and the rest) | BIBLE §7, D1 to D33, each `fixed` or `settled` |
-| Deliberate deviation | contact rectangles as physics circles, the orthographic camera fit, wall bounce, the window frame and title, music as OGG, online play, the added catch and throw sounds | BIBLE §8, V1 to V26, each `kept` or `matches` |
+| Deliberate deviation | contact rectangles as physics circles, the orthographic camera fit, wall bounce (V4), the window frame and title (V12), music as OGG, online play, the added catch and throw sounds | BIBLE §8, V1 to V26, each `kept`, `settled` or `matches`, except V4 and V12, still to settle with the owner (U.CHN-T76) |
 | Dead | `angelAI.Hurt`; the `Retreat`, `Wander`, `Limbo`, `Death` AI states; right and wheel mouse buttons; the arrow keys and `btnAttack`..`btnDashRight`; `ExtraLife`, `Health5`, `Health20`, `Money`, the `Center` and `Wander` motions; `renderTime`, `renderDate`, `levelText`; `SetupLights`; `Terrains`; the nine cursors; `bRicochet`; `Make`; `Character` | recorded in BIBLE §7's "Not restored, on purpose": each has no body, no caller or no key, and restoring it would invent behaviour |
 
 Stale rows corrected by this pass: 3.3 Count and spawn (was `missing, UNI-T21`), 3.6 Game over (was `missing,
-UNI-T28`), 3.1 Wall bounce (was `kept for now`), 3.8 Sound (said no clips shipped) and five rows of section 5 (Core,
-asmdefs, UI, scripts, multiplayer, assets). Sections 5 and 6 are now all done: all 42 build-order rows have their ticket closed.
-Every user story is `done`, each citing the test of the ticket that implements it (see USER_STORIES.md, generated
-from the ticket database).
+UNI-T28`), 3.8 Sound (said no clips shipped) and six rows of section 5 (Core,
+asmdefs, UI, scripts, multiplayer, assets). Sections 5 and 6 are now all done: 41 of the 42 build-order rows have their ticket closed, and row 42 is U.CHN-T63,
+which closes once this lands. Every user story is `done` in the ticket database (USER_STORIES.md is its generated
+view); the test behind each is the Ref of the ticket that implements it (`tickets ticket show <ID>`), for example
+F3 `run-core-tests.ps1`, G5 `LevelAndHudTests.GameOver_FadesFiveAFrame_ThenResetsItself`, D1 `HudTests`,
+C1 `ScriptTests`, C2 `ScripterConsoleTests`, V1 `ChainOnlineTests`, V2 `ScriptedPlaythroughTests`.
+
+**Method and its limit.** This pass read each row against the code and the tests on main and ran `dotnet build` on
+`Tests/Core.Tests` (0 errors). It did not run the Unity build or the test suites, and did not re-capture: the
+host had about 1 GB free RAM with other Editors open and the worktree has no Library. It is therefore a code-and-test
+reading, not a running-build pass; the orchestrator's full suite on main is the run, and U.CHN-T75 is the re-capture.
+Open after this pass: U.CHN-T75 (demo media) and U.CHN-T76 (V4 and V12 await the owner).

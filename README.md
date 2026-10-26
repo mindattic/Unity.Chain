@@ -6,7 +6,7 @@ enemies. A Unity 6 rebuild of the 2005 VB.NET / DirectX 9 *Chain Game*, which wa
 
 [![Unity](https://img.shields.io/badge/Unity-6000.4.3f1-222222)](ProjectSettings/ProjectVersion.txt)
 [![C#](https://img.shields.io/badge/language-C%23-512BD4)](Assets/Unity.Chain)
-[![Status](https://img.shields.io/badge/status-parity-brightgreen)](docs/BIBLE.md)
+[![Status](https://img.shields.io/badge/status-feature%20complete-green)](docs/BIBLE.md)
 
 There is no public build. Build it from source with the steps below; `docs/demo` holds screenshots and a clip of a scripted run of the built player.
 
@@ -20,7 +20,7 @@ and at zero the light fades and the round starts again by itself.
 
 ## Status
 
-At parity with the original: every behaviour of the 2005 game is ported, fixed or recorded as a deliberate deviation or dead code (U.CHN-T63, [docs/RECONSTRUCTION.md §8](docs/RECONSTRUCTION.md)). On main and tested:
+Every behaviour of the 2005 game is ported, fixed or recorded as a deliberate deviation or dead code; two deviations still await the owner (U.CHN-T76) (U.CHN-T63, [docs/RECONSTRUCTION.md §8](docs/RECONSTRUCTION.md)). On main and tested:
 
 - the spring chain (`ChainSimulation`, `ChainController`), the mace with `[` / `]` chain length and the overhead
   boost (`MaceController`)
