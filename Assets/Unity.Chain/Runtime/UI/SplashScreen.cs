@@ -50,6 +50,13 @@ namespace MindAttic.Chain
         /// <summary>The panel's document.</summary>
         public UIDocument Document => _document;
 
+        /// <summary>
+        /// While true the picture stays up and <see cref="NextScene"/> is not loaded. Nothing sets it in a normal
+        /// launch; the <c>-demo</c> run (U.CHN-T75) holds the splash until its screenshot of the picture is taken, so
+        /// the shot waits on the splash itself instead of racing it on a fixed delay.
+        /// </summary>
+        public bool Hold { get; set; }
+
         /// <summary>Whether <see cref="NextScene"/> has loaded and the picture is gone.</summary>
         public bool Finished { get; private set; }
 
@@ -79,6 +86,11 @@ namespace MindAttic.Chain
             // Me.Show(): the picture is drawn (this frame renders) before the loading starts next frame. A frame, not
             // WaitForEndOfFrame, which never comes in a batch-mode run without graphics.
             yield return null;
+
+            while (Hold)
+            {
+                yield return null;
+            }
 
             if (!string.IsNullOrEmpty(nextScene))
             {

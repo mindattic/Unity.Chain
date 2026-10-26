@@ -348,18 +348,12 @@ onto the closed ticket that built each beat (`tickets ticket link U.CHN-T62 rela
 | 14 | F12 settings screen | `docs/demo/14-settings-screen.png` | U.CHN-T59 |
 | - | Kill-and-hit highlight clip | `docs/demo/highlight.mp4` | U.CHN-T8, U.CHN-T32 |
 
-Known limits of this capture (recorded by U.CHN-T63, not hidden):
-
-- The screenshots and the clip were taken before U.CHN-T62's own review fixes (the grapple beat asserting a real catch,
-  the kill beat asserting the spawned enemy died, the hit enemies cleared before the heart beat), so they show the same
-  path but not the corrected run. `ScriptedPlaythroughTests` asserts the corrected path on every test run.
-- Stop 01's timing was left as it was: the loading picture shot is taken on a fixed delay, not on a signal from the
-  splash, so it can land after the picture has already gone.
-- The media were committed as plain files: the repo has no `.gitattributes`, so no LFS (about 8.8 MB in `docs/demo`).
-- Re-running the capture after the rebase failed only because the host dipped below MindAttic.Capture's 2 GB free-RAM
-  floor, not because of the game. U.CHN-T63's own pass ran with about 1 GB free and other Editors open, so it did not
-  re-capture either: refreshing the media is the follow-up ticket U.CHN-T75, and it does not change any
-  row's status below.
+Refreshed by U.CHN-T75 (2026-10-26): all fourteen screenshots and the clip were re-captured, muted, from a fresh
+capture build that includes U.CHN-T62's review fixes, so they show the corrected run. Stop 01 no longer races the
+splash: `-demo` holds the Splash scene (`SplashScreen.Hold`) until the shot of the picture is taken, then releases
+it; a normal launch never sets it. The media now go through Git LFS (`.gitattributes` covers `docs/demo/*.png` and
+`*.mp4`); only the refreshed files are LFS objects, history was not rewritten. The first attempt aborted because
+MindAttic.Capture's free-RAM valve closed (other agents' Unity jobs) and was rerun with the host above its floor.
 
 ## 8. Final parity pass (U.CHN-T63)
 
