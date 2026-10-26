@@ -314,3 +314,36 @@ than refiled. Every row has its own story.
 Rows 20 and 22 were filed by the owner's standard sweep (UNI-T35, UNI-T44) after the first flocking and
 heart versions guessed values; they are slotted straight after the tickets they correct. UNI-T24's note in
 chain-physics.md (game over freezes until a click) is superseded by UNI-T28.
+
+## 7. Scripted capture (U.CHN-T62)
+
+Row 41's "done, verified by play" is a capture-enabled Windows player (`MindAttic ▸ Capture ▸ Build Windows
+Player (Capture Enabled)`, `Builds/Capture/Unity.Chain.exe`) run with `-demo -capture video`. `-demo`
+(`DemoBootstrap`) adds a `DemoSplashShot` to the Splash scene and a `ScriptedPlaythrough` to Main once it
+loads; both call the same public API real input and the EditMode tests already use
+(`GameSession.Submit`, `GameWorld.SpawnEnemy`, `AngelFlight.Teleport`, `GrappleController.SetButtonHeld`),
+so every beat below happens for real, not by chance. `PlaythroughActions` is the shared, lower-level form of
+the same moves, driven directly by `ScriptedPlaythroughTests` (Assets/Unity.Chain/Tests/PlayMode) so the
+path is asserted on every test run, not just captured once by eye.
+
+Screenshots and one short highlight clip from the run are committed under `docs/demo/` and cross-referenced
+onto the closed ticket that built each beat (`tickets ticket link U.CHN-T62 related <ticket> --note
+"docs/demo/<file>"`), rather than piling them all onto U.CHN-T62 itself:
+
+| Stop | Beat | Screenshot | Built by |
+|---|---|---|---|
+| 01 | Launch and the loading picture | `docs/demo/01-loading-picture.png` | U.CHN-T58 |
+| 02 | Main loaded | `docs/demo/02-main-scene.png` | U.CHN-T16 |
+| 03 | Fly and swing | `docs/demo/03-fly-and-swing.png` | U.CHN-T4, U.CHN-T5 |
+| 04 | Grapple catch | `docs/demo/04-grapple-catch.png` | U.CHN-T7 |
+| 05 | Grapple throw | `docs/demo/05-grapple-throw.png` | U.CHN-T7 |
+| 06 | A kill | `docs/demo/06-kill.png` | U.CHN-T8 |
+| 07 | Taking hits | `docs/demo/07-take-hits.png` | U.CHN-T32 |
+| 08 | Heart pickup | `docs/demo/08-heart-pickup.png` | U.CHN-T22, U.CHN-T44 |
+| 09 | Game over fade | `docs/demo/09-game-over-fade.png` | U.CHN-T28 |
+| 10 | Automatic reset | `docs/demo/10-auto-reset.png` | U.CHN-T28 |
+| 11 | Pause | `docs/demo/11-pause.png` | U.CHN-T54 |
+| 12 | Tab menu | `docs/demo/12-menu.png` | U.CHN-T55 |
+| 13 | Scripter command | `docs/demo/13-scripter-command.png` | U.CHN-T61 |
+| 14 | F12 settings screen | `docs/demo/14-settings-screen.png` | U.CHN-T59 |
+| - | Kill-and-hit highlight clip | `docs/demo/highlight.mp4` | U.CHN-T8, U.CHN-T32 |
