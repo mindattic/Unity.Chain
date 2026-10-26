@@ -6,9 +6,9 @@ enemies. A Unity 6 rebuild of the 2005 VB.NET / DirectX 9 *Chain Game*, which wa
 
 [![Unity](https://img.shields.io/badge/Unity-6000.4.3f1-222222)](ProjectSettings/ProjectVersion.txt)
 [![C#](https://img.shields.io/badge/language-C%23-512BD4)](Assets/Unity.Chain)
-[![Status](https://img.shields.io/badge/status-in%20development-orange)](docs/BIBLE.md)
+[![Status](https://img.shields.io/badge/status-parity-brightgreen)](docs/BIBLE.md)
 
-There is no public build yet. Build it from source with the steps below.
+There is no public build. Build it from source with the steps below; `docs/demo` holds screenshots and a clip of a scripted run of the built player.
 
 ## The game
 
@@ -20,7 +20,7 @@ and at zero the light fades and the round starts again by itself.
 
 ## Status
 
-In development, rebuilding the original to full parity. On main and tested:
+At parity with the original: every behaviour of the 2005 game is ported, fixed or recorded as a deliberate deviation or dead code (U.CHN-T63, [docs/RECONSTRUCTION.md §8](docs/RECONSTRUCTION.md)). On main and tested:
 
 - the spring chain (`ChainSimulation`, `ChainController`), the mace with `[` / `]` chain length and the overhead
   boost (`MaceController`)
@@ -29,12 +29,13 @@ In development, rebuilding the original to full parity. On main and tested:
   enemies, audio and HUD play the events it produces (`Core/World/`, docs/BIBLE.md §5.3)
 - grapple and throw (`Core/Grapple/`), enemies with seek, knockback, grab, throw and flocking, hit by a swept circle so
   fast swings never tunnel (`Enemies/`), the enemy spawner and the heart pickup (`Items/`)
-- HP, score, pause, and the original's game-over fade and automatic reset (`GameState`, `GameSession`), with an
-  interim IMGUI HUD (`GameHud`)
+- HP, score, pause, and the original's game-over fade and automatic reset (`GameState`, `GameSession`), with the
+  UI Toolkit HUD of Gui.vb and renderDisplay (HP, score, clock, readouts, FPS, status box, pause banner, Tab menu,
+  F12 settings screen) laid out from `hud.json` (`GameHud`)
 - the original's lighting: the ambient fade times the r/g/b tint the Day, Dusk, Night, Morning cycle walks (now on a
   24-minute day; the original's never moved), on a URP 2D global light, L toggling it (`LightingState`, `SceneLight`)
   under the URP 2D pipeline (`Rendering/ChainURP`, `Editor/RenderPipelineBuilder`)
-- level bounds and a camera that fits or follows (`Level/`), sound and music players (`Audio/`, no clips yet)
+- level bounds and a camera that fits or follows (`Level/`), sound and music players with the original's own clips (`Audio/`)
 - every input from one Input System action asset built in code, with keyboard, mouse and gamepad bindings; a
   gamepad's left stick steers like the mouse and J switches it off and on (`Input/ChainControls`, `Input/SeatInput`,
   `Core/Input/SteerInput`, `input.json`)
@@ -44,17 +45,18 @@ In development, rebuilding the original to full parity. On main and tested:
 - online play on the shared Unity.Multiplayer kit, beside local play: O opens the kit's menu (Host, Join by IP, Join
   by code with a lobby, Settings, Play alone); every connection is a `ChainPlayer` carrying its seat, a client's
   commands go to the host's `GameSession` instead of its own world, and the host sends its world back as snapshots
-  (`Online/`, `Core/Net/`, docs/BIBLE.md §5.4). Drawing a client's whole scene from those snapshots comes next
+  (`Online/`, `Core/Net/`, docs/BIBLE.md §5.4). A client draws the host's whole scene from those snapshots (U.CHN-T73)
 - Form1.vb Startup's loading picture: the player opens on the Splash scene, one of `load640_1..12` chosen at
   random over the whole window until Main has loaded (`UI/SplashScreen`, `Core/Hud/LoadingScreen`, `hud.json` `loading`)
 
 Every tuning figure is data: the original's own figures in `Assets/StreamingAssets/Settings/*.json`, validated
 on load and mapped to world units in one place (`Core/Settings`, see [BIBLE §6](docs/BIBLE.md)).
 
-Still to come, in build order:
-Unity.Shared settings, a UI Toolkit HUD, the original's art and sound,
-and the remaining keys and screens. The full list, one ticket per step, is
-[docs/RECONSTRUCTION.md §6](docs/RECONSTRUCTION.md); open tickets are in the MindAttic ticket database
+Also on main: the original's art and sound, the Unity.Shared profile and settings, the window and icon, the live
+chain tuning, game speed, round clock, debug camera, hit boxes and render toggles, the scripter console, the
+Zone/Menu/Tab panels, and a scripted run of the built player that is asserted in PlayMode and captured under
+`docs/demo`. Nothing from the original is left unported. The full list, one ticket per step, is
+[docs/RECONSTRUCTION.md §6](docs/RECONSTRUCTION.md); the tickets are in the MindAttic ticket database
 (`tickets ticket list --repo Unity.Chain`).
 
 ## Build and test
@@ -156,13 +158,19 @@ and automation").
 | F12 | | the settings screen (frmConfig: windowed / fullscreen, resolution, music / sfx / ambient volume; Submit saves to the profile), pausing while open |
 | E | | hit boxes (Zone.vb's overlay) on / off; on from the start |
 | B / N | | beach / utopia background |
+| Insert / Delete | | chain resistance up / down |
+| Home / End | | chain gravity down / up |
+| Page Up / Page Down | | chain spring up / down |
+| Minus / Equals | | game speed down / up (held) |
+| Numpad + Enter, 4 6, 8 2, X, Z | | debug camera: forward / back, left / right, up / down, isometric / not |
+| ` (grave) | | the scripter console: type a script, Enter runs it, Escape closes it |
 
 The bindings live in one `InputActionAsset` built in code (`Runtime/Input/ChainControls`); the stick's speed and
 dead zone are in `input.json`.
 
-The original's other keys (live spring, drag and gravity tuning, game speed,
-debug views, the script console) are listed with their tickets in
-[docs/RECONSTRUCTION.md §3.5](docs/RECONSTRUCTION.md).
+Every key of the original is listed with its ticket in
+[docs/RECONSTRUCTION.md §3.5](docs/RECONSTRUCTION.md); the ones with no effect in the original (the arrow keys,
+the right and wheel buttons) are recorded there as dead.
 
 ## Project layout
 
@@ -175,16 +183,18 @@ Assets/
     Core/                          Unity.Chain.Core asmdef (no engine): the GameWorld and every rule
       World/  Chain/  Player/  Enemies/  Grapple/  Game/  Level/  Audio/  Maths/  Settings/
     Runtime/                       Unity.Chain.Runtime asmdef: the authority, input and presentation
-      Chain/  Player/  Enemies/  Grapple/  Items/  Level/  UI/  Audio/
+      Chain/  Player/  Enemies/  Grapple/  Items/  Level/  UI/  Audio/  Input/  Lighting/  Rendering/  Settings/  Demo/
     Editor/                        Unity.Chain.Editor asmdef: SceneBuilder, PlayerBuilder
     Tests/EditMode/                NUnit edit-mode tests (Unity Test Framework)
-    Tests/PlayMode/                the main-scene smoke test
+    Tests/Online/                  the online play tests
+    Tests/PlayMode/                the main-scene smoke test, the splash test and the scripted playthrough
     Materials/
 docs/
   BIBLE.md                         design rules, architecture, data, fixed defects and deviations
   RECONSTRUCTION.md                the original reverse-engineered in full, parity audit, build order
   chain-physics.md                 the spring algorithm and its tuning
   USER_STORIES.md                  generated from the ticket database
+  demo/                            screenshots and a clip of the scripted run (RECONSTRUCTION §7)
 ```
 
 The target architecture (an engine-free Core assembly under Runtime, with its own `dotnet test` project) is in

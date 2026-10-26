@@ -4,7 +4,7 @@ project: Unity.Chain
 code: UNI
 layer: reconstruction
 status: living
-updated: 2026-10-23
+updated: 2026-10-25
 ---
 
 # Unity.Chain: reconstruction of the original (REA) and parity audit
@@ -73,7 +73,7 @@ but unreachable or does nothing; not ported, recorded here), **n/a** (DirectX pl
 | Mace | link index `Mace` (6; keys `[` / `]` 1..12), drawn at 3.5x scale, hit rectangle `rectMace`; `texMace`, `texMaceGrapple` while the button is held | `MaceController`, ball visual (art UNI-T19); grapple swap to `maceSkins.files.grapple` (mace2.png) while `Grapple.IsArmed`, reverting to the current mode's skin on release | ported, grapple swap fixed (U.CHN-T72; claimed but unported since UNI-T19, found by UNI-T43) |
 | Overhead boost | spring.Y doubled when pulling up and above `link(0).Y - linkSize` | `ChainController` 2x boost | ported |
 | Drift hacks | `link(Mace).X/Y += maceOffset` every frame (cumulative); `link(1).Y -= 0.0004` per frame | `MaceOffsetPerSecond` and `Link1DropPerSecond` (chain.json's `maceOffset` and `link1DropPerFrame`, mapped to world units a second): zero in the bare `Settings.Default` (render-only, no fudge term), but chain.json maps the original's own figures onto them so the shipped game carries both drifts | settled, shipped default matches (U.CHN-T45, BIBLE D8) |
-| Wall bounce | commented out | `LevelBounds` bounce 0.5 | deliberate deviation, kept for now (BIBLE V4; U.CHN-T45's audit did not cover containment) |
+| Wall bounce | commented out | `LevelBounds` bounce 0.5 | deliberate deviation, kept (BIBLE V4): the original's bounce is commented out, the rebuild keeps the mace on screen with `LevelBounds`; `keepInLevel` turns it off |
 | `followMouse` (F key) | starts `True`, never reset; when false `animateChain` leaves every spring force zero (gravity and drag still act, so the chain falls away from the hand) and `renderChain` skips the mace's 3.5x scale, offset and `rectMace`, which is left where it last was | `ChainSimulation.IsFollowing`, `ChainFollow` (Core: `ToggleFollowCommand` with a player id -> `FollowChangedEvent`, the 3.5x and 1x mace scales), F action on `ChainController`; off, the mace draws at link size and neither hits nor catches (BIBLE D17) | ported, UNI-T47 |
 | Live tuning | Ins/Del resistance +/-0.001, Home/End gravity -/+0.00001, PgUp/PgDn spring +/-0.001 (`changeResistance`, `changeGravity` on `gravity.Y`, `changeSpring` just add, no limits; works paused), `changeBounce` unused | Core `TuneChain` command (player id, `ChainKnob`, steps) -> `ChainTuned` event, `ChainTuning` (chain.json's `tuning`: the steps and the port's limits, BIBLE V19), the Player map's six actions through `SeatInput` and `ChainController.Tune`; the HUD's Res/Grav/Spring readout follows; `GameWorld.Reset` restores the data files' figures | ported, UNI-T51 |
 | Link skins | `loadChain` gives every link `texChain` (link.png); U key sets `link(1)`..`link(5).texture` to aqua, emerald, teardrop, tablet, pearl (16x16, magenta-keyed); nothing sets them back | Core `SkinLinks` command (player id) -> `LinksSkinned`, `PlayerEntity.HasGemSkins` / `LinkSkin` from chain.json's `skins` (`LinkSkins`, `LinkSkinData`), drawn by `LinkSkinView` over the line one link wide; the mace link stays the mace (BIBLE V25); works paused, no reset touches it | ported, UNI-T41 |
@@ -97,7 +97,7 @@ but unreachable or does nothing; not ported, recorded here), **n/a** (DirectX pl
 
 | Behaviour | Original | Rebuild | Status / ticket |
 |---|---|---|---|
-| Count and spawn | 14 (`maxEnemy` 13). `getRndNum(-1, 1)` returns the integers -1, 0 or 1 and 0 is rejected, so every enemy spawns at one of the four corners (+/-1, +/-1) | no spawner | missing, UNI-T21 |
+| Count and spawn | 14 (`maxEnemy` 13). `getRndNum(-1, 1)` returns the integers -1, 0 or 1 and 0 is rejected, so every enemy spawns at one of the four corners (+/-1, +/-1) | `GameWorld.SpawnWave` and `Reset` spawn 14 enemies (`enemies.json`'s count); the four-corner spawn is the fixed defect D1, real random points instead | ported (UNI-T21, D1 via UNI-T48; Core.Tests `GameWorldTests.SpawnWave_PutsTheConfiguredCountInTheArena_WithMassInRange`, EditMode `EnemySpawnerTests.Reset_SpawnsFourteen_AndAnotherResetReplacesThem`) |
 | Start values | `loadEnemy`: HP 0.2, mass 1 + rand(0..1), random frame 0..6. `Reset`: HP 1.0, mass unchanged | `GameWorld.SpawnWave`'s very first wave spawns at `enemies.json`'s `loadHP` (0.2, `EnemySetup.LoadHp`), every wave after it at `resetHP` (1.0, `EnemySetup.Hp`); mass and frame as `GameWorld.SpawnEnemy` already drew them (UNI-T21, initial `EnemyBrain.Frame` UNI-T19) | ported (UNI-T70) |
 | Seek | `d = (angel - offset - pos) * 0.006` (proportional, so it eases in) | `EnemyBrain` | ported |
 | Hurt | decays velocity by `resistSPD` 0.001 per axis, back to Seek when both are near zero | `EnemyBrain` | ported |
@@ -163,7 +163,7 @@ Every binding of the original, with its state:
 | Status box | `status_box.png` (99x46, magenta keyed) loaded at 96x46 and drawn on a 96x48 quad at (`statOffsetX`, `statOffsetY`) = (0, 0), its v from 2/48 (the top two rows, all keyed, never show) | ported (UNI-T50): `Resources/UI/status_box.png`, keyed to alpha, top two rows cropped, point-filtered, drawn 96x48 under the HUD text |
 | Menu | `renderMenu`, while `bMenu` (Tab) and not paused: `menu.jpg` (256x256, a dark blue panel) on a 255x255 quad at (10, 10), its v from 2/255 (`loadMenu`), then `Write` in `fontMenu` with 255, 255, 255, 64 at (20, 20) `IIf(bRenderWireframe, "F1 - Turn to Solid", "F1 - Turn to Wireframe")`, (20, 40) `IIf(bRenderTextures, "F2 - Use Shaded", "F2 - Use Textured")`, (20, 60) `IIf(bBackFaceCulling, "F3 - Enable Culling", "F3 - Disable Culling")` (the wrong way round, BIBLE D22), (20, 80) `IIf(bDrawFPS, "F4 - Hide FPS", "F4 - Show FPS")`, (20, 100) `"F12 - Configure Video "`, (20, 240) `"ESC - Quit "`; the lines are never drawn in the final source (D3). The keys are Form1.vb's own (the menu only lists them); `Reset` sets `bMenu = False` | ported (UNI-T55): `GameHud`'s `hud-menu` panel over the HUD layers from `hud.json`'s `menu`, `Resources/UI/menu.png` (menu.jpg with its top two rows cropped), each line `GameMenu.Line` of the screen's `ViewOptions`; Tab (`ToggleMenu`), F1-F4 flip the flags, F12 flips the window mode (V21), ESC is the seat's Quit (`QuitGame`, UNI-T54); every reset closes it and puts the flags back |
 | Pause | stops everything; draws only the background and `- PAUSE -` (`fontPause`, Arial Narrow 24, at 512 / 2, 448 / 2, half see-through `colorReticle` red), none of the HUD | ported (Pause key or P, UNI-T54); the world stops (`Time.timeScale` 0) and, as in the original, the music plays on: `playMusic` is only skipped, and DirectShow's `Audio` keeps playing what it started; the HUD hides its status layer and FPS while paused and shows the red banner centred (UNI-T50) |
-| Game over | HP < 0: fade the ambient light 5 per frame, then `Reset` with no click | missing, UNI-T28 |
+| Game over | HP < 0: fade the ambient light 5 per frame, then `Reset` with no click | ported (UNI-T28): `GameState`'s fade of 5 a frame, then the one `GameWorld.Reset`, no click; EditMode `LevelAndHudTests.GameOver_FadesFiveAFrame_ThenResetsItself`, `Session_GameOver_RestartsWithoutAClick` |
 | `Reset` | score, timer, fade, ambient, speed, flags, camera, spring/bounce/resistance/gravity, angel HP and position, all enemies (HP 1.0, Seek, corners), the heart, music start | ported, UNI-T48: one `GameWorld.Reset` for R and game over restores score, `RoundTime`, the fade, game speed (`game.json`), pause, the chain's spring/resistance/gravity, angel HP 30 and home, a fresh wave (HP 1.0, Seek, real random points, BIBLE D1) and the world's hearts (y 0.4, sway left, `floatSPD` 0.001; `turnAround` kept); its `WorldReset` recentres the camera, jumps the music (`rndMusicPos`) and turns lighting on (the time of day runs on, the stray `b = True` is not ported, BIBLE D16). The render flags wait on their own tickets; `Bounce` is only read by commented-out code (BIBLE V15) |
 | `renderTime`, `renderDate`, `levelText` | never called, or only move a matrix (no text drawn) | dead |
 | `Score` | += damage * 1000 | ported |
@@ -188,9 +188,9 @@ Every binding of the original, with its state:
 DirectSound `SecondaryBuffer`s are loaded for `sword_swing_1..7`, `sword_hit_1..3`, `defend`, `footstep_1..2`,
 `death_1..4` (11 copies each) and `music\music.wma` plays through `AudioVideoPlayback` with a random start
 (`rndMusicPos`, at init and on `Reset`). `playSFX` is **never called**, and `bSound` and `bMusic` both default to
-`False`, so the shipped game is silent. Volumes: music 0, sfx -1000, ambient -1500 (unused). The rebuild already
-plays swing, hit, death, catch and throw sounds and loops music (more than the original), with no clips shipped:
-UNI-T20. `defend` and `footstep` are unused in both. Volumes and mutes are the shared profile's since UNI-T36, with these as the stock ones; frmConfig's options screen (UNI-T59) sets them, and the ambient volume in Chain's own `game.ambientVolume`.
+`False`, so the shipped game is silent. Volumes: music 0, sfx -1000, ambient -1500 (unused). The rebuild
+plays swing, hit, death, catch and throw sounds and loops music (more than the original) from the original's own clips
+(15 WAVs plus `music.ogg`, converted from the WMA; `throw.wav` is the one new clip, U.CHN-T71): UNI-T20. `defend` and `footstep` are unused in both. Volumes and mutes are the shared profile's since UNI-T36, with these as the stock ones; frmConfig's options screen (UNI-T59) sets them, and the ambient volume in Chain's own `game.ambientVolume`.
 
 ### 3.9 Script language (`Script.vb`)
 
@@ -243,22 +243,22 @@ Checked against `AGENTS.md` (the owner's rebuild standard) and the reference rep
 
 | Area | Finding | Ticket |
 |---|---|---|
-| Assembly definitions | Three asmdefs exist (Runtime, Editor, EditMode tests) plus PlayMode; the whole game, rules included, is one Runtime assembly with engine references. No Core. | UNI-T30 |
-| Engine-free Core | Absent. `ChainSimulation`, `AngelFlight`, `EnemyBrain`, `GameState` are mostly pure but sit in Runtime and use `UnityEngine` types | UNI-T30 |
+| Assembly definitions | Done: Core (`noEngineReferences`), Runtime, Editor, EditMode, PlayMode and the online tests are separate asmdefs with one-way references (BIBLE §5) | UNI-T30, done |
+| Engine-free Core | Done: `ChainSimulation`, `AngelFlight`, `EnemyBrain`, `GameState` and every rule live in `Unity.Chain.Core` | UNI-T30, done |
 | Tests outside Unity | Done: `Tests/Core.Tests`, run by `run-core-tests.ps1` | UNI-T31 |
 | Commands and events | Done: one `GameWorld` in Core, stepped only by `GameSession`; players send `GameCommand`s with a `PlayerId`, presentation plays `GameEvent`s (BIBLE §5.3) | UNI-T32 |
 | Data-driven content | Done: JSON data files in `StreamingAssets/Settings` holding the original's figures, validated on load and read by Core's `GameSettings` through `ISettingsSource`, one mapping (`space.json`) to the port's units (BIBLE §6) | UNI-T33 |
 | Input System | Done: one `InputActionAsset` built in code (`ChainControls`), keyboard, mouse and gamepad bindings, read per seat by `SeatInput` into that seat's commands; nothing polls `Keyboard.current` or `Mouse.current` | UNI-T34 |
 | URP | Done: a URP pipeline with the 2D renderer (`Assets/Unity.Chain/Rendering`, built by `Editor/RenderPipelineBuilder`) is assigned in GraphicsSettings and every quality level beside the committed global settings and volume profile; a headless import leaves them unchanged | UNI-T18 |
 | Unity.Shared profiles and settings | Done: `com.mindattic.unity.shared` referenced; volumes, mutes and reduce motion in the profile's common block, resolution, window mode and tuning overrides in its game block, through Core's `IPreferencesStore`; music and SFX play at the profile's volumes (BIBLE §6) | UNI-T36 |
-| UI | `GameHud` is IMGUI (`OnGUI`), not UI Toolkit or the shared components | UNI-T37 |
+| UI | Done: `GameHud` is a UI Toolkit tree laid out from `hud.json` (UNI-T50 onward); no IMGUI remains | UNI-T37, done |
 | Project settings | Done: 640x480 windowed default titled `Unity.Chain` (`productName`, replacing the original's unfinished `*** UNDER DEVELOPMENT ***`), snapped back to 4:3 once a border drag settles and left alone while maximized (`WindowAspectLock`/`WindowAspectLockBehaviour`; BIBLE V12), the Standalone icon from `battle.ico`, a global cursor policy (`CursorPolicy`: hidden and confined from the first frame; BIBLE V18), `applicationIdentifier` (`com.mindattic.unitychain`), company/product name and version set, all applied in code (`Editor/ProjectSettingsBuilder.cs`) | UNI-T38 |
-| Build, test and deploy scripts | None (`build.bat`, `test.bat`, `deploy.bat` exist in the reference repos) | UNI-T39 |
+| Build, test and deploy scripts | Done: `build.bat`, `test.bat`, `deploy.bat`, `play.bat` over `tools/*.ps1`, plus `run-core-tests.ps1` | UNI-T39, done |
 | README | Rewritten: status, layout, build and test (UNI-T29) | done |
 | BIBLE | `docs/BIBLE.md` written: rules, architecture, data, fixed defects, deviations (UNI-T29) | done |
 | Built in code | `SceneBuilder`/`PlayerBuilder` generate the scene (good); keep it that way | ok |
-| Multiplayer seam | Not started | UNI-T26 |
-| Asset and meta hygiene | `.meta` files committed (UNI-T17); art imported and wired (UNI-T19); audio absent | UNI-T20 |
+| Multiplayer seam | Done: the Unity.Multiplayer kit, `ChainPlayer`, `Core/Net` snapshots, a client drawing the authority's world (BIBLE §5.4, V26) | UNI-T26, UNI-T73, done |
+| Asset and meta hygiene | Done: `.meta` files committed (UNI-T17); art imported and wired (UNI-T19); audio imported (UNI-T20) | done |
 
 ## 6. Build order
 
@@ -309,7 +309,7 @@ than refiled. Every row has its own story.
 | 39 | UNI-T61 | UNI-US-C2 | scripter console and its key handling |
 | 40 | UNI-T26 | UNI-US-V1 | Unity.Multiplayer kit scaffolding |
 | 41 | UNI-T62 | UNI-US-V2 | built player played by a scripted run, captured |
-| 42 | UNI-T63 | UNI-US-V3 | final parity pass; every story done; repo finished |
+| 42 | U.CHN-T63 | U.CHN-US-V3 | final parity pass; every story done; repo finished (section 8) |
 
 Rows 20 and 22 were filed by the owner's standard sweep (UNI-T35, UNI-T44) after the first flocking and
 heart versions guessed values; they are slotted straight after the tickets they correct. UNI-T24's note in
@@ -347,3 +347,34 @@ onto the closed ticket that built each beat (`tickets ticket link U.CHN-T62 rela
 | 13 | Scripter command | `docs/demo/13-scripter-command.png` | U.CHN-T61 |
 | 14 | F12 settings screen | `docs/demo/14-settings-screen.png` | U.CHN-T59 |
 | - | Kill-and-hit highlight clip | `docs/demo/highlight.mp4` | U.CHN-T8, U.CHN-T32 |
+
+Known limits of this capture (recorded by U.CHN-T63, not hidden):
+
+- The screenshots and the clip were taken before U.CHN-T62's own review fixes (the grapple beat asserting a real catch,
+  the kill beat asserting the spawned enemy died, the hit enemies cleared before the heart beat), so they show the same
+  path but not the corrected run. `ScriptedPlaythroughTests` asserts the corrected path on every test run.
+- Stop 01's timing was left as it was: the loading picture shot is taken on a fixed delay, not on a signal from the
+  splash, so it can land after the picture has already gone.
+- The media were committed as plain files: the repo has no `.gitattributes`, so no LFS (about 8.8 MB in `docs/demo`).
+- Re-running the capture after the rebase failed only because the host dipped below MindAttic.Capture's 2 GB free-RAM
+  floor, not because of the game. U.CHN-T63's own pass ran with about 1 GB free and other Editors open, so it did not
+  re-capture either: refreshing the media is the follow-up ticket U.CHN-T75, and it does not change any
+  row's status below.
+
+## 8. Final parity pass (U.CHN-T63)
+
+Every row of sections 3.1 to 3.10 was read against the code on main and the tests that cover it, and each ends in
+one of four states. Nothing is **missing** and nothing is **partial**.
+
+| State | Rows | Where the evidence is |
+|---|---|---|
+| Ported | every Chain, Angel, Enemy, Item, Input, Game rules, Lighting and Script row, including the two that were stale (Count and spawn, Game over) | the ticket in each row's last column, whose Ref names its test or commit; the whole path is also asserted end to end by `ScriptedPlaythroughTests` (U.CHN-T62) |
+| Fixed defect | the rows the original's source breaks (magnet unreachable, no HUD text, silent game, never-applied game speed, joystick, the shake key, FPS, zones, F2/F3, frmConfig, script LIGHT and arithmetic, and the rest) | BIBLE §7, D1 to D33, each `fixed` or `settled` |
+| Deliberate deviation | contact rectangles as physics circles, the orthographic camera fit, wall bounce, the window frame and title, music as OGG, online play, the added catch and throw sounds | BIBLE §8, V1 to V26, each `kept` or `matches` |
+| Dead | `angelAI.Hurt`; the `Retreat`, `Wander`, `Limbo`, `Death` AI states; right and wheel mouse buttons; the arrow keys and `btnAttack`..`btnDashRight`; `ExtraLife`, `Health5`, `Health20`, `Money`, the `Center` and `Wander` motions; `renderTime`, `renderDate`, `levelText`; `SetupLights`; `Terrains`; the nine cursors; `bRicochet`; `Make`; `Character` | recorded in BIBLE §7's "Not restored, on purpose": each has no body, no caller or no key, and restoring it would invent behaviour |
+
+Stale rows corrected by this pass: 3.3 Count and spawn (was `missing, UNI-T21`), 3.6 Game over (was `missing,
+UNI-T28`), 3.1 Wall bounce (was `kept for now`), 3.8 Sound (said no clips shipped) and five rows of section 5 (Core,
+asmdefs, UI, scripts, multiplayer, assets). Sections 5 and 6 are now all done: all 42 build-order rows have their ticket closed.
+Every user story is `done`, each citing the test of the ticket that implements it (see USER_STORIES.md, generated
+from the ticket database).
