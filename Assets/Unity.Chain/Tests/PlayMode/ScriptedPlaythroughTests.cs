@@ -72,9 +72,8 @@ namespace MindAttic.Chain.Tests
             Assert.IsFalse(grapple.IsArmed, "releasing the button did not disarm the grapple");
 
             // A kill: a one-hit-point enemy put right in the mace's path.
-            var beforeKill = session.World.Enemies.Count;
-            PlaythroughActions.KillAnEnemyWithTheMace(session, chain, mace, 0.02f);
-            Assert.LessOrEqual(session.World.Enemies.Count, beforeKill, "the mace did not kill the enemy put in its way");
+            var victim = PlaythroughActions.KillAnEnemyWithTheMace(session, chain, mace, 0.02f);
+            Assert.IsFalse(victim.IsAlive, "the mace did not kill the enemy put in its way");
 
             // A couple of hits: real HP loss, not a game over.
             var hpBeforeHits = session.State.Hp;

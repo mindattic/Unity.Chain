@@ -48,24 +48,25 @@ namespace MindAttic.Chain
         /// </summary>
         public static EnemyEntity GrappleCatchAndThrow(GameSession session, ChainController chain, GrappleController grapple, MaceController mace, float stepSeconds)
         {
-            var target = SpawnEnemyAt(session, chain.GetLinkPosition(mace.MaceIndex), hp: 999f);
+            SpawnEnemyAt(session, chain.GetLinkPosition(mace.MaceIndex), hp: 999f);
             grapple.SetButtonHeld(true);
             session.Step(stepSeconds);
             var caught = grapple.HeldEnemy;
             session.Step(stepSeconds);
             grapple.SetButtonHeld(false);
             session.Step(stepSeconds);
-            return caught ?? target;
+            return caught;
         }
 
         /// <summary>
         /// Puts a one-hit-point enemy exactly where the mace already is, mid-swing: the very next step's sweep
-        /// hits and kills it for real (<c>GameWorld</c>'s mace step), rather than killing it directly.
+        /// hits and kills it for real (<c>GameWorld</c>'s mace step), rather than killing it directly. Returns that enemy.
         /// </summary>
-        public static void KillAnEnemyWithTheMace(GameSession session, ChainController chain, MaceController mace, float stepSeconds)
+        public static EnemyEntity KillAnEnemyWithTheMace(GameSession session, ChainController chain, MaceController mace, float stepSeconds)
         {
-            SpawnEnemyAt(session, chain.GetLinkPosition(mace.MaceIndex), hp: 0.01f);
+            var enemy = SpawnEnemyAt(session, chain.GetLinkPosition(mace.MaceIndex), hp: 0.01f);
             session.Step(stepSeconds);
+            return enemy;
         }
 
         /// <summary>

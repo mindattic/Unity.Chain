@@ -21,6 +21,10 @@ namespace MindAttic.Chain
     {
         private const float StepPause = 0.3f;
 
+        // Set by anything that went wrong; the run then quits with exit code 1 so a script can gate on it.
+        private static bool _failed;
+        private System.Threading.Tasks.Task<MindAttic.Capture.CaptureResult> _clip;
+
         private IEnumerator Start()
         {
             var session = FindAnyObjectByType<GameSession>();
@@ -35,7 +39,7 @@ namespace MindAttic.Chain
             if (session == null || angel == null || chain == null || mace == null || grapple == null || hud == null)
             {
                 Debug.LogError("[Unity.Chain] ScriptedPlaythrough: Main is missing a piece it needs; the run stops here.");
-                Application.Quit();
+                Application.Quit(1);
                 yield break;
             }
 
@@ -53,6 +57,7 @@ namespace MindAttic.Chain
                 if (!capturing)
                 {
                     Debug.LogError("[Unity.Chain] MindAttic.Capture did not start; the run will not be captured.");
+                    _failed = true;
                 }
             }
 
@@ -92,7 +97,7 @@ namespace MindAttic.Chain
             // highlight clip (a fire-and-forget ClipAsync -- it exports on its own while the tour moves on).
             if (capturing)
             {
-                _ = CaptureUnity.Engine.ClipAsync(System.TimeSpan.FromSeconds(6f), "highlight");
+                _clip = CaptureUnity.Engine.ClipAsync(System.TimeSpan.FromSeconds(6f), "highlight");
             }
 
             // A kill: a one-hit-point enemy put right where the mace already is, mid-swing.
@@ -106,6 +111,9 @@ namespace MindAttic.Chain
             PlaythroughActions.SpawnEnemyAt(session, angel.transform.position, 999f);
             yield return new WaitForSeconds(0.3f);
             yield return Shot(capturing, "07-take-hits");
+
+            // Take the 999-HP enemies off the angel so they cannot end the round before the heart beat.
+            session.World.ClearEnemies();
 
             // A heart: teleport the angel onto it (PlaythroughActions.HeartTeleportTarget), same spot
             // GameWorld.CheckHearts (the next automatic step) finds them touching.
@@ -170,12 +178,28 @@ namespace MindAttic.Chain
             hud.CloseConfig();
             yield return null;
 
+            if (_clip != null)
+            {
+                var wait = 0f;
+                while (!_clip.IsCompleted && wait < 30f)
+                {
+                    wait += Time.unscaledDeltaTime;
+                    yield return null;
+                }
+
+                if (!_clip.IsCompleted || !_clip.Result.Succeeded)
+                {
+                    Debug.LogError("[Unity.Chain] The highlight clip did not export.");
+                    _failed = true;
+                }
+            }
+
             if (capturing)
             {
                 Debug.Log("[Unity.Chain] ScriptedPlaythrough captured to " + CaptureUnity.Engine.SessionFolder);
             }
 
-            Application.Quit();
+            Application.Quit(_failed ? 1 : 0);
         }
 
         private static IEnumerator Shot(bool capturing, string name)
@@ -199,6 +223,7 @@ namespace MindAttic.Chain
             else
             {
                 Debug.LogError("[Unity.Chain] Screenshot " + name + " failed: " + result.Error);
+                _failed = true;
             }
         }
     }
