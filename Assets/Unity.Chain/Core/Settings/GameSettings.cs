@@ -477,7 +477,8 @@ namespace MindAttic.Chain.Core
                 throwMultiplier: port.Number("throwMultiplier", 0f),
                 pullBothNeighbors: port.Flag("pullBothNeighbors"),
                 simulateAllLinks: port.Flag("simulateAllLinks"),
-                maceDamageFormula: port.Choice<MaceDamageFormula>("maceDamageFormula"));
+                maceDamageFormula: port.Choice<MaceDamageFormula>("maceDamageFormula"),
+                chainLine: port.Flag("chainLine"));
             port.Done();
             return data;
         }
@@ -525,8 +526,9 @@ namespace MindAttic.Chain.Core
     /// <summary>chain.json's port-only figures, world units and seconds.</summary>
     public readonly struct ChainPort
     {
-        public ChainPort(bool keepInArena, float wallBounce, float hitRadius, float damagePerSpeed, float catchRadius, float throwMultiplier, bool pullBothNeighbors, bool simulateAllLinks, MaceDamageFormula maceDamageFormula)
+        public ChainPort(bool keepInArena, float wallBounce, float hitRadius, float damagePerSpeed, float catchRadius, float throwMultiplier, bool pullBothNeighbors, bool simulateAllLinks, MaceDamageFormula maceDamageFormula, bool chainLine = false)
         {
+            ChainLine = chainLine;
             KeepInArena = keepInArena;
             WallBounce = wallBounce;
             HitRadius = hitRadius;
@@ -538,6 +540,11 @@ namespace MindAttic.Chain.Core
             MaceDamageFormula = maceDamageFormula;
         }
 
+        /// <summary>
+        /// False (the default): every link is drawn as link.png on its linkSize quad, as Chain.vb's renderChain does.
+        /// True: the port's earlier tiled line through the links (U.CHN-T94).
+        /// </summary>
+        public bool ChainLine { get; }
         /// <summary>Links bounce off the arena (V4; Chain.vb's checkBounds is commented out).</summary>
         public bool KeepInArena { get; }
         public float WallBounce { get; }

@@ -190,6 +190,15 @@ namespace MindAttic.Chain.Tests
         }
 
         [Test]
+        public void Shipped_LinksAreDrawnAsRenderChainsLinkPng_TheLineAnOption()
+        {
+            // U.CHN-T94: chain.json chainLine is off, so every link is drawn on its own quad.
+            Assert.IsFalse(Load().Chain.Port.ChainLine);
+            var line = GameSettings.Load(Patched(GameSettings.ChainFile, text => text.Replace("\"chainLine\": false", "\"chainLine\": true")));
+            Assert.IsTrue(line.Chain.Port.ChainLine);
+        }
+
+        [Test]
         public void ChainWallBounce_StaysReachableAsAnOption()
         {
             var settings = GameSettings.Load(Patched(GameSettings.ChainFile, text => text.Replace("\"keepInArena\": false", "\"keepInArena\": true")));

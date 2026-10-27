@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace MindAttic.Chain.Tests
 {
-    /// <summary>UNI-T41: the U key's gem link skins as drawn, over the line, the mace left alone.</summary>
+    /// <summary>UNI-T41 and U.CHN-T94: every link drawn as renderChain draws it (link.png, or the U key's gems), the mace left alone.</summary>
     public class LinkSkinViewTests
     {
         private static readonly string[] Names = { "link", "aqua", "emerald", "teardrop", "tablet", "pearl" };
@@ -44,14 +44,30 @@ namespace MindAttic.Chain.Tests
         private bool SkinLinks() => _rig.Session.Submit(new SkinLinks(_rig.Id));
 
         [Test]
-        public void BeforeU_TheLineDrawsEveryLink()
+        public void BeforeU_EveryLinkUpToTheMace_IsLinkPng_AndTheLineIsHidden()
         {
             Render();
 
-            for (var i = 0; i <= _rig.Player.MaceIndex; i++)
+            Assert.IsTrue(_view.DrawsPlainLinks, "chain.json chainLine is off: renderChain's link.png on every link");
+            for (var i = 0; i < _rig.Player.MaceIndex; i++)
             {
-                Assert.IsNull(_view.RendererFor(i), $"link {i}");
+                Assert.AreSame(_sprites[0], _view.RendererFor(i)?.sprite, $"link {i}");
             }
+
+            Assert.IsNull(_view.RendererFor(_rig.Player.MaceIndex), "the mace's link is the mace");
+            Assert.IsFalse(_rig.Chain.GetComponent<LineRenderer>().enabled, "the line is not drawn");
+        }
+
+        [Test]
+        public void TheChainLineOption_DrawsThePlainLinks_AndOnlyTheGemsAreSprites()
+        {
+            _view.DrawsPlainLinks = false;
+            SkinLinks();
+            Render();
+
+            Assert.IsNull(_view.RendererFor(0), "the line draws link 0");
+            Assert.AreSame(_sprites[1], _view.RendererFor(1).sprite);
+            Assert.IsTrue(_rig.Chain.GetComponent<LineRenderer>().enabled);
         }
 
         [Test]
@@ -60,7 +76,7 @@ namespace MindAttic.Chain.Tests
             Assert.IsTrue(SkinLinks());
             Render();
 
-            Assert.IsNull(_view.RendererFor(0), "the anchor keeps link.png (the line)");
+            Assert.AreSame(_sprites[0], _view.RendererFor(0).sprite, "the anchor keeps link.png");
             var width = _view.LinkWidth;
             for (var i = 1; i <= 5; i++)
             {
