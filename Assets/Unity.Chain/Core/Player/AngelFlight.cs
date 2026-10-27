@@ -15,9 +15,10 @@ namespace MindAttic.Chain.Core
     /// input and applies the result to a Transform and SpriteRenderer.
     ///
     /// Differences from the original, on purpose:
-    /// - Everything is <c>dt</c>-scaled (hover and flap rates are per-second, not per-frame).
+    /// - Everything is <c>dt</c>-scaled (hover and flap rates are per-second, not per-frame). The hover bob is
+    ///   Angel.vb's triangle ping-pong (0 up to +hoverMax, down to -hoverMax and back, hoverRate a frame),
+    ///   timed so each 60 fps step lands on the original's per-frame value (U.CHN-T85).
     /// - Mouse Y is not inverted: DirectInput reported Y-down deltas, the Input System reports Y-up.
-    /// - The hover bob is a smooth sine instead of the original's per-frame triangle ping-pong.
     /// - The bob is a render offset only: it never feeds back into <see cref="Position"/>, and
     ///   the bounds clamp applies to the flight position, matching Angel.vb (angelOffset was
     ///   added at draw time, after checkBounds).
@@ -126,7 +127,7 @@ namespace MindAttic.Chain.Core
             if (Config.HoverPeriod > 0f)
             {
                 _hoverTime = (_hoverTime + deltaTime) % Config.HoverPeriod;
-                HoverOffset = Config.HoverAmplitude * Calc.Sin(_hoverTime / Config.HoverPeriod * 2f * Calc.PI);
+                HoverOffset = Config.HoverAmplitude * Triangle(_hoverTime / Config.HoverPeriod);
             }
             else
             {
@@ -146,6 +147,21 @@ namespace MindAttic.Chain.Core
             {
                 Frame = 0;
             }
+        }
+
+        /// <summary>
+        /// Angel.vb's hover: from 0 it climbs to 1 at a quarter of the cycle, falls to -1 at three quarters and
+        /// climbs back to 0, in straight lines (hoverCount += / -= hoverRate a frame between -hoverMax and hoverMax).
+        /// </summary>
+        public static float Triangle(float phase)
+        {
+            phase -= (float)System.Math.Floor(phase);
+            if (phase < 0.25f)
+            {
+                return 4f * phase;
+            }
+
+            return phase < 0.75f ? 2f - 4f * phase : 4f * phase - 4f;
         }
 
         private Vec2 Clamp(Vec2 p)

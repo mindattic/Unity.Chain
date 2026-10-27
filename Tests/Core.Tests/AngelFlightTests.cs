@@ -96,6 +96,24 @@ namespace MindAttic.Chain.Tests
         }
 
         [Test]
+        public void HoverBob_IsAngelVbsTriangle_OneHoverRateAFrame()
+        {
+            // Angel.vb at the shipped figures: hoverMax 0.01, hoverRate 0.001 a frame, so a 40-frame cycle.
+            var settings = new AngelFlight.Settings(1f, new Rect2(-10f, -10f, 20f, 20f), 0.01f, 40f / 60f, 0.1f, 4, Vec2.Zero);
+            var angel = new AngelFlight(Vec2.Zero, settings);
+            var expected = new[] { 0.001f, 0.002f, 0.003f, 0.004f, 0.005f, 0.006f, 0.007f, 0.008f, 0.009f, 0.010f,
+                0.009f, 0.008f, 0.007f, 0.006f, 0.005f, 0.004f, 0.003f, 0.002f, 0.001f, 0f,
+                -0.001f, -0.002f, -0.003f, -0.004f, -0.005f, -0.006f, -0.007f, -0.008f, -0.009f, -0.010f,
+                -0.009f, -0.008f, -0.007f, -0.006f, -0.005f, -0.004f, -0.003f, -0.002f, -0.001f, 0f, 0.001f };
+
+            for (var frame = 0; frame < expected.Length; frame++)
+            {
+                angel.Step(Vec2.Zero, 1f / 60f);
+                Assert.AreEqual(expected[frame], angel.HoverOffset, 1e-5f, $"frame {frame + 1}");
+            }
+        }
+
+        [Test]
         public void HoverBob_DoesNotPushRenderPositionPastClampedFlightPosition()
         {
             var angel = new AngelFlight(Vec2.Zero, Flat(0.1f));
