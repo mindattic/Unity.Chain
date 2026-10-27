@@ -64,6 +64,17 @@ namespace MindAttic.Chain.Tests
         }
 
         [Test]
+        public void HudJson_PortExtras_AreOffByDefault_AsTheOriginalDrawsNone()
+        {
+            // BIBLE V9, U.CHN-T79: no dim behind the pause banner, no game-over banner, no text shadow.
+            var port = Load().Hud.Port;
+
+            Assert.AreEqual(0f, port.PauseDim);
+            Assert.IsFalse(port.GameOverBanner);
+            Assert.IsFalse(port.TextShadow);
+        }
+
+        [Test]
         public void HudJson_RejectsABadColour_NamingTheKey()
         {
             var source = new MemorySettingsSource(Shipped).Set(

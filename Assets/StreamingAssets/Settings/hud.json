@@ -73,9 +73,10 @@
     }
   },
   "port": {
-    "_about": "Not in the original: the dim behind the pause banner, the game-over banner over the fade, and a thin drop shadow under the HUD text.",
-    "pauseDim": 0.45,
+    "_about": "Not in the original, so all off by default (U.CHN-T79, BIBLE V9) and kept only as data options: pauseDim darkens the scene behind the pause banner (0 none; the port had 0.45), gameOverBanner writes a banner (styled by gameOver) over the fade, and textShadow puts a thin drop shadow under the HUD text.",
+    "pauseDim": 0,
+    "gameOverBanner": false,
     "gameOver": { "anchor": "Center", "position": [0, 0], "colour": [255, 255, 255, 255], "fontSize": 24, "bold": true },
-    "textShadow": true
+    "textShadow": false
   }
 }

@@ -896,7 +896,7 @@ namespace MindAttic.Chain.Tests
             _rig.Step();
             hud.Refresh();
 
-            Assert.AreEqual(HudText.GameOver, hud.BannerText);
+            Assert.IsNull(hud.BannerText, "Engine.vb GameOver writes no banner; it is hud.json's option, off (U.CHN-T79)");
             Assert.Greater(hud.GameOverDim, 0f, "the fade has begun");
             Assert.AreEqual(hud.GameOverDim, hud.OverlayDim, 1e-5f, "with no scene light the HUD shows the fade");
         }

@@ -197,7 +197,7 @@ namespace MindAttic.Chain.Tests
 
             snapshot.IsGameOver = true;
             hud.Refresh();
-            Assert.AreEqual(HudText.GameOver, hud.BannerText);
+            Assert.IsNull(hud.BannerText, "no game-over banner by default (U.CHN-T79)");
         }
     }
 }

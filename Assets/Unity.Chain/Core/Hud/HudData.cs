@@ -167,7 +167,8 @@ namespace MindAttic.Chain.Core
             data.Port = new HudPort(
                 pauseDim: port.Number("pauseDim", 0f, 1f),
                 gameOver: HudTextStyle.Read(port, "gameOver"),
-                textShadow: port.Flag("textShadow"));
+                textShadow: port.Flag("textShadow"),
+                gameOverBanner: port.Flag("gameOverBanner"));
             port.Done();
             return data;
         }
@@ -338,15 +339,22 @@ namespace MindAttic.Chain.Core
         }
     }
 
-    /// <summary>hud.json's port-only figures (the original had no game-over banner and no dimming).</summary>
+    /// <summary>
+    /// hud.json's port-only figures. The original had no game-over banner, no dimming and no text shadow, so the
+    /// shipped file turns all three off (U.CHN-T79, BIBLE V9); each stays a data option.
+    /// </summary>
     public readonly struct HudPort
     {
-        public HudPort(float pauseDim, HudTextStyle gameOver, bool textShadow)
+        public HudPort(float pauseDim, HudTextStyle gameOver, bool textShadow, bool gameOverBanner = false)
         {
             PauseDim = pauseDim;
             GameOver = gameOver;
             TextShadow = textShadow;
+            GameOverBanner = gameOverBanner;
         }
+
+        /// <summary>Whether a banner (styled by <see cref="GameOver"/>) is written over the game-over fade.</summary>
+        public bool GameOverBanner { get; }
 
         /// <summary>How dark the overlay behind the pause banner is (0-1).</summary>
         public float PauseDim { get; }

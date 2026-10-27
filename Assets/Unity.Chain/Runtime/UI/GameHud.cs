@@ -24,8 +24,9 @@ namespace MindAttic.Chain
     /// (<see cref="ConfigScreen"/>, <see cref="ToggleConfig"/>, UNI-T59) and ESC is the seat's own Quit, the world's
     /// <see cref="QuitGame"/>; drawn only while not paused, as oneFrameRender draws it;</item>
     /// <item>while paused only the half see-through red <c>- PAUSE -</c> banner (oneFrameRender draws none of the
-    /// HUD while paused), over the port's dim; at game over the port's banner over the fade (dimmed here unless
-    /// <see cref="SceneLight"/> shows it).</item>
+    /// HUD while paused); at game over the fade (dimmed here unless <see cref="SceneLight"/> shows it). hud.json's
+    /// port extras, a dim behind the pause banner, a game-over banner and a text shadow, are off by default as the
+    /// original draws none of them (U.CHN-T79).</item>
     /// </list>
     /// Every position, colour, font size and the sample rate come from hud.json (<see cref="HudData"/>), in pixels of
     /// the original's 512 x 448 window, which the panel scales to the screen's height
@@ -429,7 +430,8 @@ namespace MindAttic.Chain
                 SetText(_grappled, HudText.Grappled(grappled.Value));
             }
 
-            SetShown(_gameOver, gameOver);
+            // GameOver only fades the light and resets; the banner is hud.json's option, off by default (U.CHN-T79).
+            SetShown(_gameOver, gameOver && Layout.Port.GameOverBanner);
             SetShown(_pause, paused);
             if (gameOver)
             {
