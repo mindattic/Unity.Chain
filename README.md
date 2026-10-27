@@ -95,8 +95,8 @@ Unity.GridGame's):
 ```
 build.bat     # tools/build.ps1: the three -executeMethod calls above, logged to Logs/build-*.log
 test.bat      # tools/test.ps1: Core.Tests, then EditMode and PlayMode (includes MainSceneSmokeTests)
-deploy.bat    # tools/deploy.ps1: build.bat if Assets/Packages/ProjectSettings changed, then
-              # publish to C:\Apps\Unity.Chain, refresh the Desktop shortcut, and launch it
+run.bat       # asks 1) Deploy & Run: tools/run.ps1 -Force -Launch (pull, build.bat, publish to
+              # C:\Apps\Unity.Chain, refresh the Desktop shortcut, launch) or 2) Run: the installed copy
 play.bat      # tools/play.ps1: launch Builds/Windows/Unity.Chain.exe for manual/dev testing,
               # muted by default (building it first if missing)
 ```

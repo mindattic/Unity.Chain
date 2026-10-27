@@ -28,14 +28,14 @@
 
 .NOTES
     This script never prompts, so agents and /deploy can run it unattended. The repo-root
-    deploy.bat (the Desktop shortcut's target) is the interactive entry point: it asks
+    run.bat (the Desktop shortcut's target) is the interactive entry point: it asks
     1) Deploy & Run (this script with -Force -Launch) or 2) Run (starts the copy already in
     C:\Apps\Unity.Chain without calling this script, deploying first if none is there).
 
 .EXAMPLE
-    powershell -ExecutionPolicy Bypass -File tools\deploy.ps1
-    powershell -ExecutionPolicy Bypass -File tools\deploy.ps1 -Launch
-    powershell -ExecutionPolicy Bypass -File tools\deploy.ps1 -Force -Launch
+    powershell -ExecutionPolicy Bypass -File tools\run.ps1
+    powershell -ExecutionPolicy Bypass -File tools\run.ps1 -Launch
+    powershell -ExecutionPolicy Bypass -File tools\run.ps1 -Force -Launch
 #>
 param([switch]$Launch, [switch]$Force)
 
@@ -46,7 +46,7 @@ $repoDir   = Split-Path $PSScriptRoot   # tools\ -> Unity.Chain\
 $out       = 'C:\Apps\Unity.Chain'
 $exeName   = 'Unity.Chain.exe'
 $buildDir  = Join-Path $repoDir 'Builds\Windows'
-$deployBat = Join-Path $repoDir 'deploy.bat'
+$runBat    = Join-Path $repoDir 'run.bat'
 $marker    = Join-Path $out '.deploy-commit'
 
 # ── Pull latest, skip the rebuild entirely if nothing changed ──────────────
@@ -61,16 +61,16 @@ if ($dirty) {
 }
 $head = (git -C $repoDir rev-parse HEAD).Trim()
 
-# Points at deploy.bat (not the exe directly), so double-clicking it always pulls latest and
-# only rebuilds if the source actually changed, before launching.
+# Points at run.bat (not the exe directly), so double-clicking it offers 1) Deploy & Run
+# (pull latest, rebuild, publish, launch) or 2) Run (launch the installed copy).
 # GetFolderPath, not $HOME\Desktop: OneDrive may have moved the Desktop folder.
 function Set-Shortcut([string]$exe) {
     $shortcut = Join-Path ([Environment]::GetFolderPath('Desktop')) 'Unity.Chain.lnk'
     $link = (New-Object -ComObject WScript.Shell).CreateShortcut($shortcut)
-    $link.TargetPath       = $deployBat
+    $link.TargetPath       = $runBat
     $link.WorkingDirectory = $repoDir
     $link.IconLocation     = "$exe,0"
-    $link.Description      = 'Pull latest, build if changed, and launch Unity.Chain'
+    $link.Description      = 'Unity.Chain: 1) Deploy & Run  2) Run'
     $link.Save()
     Write-Host "    Shortcut -> $shortcut" -ForegroundColor Gray
 }
@@ -98,7 +98,8 @@ if (-not $Force -and (Test-Path (Join-Path $out $exeName)) -and (Test-Path $mark
 }
 if ($upToDate) {
     Write-Host "  Already deployed at $head (no player source changed) - skipping rebuild." -ForegroundColor Green
-    if (-not (Test-Path (Join-Path ([Environment]::GetFolderPath('Desktop')) 'Unity.Chain.lnk'))) { Set-Shortcut (Join-Path $out $exeName) }
+    # Always refreshed, so a shortcut still pointing at the old deploy.bat follows the rename.
+    Set-Shortcut (Join-Path $out $exeName)
     if ($Launch) { Start-Process -FilePath (Join-Path $out $exeName) -WorkingDirectory $out }
     exit 0
 }
@@ -171,5 +172,5 @@ if ($Launch) {
 }
 
 # An explicit success code: nothing above sets $LASTEXITCODE for this branch, so a caller
-# checking it (deploy.bat) would otherwise read a stale value as a failure.
+# checking it (run.bat) would otherwise read a stale value as a failure.
 exit 0

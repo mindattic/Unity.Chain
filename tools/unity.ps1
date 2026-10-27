@@ -1,7 +1,7 @@
 <#
 .SYNOPSIS
   Runs Unity.Chain in Unity batch mode and surfaces compile/test errors -- the shared helper
-  build.ps1, test.ps1 and deploy.ps1 all call (same pattern as Unity.Hare, Unity.Eve and
+  build.ps1, test.ps1 and run.ps1 all call (same pattern as Unity.Hare, Unity.Eve and
   Unity.Cursory's tools/unity.ps1, and Unity.GridGame's own tools/unity.ps1).
 .EXAMPLE
   powershell -File tools/unity.ps1 -Method MindAttic.Chain.EditorTools.PlayerBuilder.BuildWindows -Log build-player
