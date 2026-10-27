@@ -103,7 +103,7 @@ namespace MindAttic.Chain
 
         private LightingState TakeState()
         {
-            // lighting.json: the 1440 s day (BIBLE D6) and the tint's 1 a frame.
+            // lighting.json: the original's 1e10 s day (BIBLE D6) and the tint's 1 a frame.
             var settings = (session != null ? session.Settings : SettingsStore.Current).Light;
             if (!Application.isPlaying)
             {

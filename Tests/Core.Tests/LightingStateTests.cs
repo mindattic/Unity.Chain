@@ -27,21 +27,21 @@ namespace MindAttic.Chain.Tests
         }
 
         [Test]
-        public void DefaultDay_Is1440Seconds_SplitAsLightsVb()
+        public void TwentyFourMinuteDay_Is1440Seconds_SplitAsLightsVb()
         {
-            var settings = LightingState.Settings.Default;
+            var settings = LightingState.Settings.TwentyFourMinuteDay;
             Assert.AreEqual(1440f, settings.DayLength, "a 24-hour day at renderTime's one hour a minute");
             Assert.AreEqual(480f, settings.DayIncrement, 1e-3f, "dayLength / 3");
             Assert.AreEqual(240f, settings.DuskIncrement, 1e-3f, "dayIncrement / 2");
             Assert.AreEqual(480f, settings.NightIncrement, 1e-3f, "dayLength / 3");
             Assert.AreEqual(240f, settings.MorningIncrement, 1e-3f, "nightIncrement / 2");
-            Assert.AreEqual(1e10f, LightingState.Settings.Original.DayLength, "the original's figure, kept as data");
+            Assert.AreEqual(1e10f, LightingState.Settings.Default.DayLength, "the original's figure is the default (U.CHN-T82)");
         }
 
         [Test]
         public void TheCycleAdvances_DayDuskNightMorningDay()
         {
-            var state = new LightingState();
+            var state = new LightingState(LightingState.Settings.TwentyFourMinuteDay);
             var seen = new List<DayPeriod>();
             state.PeriodChanged += seen.Add;
 
@@ -56,7 +56,7 @@ namespace MindAttic.Chain.Tests
         [Test]
         public void TheOriginalDayLength_NeverLeavesDay()
         {
-            var state = new LightingState(LightingState.Settings.Original);
+            var state = new LightingState();
             Run(state, 3600f);
             Assert.AreEqual(DayPeriod.Day, state.Period, "D6: with 1e10 s the cycle is frozen");
         }
@@ -64,7 +64,7 @@ namespace MindAttic.Chain.Tests
         [Test]
         public void Dusk_FadesGreenAndBlue_OneUnitAFrame_ToARedDusk()
         {
-            var state = new LightingState();
+            var state = new LightingState(LightingState.Settings.TwentyFourMinuteDay);
             Run(state, 480.5f);
             Assert.AreEqual(DayPeriod.Dusk, state.Period);
 
@@ -81,7 +81,7 @@ namespace MindAttic.Chain.Tests
         [Test]
         public void Night_IsBlue_Morning_IsWhite()
         {
-            var state = new LightingState();
+            var state = new LightingState(LightingState.Settings.TwentyFourMinuteDay);
             Run(state, 480.5f + 240.5f + 10f);
             Assert.AreEqual(DayPeriod.Night, state.Period);
             Assert.AreEqual(new Rgb(0f, 0f, 1f), state.Tint);
@@ -141,7 +141,7 @@ namespace MindAttic.Chain.Tests
         [Test]
         public void NewRound_TurnsLightingBackOn_AndKeepsTheTimeOfDay()
         {
-            var state = new LightingState();
+            var state = new LightingState(LightingState.Settings.TwentyFourMinuteDay);
             Run(state, 490f);
             state.ToggleEnabled();
 

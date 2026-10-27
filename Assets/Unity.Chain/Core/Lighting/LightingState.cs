@@ -57,8 +57,10 @@ namespace MindAttic.Chain.Core
     /// times this tint, as D3D lit a material's ambient by the render state's (see <see cref="LightColour"/>).
     /// <see cref="Enabled"/> is <c>bLighting</c>, which L toggles and a new round turns back on.
     ///
-    /// Two fixes (BIBLE D6, D16): the original's <c>dayLength</c> was 1e10 s, so the cycle never moved;
-    /// here it is <see cref="Settings.DayLength"/>, 1440 s by default. And with lighting off the original
+    /// The day length is the original's (BIBLE D6, settled by U.CHN-T82): <c>dayLength</c> 1e10 s, so the cycle
+    /// stays in Day all session; only a script (RUN NIGHT, CHANGE TIME DAYPERIOD) moves the period on. The
+    /// 24-minute day of UNI-T46 is <see cref="Settings.TwentyFourMinuteDay"/>, a data option only
+    /// (spike U.CHN-T91). One fix (BIBLE D16): with lighting off the original
     /// just stopped updating the device, freezing whatever colour was last set; here off means unlit
     /// (no tint), the cycle holding where it is until lighting comes back on, as renderLight skipped it.
     /// </summary>
@@ -67,10 +69,9 @@ namespace MindAttic.Chain.Core
         public struct Settings
         {
             /// <summary>
-            /// Seconds in one full Day, Dusk, Night, Morning cycle (Lights.vb's <c>dayLength</c>). The
-            /// original's 1e10 s froze the cycle (D6). The default, 1440 s, is the original's own clock:
-            /// <c>renderTime</c> moves the hour on once a minute, so its 24-hour day is 24 minutes, and
-            /// the period comments (9am to 6pm day, 6 to 9pm dusk, ...) are hours of that clock.
+            /// Seconds in one full Day, Dusk, Night, Morning cycle (Lights.vb's <c>dayLength</c>). The default
+            /// is the original's 1e10 s, which never leaves Day (D6). 1440 s, a 24-hour day at
+            /// <c>renderTime</c>'s one hour a minute, is the option (<see cref="TwentyFourMinuteDay"/>).
             /// </summary>
             public float DayLength;
 
@@ -86,17 +87,17 @@ namespace MindAttic.Chain.Core
             /// <summary>Morning lasts half a Night (<c>morningIncrement</c>).</summary>
             public float MorningIncrement => NightIncrement / 2f;
 
-            /// <summary>The playable default: a 24-minute day (8 min day, 4 dusk, 8 night, 4 morning).</summary>
+            /// <summary>The original's figures (the default): a 1e10 s day that never moves on.</summary>
             public static Settings Default => new Settings
             {
-                DayLength = 1440f,
+                DayLength = 1e10f,
                 TintRate = 60f,
             };
 
-            /// <summary>The original's figures, kept as data: a 1e10 s day that never moves on.</summary>
-            public static Settings Original => new Settings
+            /// <summary>UNI-T46's option, never the default: a 24-minute day (8 min day, 4 dusk, 8 night, 4 morning).</summary>
+            public static Settings TwentyFourMinuteDay => new Settings
             {
-                DayLength = 1e10f,
+                DayLength = 1440f,
                 TintRate = 60f,
             };
         }

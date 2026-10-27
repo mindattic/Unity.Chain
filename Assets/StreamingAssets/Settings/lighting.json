@@ -1,5 +1,5 @@
 {
-  "_source": "Lights.vb. The original's dayLength is 1e10 s, so its day never moves (BIBLE D6); 1440 s is its own clock's 24-minute day (UNI-T46). tintStep is r/g/b units of 255 per frame.",
-  "dayLength": 1440,
+  "_source": "Lights.vb. dayLength is the original's 1e10 s, so the day never moves on in play (BIBLE D6, settled by U.CHN-T82); 1440, its own clock's 24-minute day (UNI-T46), is kept only as a data option (spike U.CHN-T91). tintStep is r/g/b units of 255 per frame.",
+  "dayLength": 10000000000,
   "tintStep": 1
 }

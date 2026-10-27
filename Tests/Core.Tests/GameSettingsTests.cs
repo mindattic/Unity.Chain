@@ -122,6 +122,14 @@ namespace MindAttic.Chain.Tests
         }
 
         [Test]
+        public void TwentyFourMinuteDay_StaysReachableAsAnOption()
+        {
+            var settings = GameSettings.Load(Patched(GameSettings.LightingFile, text => text.Replace("\"dayLength\": 10000000000", "\"dayLength\": 1440")));
+
+            Assert.AreEqual(LightingState.Settings.TwentyFourMinuteDay.DayLength, settings.Light.DayLength);
+        }
+
+        [Test]
         public void ChainWallBounce_StaysReachableAsAnOption()
         {
             var settings = GameSettings.Load(Patched(GameSettings.ChainFile, text => text.Replace("\"keepInArena\": false", "\"keepInArena\": true")));
@@ -192,7 +200,7 @@ namespace MindAttic.Chain.Tests
         {
             var settings = Load();
 
-            Assert.AreEqual(1440f, settings.Light.DayLength, "D6, UNI-T46");
+            Assert.AreEqual(1e10f, settings.Light.DayLength, "D6 settled by U.CHN-T82: Lights.vb's own dayLength, the day never moves on");
             Assert.AreEqual(60f, settings.Light.TintRate, "1 a frame at 60 fps");
         }
 

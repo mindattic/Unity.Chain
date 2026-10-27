@@ -744,7 +744,7 @@ namespace MindAttic.Chain.Core
         };
     }
 
-    /// <summary>lighting.json: Lights.vb, with the playable day length (BIBLE D6).</summary>
+    /// <summary>lighting.json: Lights.vb, with its own 1e10 s day length (BIBLE D6, U.CHN-T82).</summary>
     public sealed class LightingData
     {
         public float DayLength { get; private set; }
