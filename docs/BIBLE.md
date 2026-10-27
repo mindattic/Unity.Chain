@@ -323,8 +323,8 @@ Not restored, on purpose: stubs with no body (`ExtraLife`, `Health5`, `Health20`
 lines (dead code: `Terrain.vb`'s `loadTerrain` walks the child rows of a `DataRow` that is never set, the `.mdb` read
 being commented out, and nothing calls it or `renderTerrain`, whose `bTerrain` starts False with no key to flip it;
 recorded by UNI-T56, not ported); the cursors; `renderTime`, `renderDate`, `levelText`; `SetupLights`). Restoring them would mean inventing the
-behaviour, not fixing it. `Cautious` and `Align` had code but no rule for when they apply; the owner gave them one
-(D18).
+behaviour, not fixing it. `Cautious` and `Align` had code but no rule for when they apply, so by default
+they stay unreached, as in the original; UNI-T65's rule for them is a data option (D18).
 
 ## 8. Deliberate deviations {#UNI-§8}
 
