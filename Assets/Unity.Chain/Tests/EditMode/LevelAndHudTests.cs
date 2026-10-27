@@ -73,6 +73,8 @@ namespace MindAttic.Chain.Tests
         {
             using (var rig = new TestRig(levelSize: new Vector2(4f, 2f)))
             {
+                // The bounce is a data option, off by default as Chain.vb's checkBounds is commented out (U.CHN-T76).
+                rig.Chain.KeepInLevel = true;
                 rig.MoveAngelTo(new Vector2(0f, 0.9f));
                 // The longest chain (12 links) hangs about two units at chain.json's figures, past the floor.
                 while (rig.Mace.Lengthen())
