@@ -108,7 +108,7 @@ but unreachable or does nothing; not ported, recorded here), **n/a** (DirectX pl
 | Throw impact | thrown enemy knocks any overlapping enemy: v = thrown v / mass, Hurt | `EnemyBrain` | ported |
 | Flocking | overlapping live, not-grabbed pairs pushed apart by 0.0005 per axis, each pair visited twice a frame (so 0.001); range test commented out, `flockRange` unused | `EnemyBrain.FlockPush`, 0.06 u/s | ported, UNI-T23, UNI-T35 |
 | Animation | 7 frames (`Shadow\enemy1..7`), 0.1 s per frame, starts at a random frame (`loadEnemy`) | `EnemyBrain.Frame`, advanced in `Step` and read by `Enemy`'s view | ported, deviation: paused while Grabbed since the world does not step a held enemy's brain (UNI-T19) |
-| AI states `Cautious`, `Align` | coded but never selected. `Cautious`: `d = 6 * seekSpd * -getSlope(angel, pos) / mass`, and `getSlope` returns pos - angel, so as written it charges; `Align`: `+/-seekSpd` per axis toward the angel (y with an `angelSize / 3` offset) | `EnemyBrain` Cautious/Align behind `GameWorld`'s Seek cap | fixed defect D18 (UNI-T65) |
+| AI states `Cautious`, `Align` | coded but never selected. `Cautious`: `d = 6 * seekSpd * -getSlope(angel, pos) / mass`, and `getSlope` returns pos - angel, so as written it charges; `Align`: `+/-seekSpd` per axis toward the angel (y with an `angelSize / 3` offset) | `EnemyBrain` Cautious/Align, reached only when `enemies.json`'s `seekCap` is below the enemy count; shipped at 14, so every enemy seeks as in the original | settled to the original (U.CHN-T81, BIBLE D18); the hang-back (UNI-T65) is a data option, spike U.CHN-T90 |
 | AI states `Retreat`, `Wander`, `Limbo`, `Death` | empty or just sink | none | dead |
 
 ### 3.4 Item (`Item.vb`)

@@ -654,7 +654,7 @@ namespace MindAttic.Chain.Core
 
         /// <summary>An enemy's collision circle, world units.</summary>
         public float Radius { get; }
-        /// <summary>How many enemies may Seek at once (UNI-T65); the enemy count lets every one seek, as the original does.</summary>
+        /// <summary>How many enemies may Seek at once; the enemy count (the shipped default) lets every one seek, as the original does (U.CHN-T81); lower is UNI-T65's hang-back.</summary>
         public int SeekCap { get; }
         /// <summary>A waiting enemy stalking in (Align) turns Cautious this close to the angel, screen units (mapped).</summary>
         public float HangBackNear { get; }

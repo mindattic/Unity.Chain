@@ -47,9 +47,9 @@ namespace MindAttic.Chain.Core
             public float FlockSpeed;
             public EnemyBrain.Settings Brain;
             /// <summary>
-            /// How many enemies may Seek at once (UNI-T65; the original lets all 14). The rest hang back in
-            /// Cautious or stalk in Align (<see cref="EnemyBrain.Settings"/>), and the nearest takes a slot
-            /// as soon as one opens: a seeker hurt, grabbed or killed.
+            /// How many enemies may Seek at once: all 14 by default, as the original (BIBLE D18, U.CHN-T81). A
+            /// lower cap is UNI-T65's hang-back, a data option only: the rest hang back in Cautious or stalk in
+            /// Align (<see cref="EnemyBrain.Settings"/>), and the nearest takes a slot as soon as one opens.
             /// </summary>
             public int SeekCap;
 
@@ -63,7 +63,7 @@ namespace MindAttic.Chain.Core
                 Radius = 0.3f,
                 FlockSpeed = EnemyBrain.DefaultFlockSpeed,
                 Brain = EnemyBrain.Settings.Default,
-                SeekCap = 4,
+                SeekCap = 14,
             };
         }
 

@@ -98,6 +98,30 @@ namespace MindAttic.Chain.Tests
         }
 
         [Test]
+        public void Shipped_EveryEnemySeeks_AsEnemyVbSetsSeekForAll()
+        {
+            // BIBLE D18, settled by U.CHN-T81: the original's all-seek rush is the data default.
+            var settings = Load();
+            var world = new GameWorld(settings.World, new Random(3));
+            var player = world.AddPlayer(new PlayerId(0), settings.Player);
+            world.Reset();
+            world.Step(1f / 60f);
+
+            Assert.AreEqual(settings.World.Enemies.Count, settings.World.Enemies.SeekCap);
+            Assert.AreEqual(world.Enemies.Count, world.SeekerCount());
+            Assert.IsFalse(world.Enemies.Any(e => e.Brain.IsWaiting));
+            Assert.IsNotNull(player);
+        }
+
+        [Test]
+        public void SeekCapHangBack_StaysReachableAsAnOption()
+        {
+            var settings = GameSettings.Load(Patched(GameSettings.EnemiesFile, text => text.Replace("\"seekCap\": 14", "\"seekCap\": 4")));
+
+            Assert.AreEqual(4, settings.World.Enemies.SeekCap);
+        }
+
+        [Test]
         public void ChainWallBounce_StaysReachableAsAnOption()
         {
             var settings = GameSettings.Load(Patched(GameSettings.ChainFile, text => text.Replace("\"keepInArena\": false", "\"keepInArena\": true")));
@@ -143,7 +167,7 @@ namespace MindAttic.Chain.Tests
             Assert.AreEqual(0.2f, enemies.LoadHP);
             Assert.AreEqual(1f, enemies.ResetHP);
             Assert.AreEqual(6f, enemies.CautiousSeekMultiple);
-            Assert.AreEqual(4, enemies.Port.SeekCap, "UNI-T65: four seek at once, the other ten wait");
+            Assert.AreEqual(14, enemies.Port.SeekCap, "U.CHN-T81: every enemy seeks, as loadEnemy, Reset and the Hurt recovery set Seek");
             Assert.AreEqual(0.3f, enemies.Port.HangBackNear);
             Assert.AreEqual(0.45f, enemies.Port.HangBackFar);
         }
@@ -265,7 +289,7 @@ namespace MindAttic.Chain.Tests
             Assert.AreEqual(0.36f, world.Enemies.Brain.AlignSpeed, 1e-6f, "seekSpd a frame");
             Assert.AreEqual(0.3f, world.Enemies.Brain.HangBackNear, 1e-6f);
             Assert.AreEqual(0.45f, world.Enemies.Brain.HangBackFar, 1e-6f);
-            Assert.AreEqual(4, world.Enemies.SeekCap);
+            Assert.AreEqual(14, world.Enemies.SeekCap);
             Assert.AreEqual(30, world.Session.MaxHp);
             Assert.AreEqual(0.25f, world.Session.HurtDelay);
             Assert.AreEqual(1000f, world.Session.PointsPerDamage);
@@ -384,8 +408,8 @@ namespace MindAttic.Chain.Tests
             // incidental chain contact before the first wave finishes spawning (loadEnemy's weaker HP,
             // UNI-T70, still matters once play starts).
             Assert.AreEqual(14, world.Enemies.Count);
-            Assert.AreEqual(4, world.SeekerCount(), "the shipped Seek cap");
-            Assert.AreEqual(10, world.Enemies.Count(e => e.Brain.IsWaiting), "the rest hang back or stalk");
+            Assert.AreEqual(14, world.SeekerCount(), "every enemy seeks, as the original (U.CHN-T81)");
+            Assert.AreEqual(0, world.Enemies.Count(e => e.Brain.IsWaiting), "none hangs back by default");
             Assert.AreEqual(6, world.Players[0].MaceIndex);
         }
 
