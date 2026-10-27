@@ -631,14 +631,27 @@ namespace MindAttic.Chain.Tests
         }
 
         [Test]
-        public void GrabbedEnemy_DoesNotHurt()
+        public void GrabbedEnemy_HurtsLikeAnyOther_AsCheckAngelHitTestsEveryEnemy()
         {
             var world = ContactWorld(out _);
             var enemy = world.SpawnEnemy(new Vec2(-0.4f, 0f), 1f, 100f);
             ((IGrappleTarget)enemy).OnGrappled();
             world.Step(0.1f);
 
-            Assert.AreEqual(30, world.State.Hp);
+            Assert.AreEqual(EnemyState.Grabbed, enemy.State);
+            Assert.AreEqual(29, world.State.Hp, "U.CHN-T83: a held enemy touching the angel costs HP");
+        }
+
+        [Test]
+        public void DeadEnemy_DoesNotHurt_NoInvisibleHitBoxWhereItDied()
+        {
+            var world = ContactWorld(out _);
+            var enemy = world.SpawnEnemy(new Vec2(-0.4f, 0f), 1f, 100f);
+            enemy.Brain.Damage(1000f);
+            world.Step(0.1f);
+
+            Assert.IsFalse(enemy.IsAlive);
+            Assert.AreEqual(30, world.State.Hp, "BIBLE D34");
         }
 
         [Test]

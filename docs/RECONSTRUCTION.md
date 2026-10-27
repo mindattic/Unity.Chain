@@ -89,7 +89,7 @@ but unreachable or does nothing; not ported, recorded here), **n/a** (DirectX pl
 | Hover bob | triangle wave +/-0.01 in 0.001 steps per frame, applied to the draw offset | `AngelFlight` | ported |
 | Flap | 4 frames per facing, advance every 0.1 s, loops | frame logic in place, `angel_left1-4`/`angel_right1-4` wired | ported (UNI-T19) |
 | Bounds | X -0.6..0.5, Y -0.6..0.4 | `LevelBounds` | ported |
-| HP / hurt | 30 HP, 1 per enemy contact at most every 0.25 s, game over below 0 | `GameState`; `HpOvershoot` 1 by default (the HUD shows `Hp + 1` bars, game over once `Hp < 1 - HpOvershoot`, matching the original's own HP+1 quirk exactly); 0 is exactly `Hp` bars and game over at 0, kept only where asked for explicitly | settled, default matches (U.CHN-T45, BIBLE D10) |
+| HP / hurt | 30 HP, 1 per enemy contact at most every 0.25 s, game over below 0; `checkAngelHit` tests every enemy, a held one included (and a dead one's stale rectangle, BIBLE D34) | `GameState`; `HpOvershoot` 1 by default (the HUD shows `Hp + 1` bars, game over once `Hp < 1 - HpOvershoot`, matching the original's own HP+1 quirk exactly); 0 is exactly `Hp` bars and game over at 0, kept only where asked for explicitly | settled, default matches (U.CHN-T45, BIBLE D10) |
 | Contact rect | X..X+0.06 by Y+0.03..Y+0.15 | physics circle | deliberate deviation |
 | `angelAI.Hurt` | sinks 0.01/frame; nothing ever sets it | none | dead |
 

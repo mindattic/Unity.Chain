@@ -981,7 +981,11 @@ namespace MindAttic.Chain.Core
             Emit(new EnemyKilled(by, enemy.Id, enemy.Position));
         }
 
-        /// <summary>Engine.vb checkAngelHit: a live, ungrabbed enemy touching the angel costs HP, at most once per hurt delay.</summary>
+        /// <summary>
+        /// Engine.vb checkAngelHit: any live enemy touching the angel costs HP, at most once per hurt delay; a held one
+        /// too, as checkAngelHit tests every enemy whatever its AI (U.CHN-T83). A dead one does not: the original kept
+        /// testing its last rectangle, an invisible hit box where it died (BIBLE D34).
+        /// </summary>
         private void CheckContact(PlayerEntity player)
         {
             var radius = player.Setup.ContactRadius;
@@ -993,7 +997,7 @@ namespace MindAttic.Chain.Core
             var angel = player.AngelPosition;
             foreach (var enemy in _enemies)
             {
-                if (!enemy.IsAlive || enemy.State == EnemyState.Grabbed || !enemy.Overlaps(angel, radius))
+                if (!enemy.IsAlive || !enemy.Overlaps(angel, radius))
                 {
                     continue;
                 }
