@@ -45,11 +45,36 @@ namespace MindAttic.Chain.EditorTools
             PlayerSettings.bundleVersion = DefaultBundleVersion;
 
             ApplyIcon();
+            NameBackdropLayer();
 
             AssetDatabase.SaveAssets();
             Debug.Log($"ProjectSettingsBuilder: window (640x480 windowed, resizable), companyName/productName, " +
                        $"applicationIdentifier ({ApplicationIdentifier}), version ({PlayerSettings.bundleVersion}) " +
                        $"and the Standalone icon ({IconPath}) applied.");
+        }
+
+        /// <summary>Names <see cref="AreaBackdrop.Layer"/> "Backdrop": the layer a paused frame shows alone (U.CHN-T78).</summary>
+        private static void NameBackdropLayer()
+        {
+            var assets = AssetDatabase.LoadAllAssetsAtPath("ProjectSettings/TagManager.asset");
+            if (assets == null || assets.Length == 0)
+            {
+                return;
+            }
+
+            var tagManager = new SerializedObject(assets[0]);
+            var layers = tagManager.FindProperty("layers");
+            if (layers == null || layers.arraySize <= AreaBackdrop.Layer)
+            {
+                return;
+            }
+
+            var layer = layers.GetArrayElementAtIndex(AreaBackdrop.Layer);
+            if (layer.stringValue != "Backdrop")
+            {
+                layer.stringValue = "Backdrop";
+                tagManager.ApplyModifiedProperties();
+            }
         }
 
         private static void ApplyIcon()

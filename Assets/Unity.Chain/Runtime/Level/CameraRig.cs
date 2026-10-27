@@ -384,6 +384,52 @@ namespace MindAttic.Chain
 
         private bool IsPaused => session != null && session.ShowsPaused; // the remote authority's pause online (U.CHN-T73)
 
+        private int _unpausedMask;
+        private bool _showingOnlyBackdrop;
+
+        /// <summary>True while the camera shows only the backdrop and the room, as a paused frame does.</summary>
+        public bool ShowsOnlyBackdrop => _showingOnlyBackdrop;
+
+        /// <summary>
+        /// Engine.vb's oneFrameRender draws only renderCube, renderBackground and the pause banner while paused: the
+        /// angel, chain, mace, enemies, heart and zones are not drawn. So while the shown game is paused the camera
+        /// culls everything but <see cref="AreaBackdrop.Layer"/>, and gets its own mask back on resume (U.CHN-T78).
+        /// Called every LateUpdate; public so tests can drive it.
+        /// </summary>
+        public void ApplyPauseView()
+        {
+            var cam = Camera;
+            if (cam == null)
+            {
+                return;
+            }
+
+            if (IsPaused)
+            {
+                if (!_showingOnlyBackdrop)
+                {
+                    _unpausedMask = cam.cullingMask;
+                    _showingOnlyBackdrop = true;
+                }
+
+                cam.cullingMask = AreaBackdrop.OnlyBackdropMask;
+            }
+            else
+            {
+                RestoreMask();
+            }
+        }
+
+        private void RestoreMask()
+        {
+            if (_showingOnlyBackdrop && Camera != null)
+            {
+                Camera.cullingMask = _unpausedMask;
+            }
+
+            _showingOnlyBackdrop = false;
+        }
+
         private Rect ResolveLevel(out bool hasLevel)
         {
             if (level == null)
@@ -442,6 +488,7 @@ namespace MindAttic.Chain
 
         private void OnDisable()
         {
+            RestoreMask();
             Unsubscribe();
             _controls?.Debug.Disable();
         }
@@ -534,6 +581,7 @@ namespace MindAttic.Chain
             }
 
             Frame(Time.deltaTime);
+            ApplyPauseView();
         }
 
         private void OnDrawGizmosSelected()

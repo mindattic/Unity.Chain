@@ -162,6 +162,10 @@ their `AngelFlight`, `ChainSimulation`, mace link and `Grapple`) and every enemy
   loaded from `StreamingAssets/Settings`), and a component can only override a figure at run time (live tuning,
   tests), which goes to the world through `GameSession.Retune`.
 
+While paused the camera shows only the backdrop's layer (`AreaBackdrop.Layer`, "Backdrop"): `oneFrameRender` draws
+only `renderCube`, `renderBackground` and the banner then, so the play field disappears until the game resumes
+(`CameraRig.ApplyPauseView`, U.CHN-T78).
+
 Where the world departs from the earlier component wiring: pausing now freezes the angel too (Engine.vb renders and
 moves the angel only while not paused; the port had kept flying it), and a finished game resets the world in place
 instead of reloading the scene (V15).

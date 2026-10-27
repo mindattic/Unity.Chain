@@ -27,6 +27,16 @@ namespace MindAttic.Chain
         /// <summary>The brick room's: behind the backdrop, as renderCube draws before renderBackground.</summary>
         public const int RoomSortingOrder = -200;
 
+        /// <summary>
+        /// The layer the backdrop and the room draw on (TagManager's "Backdrop"). Engine.vb's oneFrameRender draws only
+        /// renderCube, renderBackground and the pause banner while paused, so the camera then shows only this layer
+        /// (<see cref="CameraRig.ApplyPauseView"/>, U.CHN-T78).
+        /// </summary>
+        public const int Layer = 8;
+
+        /// <summary>The culling mask that shows only the backdrop and the room.</summary>
+        public static int OnlyBackdropMask => 1 << Layer;
+
         /// <summary>One area's picture, under its area.json name.</summary>
         [Serializable]
         public struct AreaArt
@@ -193,7 +203,21 @@ namespace MindAttic.Chain
             target.position = new Vector3(rect.XMin - bounds.min.x * scale.x, rect.YMin - bounds.min.y * scale.y, z);
         }
 
+        private void Awake() => PutOnLayer();
+
         private void Start() => Apply();
+
+        /// <summary>Puts this backdrop and everything under it (the area quad, the brick room) on <see cref="Layer"/>.</summary>
+        public void PutOnLayer() => PutOnLayer(transform);
+
+        private static void PutOnLayer(Transform node)
+        {
+            node.gameObject.layer = Layer;
+            foreach (Transform child in node)
+            {
+                PutOnLayer(child);
+            }
+        }
 
         private void OnEnable() => (_controls ?? (_controls = new ChainControls())).Debug.Enable();
 
