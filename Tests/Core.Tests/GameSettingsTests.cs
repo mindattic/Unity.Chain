@@ -140,6 +140,35 @@ namespace MindAttic.Chain.Tests
         }
 
         [Test]
+        public void Shipped_CameraIsCameraVbsOwnView_AndTheAngelKeepsToCheckBounds()
+        {
+            // U.CHN-T86: Camera.vb's 45 degree, 4:3 view from z -1, and Angel.vb's checkBounds, in world units (x 9).
+            var settings = Load();
+
+            Assert.AreEqual(CameraFramingMode.Original, settings.CameraTuning.Mode);
+            Assert.AreEqual(9f * (float)Math.Tan(Math.PI / 8d), settings.CameraTuning.OriginalHalfHeight, 1e-3f, "tan(22.5) of the plane either side");
+            Assert.AreEqual(4f / 3f, settings.CameraTuning.OriginalAspect, 1e-5f);
+
+            Assert.IsFalse(settings.Angel.Port.ArenaBounds);
+            var bounds = settings.Player.Flight.Bounds;
+            Assert.AreEqual(-5.4f, bounds.XMin, 1e-4f, "X -0.6");
+            Assert.AreEqual(4.5f, bounds.XMax, 1e-4f, "X 0.5");
+            Assert.AreEqual(-5.4f, bounds.YMin, 1e-4f, "Y -0.6");
+            Assert.AreEqual(3.6f, bounds.YMax, 1e-4f, "Y 0.4");
+        }
+
+        [Test]
+        public void ArenaFitAndArenaBounds_StayReachableAsOptions()
+        {
+            var fit = GameSettings.Load(Patched(GameSettings.CameraFile, text => text.Replace("\"mode\": \"Original\"", "\"mode\": \"FitLevel\"")));
+            Assert.AreEqual(CameraFramingMode.FitLevel, fit.CameraTuning.Mode);
+
+            var arena = GameSettings.Load(Patched(GameSettings.AngelFile, text => text.Replace("\"arenaBounds\": false", "\"arenaBounds\": true")));
+            Assert.IsTrue(arena.Angel.Port.ArenaBounds);
+            Assert.AreEqual(PlayArea.Inset(GameWorld.DefaultArena, arena.Angel.Port.BoundsMargin), arena.Player.Flight.Bounds);
+        }
+
+        [Test]
         public void ChainWallBounce_StaysReachableAsAnOption()
         {
             var settings = GameSettings.Load(Patched(GameSettings.ChainFile, text => text.Replace("\"keepInArena\": false", "\"keepInArena\": true")));
@@ -545,9 +574,9 @@ namespace MindAttic.Chain.Tests
         [Test]
         public void BadChoice_ListsTheNames()
         {
-            var e = LoadFails(Patched(GameSettings.CameraFile, text => text.Replace("\"FitLevel\"", "\"Fit\"")));
+            var e = LoadFails(Patched(GameSettings.CameraFile, text => text.Replace("\"Original\"", "\"Fit\"")));
 
-            StringAssert.Contains("'mode' must be one of FitLevel, Follow (is \"Fit\")", e.Message);
+            StringAssert.Contains("'mode' must be one of FitLevel, Follow, Original (is \"Fit\")", e.Message);
         }
 
         [Test]

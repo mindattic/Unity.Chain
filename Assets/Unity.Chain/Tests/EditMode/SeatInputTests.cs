@@ -129,10 +129,11 @@ namespace MindAttic.Chain.Tests
         {
             var start = _rig.Player.Flight.Position;
 
-            _input.Dispatch(new SeatInput.Frame { Stick = new Vector2(1f, 0f) }, 0.5f);
+            // A quarter second keeps the angel inside Angel.vb's checkBounds (X up to 4.5 world units, U.CHN-T86).
+            _input.Dispatch(new SeatInput.Frame { Stick = new Vector2(1f, 0f) }, 0.25f);
 
             var moved = _rig.Player.Flight.Position - start;
-            var counts = _rig.Session.Settings.Steering.StickSpeed * 0.5f;
+            var counts = _rig.Session.Settings.Steering.StickSpeed * 0.25f;
             Assert.AreEqual(counts * _rig.Player.Setup.Flight.Sensitivity, moved.X, 1e-4f);
         }
 

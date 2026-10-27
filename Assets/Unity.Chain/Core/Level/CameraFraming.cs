@@ -6,6 +6,11 @@ namespace MindAttic.Chain.Core
         FitLevel,
         /// <summary>Fixed zoom that follows the target with a dead zone, never showing past the level's edges.</summary>
         Follow,
+        /// <summary>
+        /// Camera.vb's own fixed view, the default (U.CHN-T86): the play plane as the 45 degree perspective from z -1
+        /// sees it, centred on the origin, 4:3 (bars on any other screen shape).
+        /// </summary>
+        Original,
     }
 
     /// <summary>
@@ -17,6 +22,25 @@ namespace MindAttic.Chain.Core
     /// </summary>
     public static class CameraFraming
     {
+        /// <summary>
+        /// The viewport (normalised x, y, width, height) that shows an <paramref name="aspect"/>-shaped view centred on a
+        /// screen of <paramref name="screenAspect"/>: full height with bars at the sides on a wider screen, full width with
+        /// bars above and below on a taller one.
+        /// </summary>
+        public static Rect2 Viewport(float aspect, float screenAspect)
+        {
+            aspect = Calc.Max(0.0001f, aspect);
+            screenAspect = Calc.Max(0.0001f, screenAspect);
+            if (screenAspect > aspect)
+            {
+                var width = aspect / screenAspect;
+                return new Rect2((1f - width) * 0.5f, 0f, width, 1f);
+            }
+
+            var height = screenAspect / aspect;
+            return new Rect2(0f, (1f - height) * 0.5f, 1f, height);
+        }
+
         /// <summary>Half the width and height of an orthographic view.</summary>
         public static Vec2 HalfExtents(float orthographicSize, float aspect) =>
             new Vec2(orthographicSize * Calc.Max(0f, aspect), orthographicSize);

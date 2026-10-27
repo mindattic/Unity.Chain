@@ -10,7 +10,8 @@ namespace MindAttic.Chain
     /// says (position, facing, wing-flap frame) and moves the optional hand-socket transform to the
     /// hand. It never moves the angel itself. Its tuning (sensitivity, hover, flap, hand offset: angel.json)
     /// comes from the data files through the session's <see cref="GameSettings"/>; what this component adds
-    /// when the session seats it (<see cref="GameSession.Join(AngelController)"/>) is where it starts and its
+    /// when the session seats it (<see cref="GameSession.Join(AngelController)"/>) is where it starts and, only with
+    /// angel.json's <c>port.arenaBounds</c> (off by default; the default is Angel.vb's checkBounds, U.CHN-T86), its
     /// bounds: the level's <see cref="LevelBounds"/> (assigned, or found in the scene) inset by angel.json's
     /// <c>port.boundsMargin</c>; with no level, the camera's orthographic view, then the default arena.
     /// </summary>
@@ -113,7 +114,7 @@ namespace MindAttic.Chain
             setup.Start = transform.position.ToCore();
             setup.Flight = new AngelFlight.Settings(
                 flight.Sensitivity,
-                ComputeBounds(settings.Angel.Port.BoundsMargin.ToUnity()).ToCore(),
+                settings.Angel.Port.ArenaBounds ? ComputeBounds(settings.Angel.Port.BoundsMargin.ToUnity()).ToCore() : flight.Bounds,
                 flight.HoverAmplitude,
                 flight.HoverPeriod,
                 flight.FrameDuration,

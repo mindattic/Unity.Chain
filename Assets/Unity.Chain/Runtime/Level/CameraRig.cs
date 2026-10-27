@@ -47,8 +47,12 @@ namespace MindAttic.Chain
         private float followSize;
         private Vector2 deadZone;
         private float sharpness;
+        private float originalHalfHeight;
+        private float originalAspect;
 
         private Camera _camera;
+        // Clears the bars around the original's 4:3 view on any other screen shape (U.CHN-T86).
+        private Camera _bars;
 
         private ScreenShake _shake;
         // The shake offset on the view now, laid on after each framing so the base view is what is framed.
@@ -218,6 +222,8 @@ namespace MindAttic.Chain
                 followSize = tuning.FollowSize;
                 deadZone = tuning.DeadZone.ToUnity();
                 sharpness = tuning.Sharpness;
+                originalHalfHeight = tuning.OriginalHalfHeight;
+                originalAspect = tuning.OriginalAspect;
                 _tuned = true;
             }
 
@@ -268,6 +274,16 @@ namespace MindAttic.Chain
             Vector2 next;
             float size;
 
+            if (mode == CameraFramingMode.Original)
+            {
+                // Camera.vb: cam (0, 0, -1) looking at target (0, 0, 0) through a 45 degree, 4:3 lens. The shake and the
+                // debug camera still move it on top, as Root.vb and Input.vb move cam and target.
+                ShowAspect(originalAspect);
+                PlaceAt(Vector2.zero, originalHalfHeight > 0f ? originalHalfHeight : cam.orthographicSize);
+                return;
+            }
+
+            ShowAspect(0f);
             if (mode == CameraFramingMode.FitLevel)
             {
                 if (!hasLevel)
@@ -305,6 +321,48 @@ namespace MindAttic.Chain
 
             PlaceAt(next, size);
         }
+
+        /// <summary>
+        /// Shows the view in an <paramref name="aspect"/>-shaped viewport centred on the screen, with black bars beside or
+        /// above and below it on any other screen shape (the original ran 640x480 or a 4:3 full screen); 0 shows the whole
+        /// screen.
+        /// </summary>
+        private void ShowAspect(float aspect)
+        {
+            var cam = Camera;
+            var full = new Rect(0f, 0f, 1f, 1f);
+            var rect = full;
+            if (aspect > 0f && Screen.height > 0)
+            {
+                rect = CameraFraming.Viewport(aspect, (float)Screen.width / Screen.height).ToUnity();
+            }
+
+            if (cam.rect != rect)
+            {
+                cam.rect = rect;
+            }
+
+            var barred = rect != full;
+            if (barred && _bars == null)
+            {
+                var go = new GameObject("Bars");
+                go.transform.SetParent(transform, false);
+                _bars = go.AddComponent<Camera>();
+                _bars.clearFlags = CameraClearFlags.SolidColor;
+                _bars.backgroundColor = Color.black;
+                _bars.cullingMask = 0;
+                _bars.orthographic = true;
+            }
+
+            if (_bars != null)
+            {
+                _bars.depth = cam.depth - 1f;
+                _bars.enabled = barred;
+            }
+        }
+
+        /// <summary>The viewport the view is shown in (the whole screen, or the original's 4:3 between bars).</summary>
+        public Rect Viewport => Camera.rect;
 
         /// <summary>Frames the view at <paramref name="center"/> and <paramref name="size"/>, then lays the shake and the debug camera on top.</summary>
         private void PlaceAt(Vector2 center, float size)

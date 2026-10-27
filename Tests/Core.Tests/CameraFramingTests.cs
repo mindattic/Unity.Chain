@@ -6,6 +6,22 @@ namespace MindAttic.Chain.Tests
     public class CameraFramingTests
     {
         [Test]
+        public void Viewport_KeepsTheOriginals4By3_WithBarsOnOtherShapes()
+        {
+            var same = CameraFraming.Viewport(4f / 3f, 4f / 3f);
+            Assert.AreEqual(new Rect2(0f, 0f, 1f, 1f), same, "a 640x480 window shows it whole");
+
+            var wide = CameraFraming.Viewport(4f / 3f, 16f / 9f);
+            Assert.AreEqual(0.75f, wide.Width, 1e-5f, "bars at the sides of a 16:9 screen");
+            Assert.AreEqual(0.125f, wide.X, 1e-5f);
+            Assert.AreEqual(1f, wide.Height, 1e-5f);
+
+            var tall = CameraFraming.Viewport(4f / 3f, 1f);
+            Assert.AreEqual(0.75f, tall.Height, 1e-5f, "bars above and below a square screen");
+            Assert.AreEqual(0.125f, tall.Y, 1e-5f);
+        }
+
+        [Test]
         public void FitOrthographicSize_ShowsWholeLevel_OnWideAndTallScreens()
         {
             var level = new Vec2(16f, 9f);

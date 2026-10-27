@@ -1,5 +1,5 @@
 {
-  "_source": "Angel.vb. Screen units, per frame; flapRate and hurtDelay are seconds. rectWidth and rectBottom are the angel's hit rectangle (X..X+0.06 by Y+0.03..Y+angelSize/2), used by the heart.",
+  "_source": "Angel.vb. Screen units, per frame; flapRate and hurtDelay are seconds. rectWidth and rectBottom are the angel's hit rectangle (X..X+0.06 by Y+0.03..Y+angelSize/2), used by the heart. boundsX and boundsY are checkBounds' clamp on X and Y (left -0.6, right 0.5, bottom -0.6, top 0.4).",
   "Ratio3D": 0.00171,
   "hoverMax": 0.01,
   "hoverRate": 0.001,
@@ -10,9 +10,12 @@
   "angelSize": 0.3,
   "rectWidth": 0.06,
   "rectBottom": 0.03,
+  "boundsX": [-0.6, 0.5],
+  "boundsY": [-0.6, 0.4],
   "port": {
-    "_about": "Not in the original; world units, never mapped.",
+    "_about": "Not in the original; world units, never mapped. arenaBounds false (the default, U.CHN-T86) clamps the angel to checkBounds' boundsX/boundsY; true is the port's earlier choice, the level's arena inset by boundsMargin, kept only as a data option.",
     "handOffset": [0.3, 0],
+    "arenaBounds": false,
     "boundsMargin": [0.5, 0.6],
     "contactRadius": 0.4
   }

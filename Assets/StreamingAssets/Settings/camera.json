@@ -8,8 +8,8 @@
   "isometricStep": 0.25,
   "shakeAmount": 0.02,
   "port": {
-    "_about": "The camera rig, not in the original; world units and seconds. mode is FitLevel or Follow. minDistance (screen units) is how near the debug camera's eye comes to the plane it looks at; the original walked through it (BIBLE D26).",
-    "mode": "FitLevel",
+    "_about": "The camera rig, not in the original; world units and seconds. mode is Original (the default, U.CHN-T86: Camera.vb's own fixed view of the play plane, its Fov and camZ above, centred on the origin, 4:3 with bars on any other screen shape), FitLevel (the port's earlier fit of the whole 16 x 9 arena, kept only as a data option) or Follow. minDistance (screen units) is how near the debug camera's eye comes to the plane it looks at; the original walked through it (BIBLE D26).",
+    "mode": "Original",
     "padding": 0,
     "followSize": 4.5,
     "deadZone": [1.5, 1],

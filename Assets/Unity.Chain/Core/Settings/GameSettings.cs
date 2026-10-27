@@ -189,6 +189,14 @@ namespace MindAttic.Chain.Core
             return errors.Count == before ? data : default;
         }
 
+        /// <summary>Angel.vb's checkBounds (X -0.6..0.5, Y -0.6..0.4 by default) in world units (U.CHN-T86).</summary>
+        private static Rect2 CheckBounds(AngelData angel, OriginalSpace m)
+        {
+            var left = m.Length(angel.BoundsX.X);
+            var bottom = m.Length(angel.BoundsY.X);
+            return new Rect2(left, bottom, m.Length(angel.BoundsX.Y) - left, m.Length(angel.BoundsY.Y) - bottom);
+        }
+
         /// <summary>The one place the original's figures become the port's (see <see cref="OriginalSpace"/>).</summary>
         private void Map()
         {
@@ -200,7 +208,9 @@ namespace MindAttic.Chain.Core
 
             var flight = new AngelFlight.Settings(
                 sensitivity: m.PerInput(angel.Ratio3D),
-                bounds: PlayArea.Inset(GameWorld.DefaultArena, angel.Port.BoundsMargin),
+                bounds: angel.Port.ArenaBounds
+                    ? PlayArea.Inset(GameWorld.DefaultArena, angel.Port.BoundsMargin)
+                    : CheckBounds(angel, m),
                 hoverAmplitude: m.Length(angel.HoverMax),
                 // Angel.vb's triangle wave climbs hoverMax, falls 2 x hoverMax and climbs back, hoverRate a frame.
                 hoverPeriod: m.Seconds(4f * angel.HoverMax / angel.HoverRate),
@@ -333,7 +343,11 @@ namespace MindAttic.Chain.Core
                 TintRate = m.PerSecond(Lighting.TintStep),
             };
 
-            CameraTuning = Camera.Port;
+            // Camera.vb's view of the play plane: a 45 degree perspective from z -1 sees tan(22.5) either side of the
+            // centre, 4:3 wide (U.CHN-T86).
+            CameraTuning = Camera.Port.WithOriginalView(
+                m.Length((float)Math.Tan(Camera.Fov / 2f) * -Camera.CamZ),
+                Camera.Aspect);
             ShakeAmount = m.Length(Camera.ShakeAmount);
             DebugCameraSettings = new DebugCamera.Settings(
                 fov: Camera.Fov,
@@ -553,6 +567,10 @@ namespace MindAttic.Chain.Core
         public float AngelSize { get; private set; }
         public float RectWidth { get; private set; }
         public float RectBottom { get; private set; }
+        /// <summary>Angel.vb checkBounds' clamp on X: (left, right), screen units.</summary>
+        public Vec2 BoundsX { get; private set; }
+        /// <summary>Angel.vb checkBounds' clamp on Y: (bottom, top), screen units.</summary>
+        public Vec2 BoundsY { get; private set; }
         public AngelPort Port { get; private set; }
 
         internal static AngelData Read(SettingsReader r)
@@ -569,13 +587,18 @@ namespace MindAttic.Chain.Core
                 AngelSize = r.Positive("angelSize"),
                 RectWidth = r.Positive("rectWidth"),
                 RectBottom = r.Number("rectBottom"),
+                BoundsX = r.Pair("boundsX"),
+                BoundsY = r.Pair("boundsY"),
             };
+            r.Check(data.BoundsX.X < data.BoundsX.Y, "boundsX", "left must be below right");
+            r.Check(data.BoundsY.X < data.BoundsY.Y, "boundsY", "bottom must be below top");
 
             var port = r.Section("port");
             data.Port = new AngelPort(
                 handOffset: port.Pair("handOffset"),
                 boundsMargin: port.Pair("boundsMargin", 0f),
-                contactRadius: port.Number("contactRadius", 0f));
+                contactRadius: port.Number("contactRadius", 0f),
+                arenaBounds: port.Flag("arenaBounds"));
             port.Done();
             return data;
         }
@@ -584,8 +607,9 @@ namespace MindAttic.Chain.Core
     /// <summary>angel.json's port-only figures, world units.</summary>
     public readonly struct AngelPort
     {
-        public AngelPort(Vec2 handOffset, Vec2 boundsMargin, float contactRadius)
+        public AngelPort(Vec2 handOffset, Vec2 boundsMargin, float contactRadius, bool arenaBounds = false)
         {
+            ArenaBounds = arenaBounds;
             HandOffset = handOffset;
             BoundsMargin = boundsMargin;
             ContactRadius = contactRadius;
@@ -593,7 +617,12 @@ namespace MindAttic.Chain.Core
 
         /// <summary>Where link 0 hangs from the body's centre facing right (the port's sprites are centred).</summary>
         public Vec2 HandOffset { get; }
-        /// <summary>The angel's flight is kept this far inside the arena's edges.</summary>
+        /// <summary>
+        /// False (the default): the angel is clamped to Angel.vb's checkBounds (<see cref="AngelData.BoundsX"/>,
+        /// <see cref="AngelData.BoundsY"/>, U.CHN-T86). True: the port's earlier arena inset by <see cref="BoundsMargin"/>.
+        /// </summary>
+        public bool ArenaBounds { get; }
+        /// <summary>With <see cref="ArenaBounds"/>, the angel's flight is kept this far inside the arena's edges.</summary>
         public Vec2 BoundsMargin { get; }
         /// <summary>The angel's contact circle (V5: a circle for Angel.vb's rectangle).</summary>
         public float ContactRadius { get; }
@@ -815,14 +844,30 @@ namespace MindAttic.Chain.Core
     /// <summary>The camera rig's framing (the port's; the original's camera never moved in play), world units.</summary>
     public readonly struct CameraTuning
     {
-        public CameraTuning(CameraFramingMode mode, float padding, float followSize, Vec2 deadZone, float sharpness)
+        public CameraTuning(CameraFramingMode mode, float padding, float followSize, Vec2 deadZone, float sharpness,
+            float originalHalfHeight = 0f, float originalAspect = 4f / 3f)
         {
             Mode = mode;
             Padding = padding;
             FollowSize = followSize;
             DeadZone = deadZone;
             Sharpness = sharpness;
+            OriginalHalfHeight = originalHalfHeight;
+            OriginalAspect = originalAspect;
         }
+
+        /// <summary>
+        /// Half the height of Camera.vb's view of the play plane, world units: tan(Fov / 2) x the eye's distance, mapped
+        /// (<see cref="CameraFramingMode.Original"/>, U.CHN-T86).
+        /// </summary>
+        public float OriginalHalfHeight { get; }
+
+        /// <summary>Camera.vb's PerspectiveFovLH aspect, 4:3: the original view's width over its height.</summary>
+        public float OriginalAspect { get; }
+
+        /// <summary>This tuning with the original view's figures set.</summary>
+        public CameraTuning WithOriginalView(float halfHeight, float aspect) =>
+            new CameraTuning(Mode, Padding, FollowSize, DeadZone, Sharpness, halfHeight, aspect);
 
         public CameraFramingMode Mode { get; }
         public float Padding { get; }

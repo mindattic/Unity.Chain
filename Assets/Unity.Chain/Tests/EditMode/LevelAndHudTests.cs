@@ -110,6 +110,33 @@ namespace MindAttic.Chain.Tests
         }
 
         [Test]
+        public void CameraRig_Original_ShowsCameraVbsFixedView_At4By3()
+        {
+            // U.CHN-T86: Camera.vb's 45 degree lens from z -1 shows tan(22.5) of the plane either side of the origin,
+            // 4:3, whatever the level; the level's arena does not widen it.
+            var level = MakeLevel(new Vector2(3f, 2f), new Vector2(16f, 9f));
+            var rig = MakeCamera(16f / 9f);
+            rig.Level = level;
+            rig.Mode = CameraFramingMode.Original;
+
+            rig.Snap();
+
+            var tuning = SettingsStore.Current.CameraTuning;
+            Assert.AreEqual(tuning.OriginalHalfHeight, rig.Camera.orthographicSize, 1e-4f);
+            Assert.AreEqual(9f * Mathf.Tan(Mathf.PI / 8f), rig.Camera.orthographicSize, 1e-3f);
+            Assert.AreEqual(new Vector3(0f, 0f, -10f), rig.transform.position, "centred on the origin, z kept");
+            var pixels = rig.Camera.pixelRect;
+            if (pixels.height > 0f && Screen.height > 0)
+            {
+                Assert.AreEqual(4f / 3f, pixels.width / pixels.height, 0.02f, "shown 4:3, with bars on any other screen");
+            }
+
+            rig.Mode = CameraFramingMode.FitLevel;
+            rig.Snap();
+            Assert.AreEqual(new Rect(0f, 0f, 1f, 1f), rig.Camera.rect, "the other modes use the whole screen");
+        }
+
+        [Test]
         public void CameraRig_FitLevel_ShowsWholeLevelCentered()
         {
             var level = MakeLevel(new Vector2(3f, 2f), new Vector2(16f, 9f));
