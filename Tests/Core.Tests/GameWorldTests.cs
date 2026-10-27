@@ -643,6 +643,20 @@ namespace MindAttic.Chain.Tests
         }
 
         [Test]
+        public void GrabbedEnemy_KeepsAnimating_AsRenderEnemyAnimatesEveryLiveEnemy()
+        {
+            var world = ContactWorld(out _);
+            var enemy = world.SpawnEnemy(new Vec2(-3f, 0f), 1f, 100f);
+            ((IGrappleTarget)enemy).OnGrappled();
+            var before = enemy.Brain.Frame;
+
+            world.Step(0.25f);
+
+            Assert.AreEqual(EnemyState.Grabbed, enemy.State);
+            Assert.AreEqual((before + 2) % EnemyBrain.FrameCount, enemy.Brain.Frame, "two 0.1 s frames on while held (U.CHN-T84)");
+        }
+
+        [Test]
         public void DeadEnemy_DoesNotHurt_NoInvisibleHitBoxWhereItDied()
         {
             var world = ContactWorld(out _);

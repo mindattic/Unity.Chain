@@ -123,9 +123,10 @@ namespace MindAttic.Chain.Core
 
         /// <summary>
         /// Enemy.vb's <c>Enemy(n).Frame</c>: loadEnemy starts it at a random 0..6, then
-        /// <c>animateEnemy</c> advances it every <see cref="DefaultFrameDuration"/> while this enemy
-        /// is stepped (not while Grabbed: the world does not step a held enemy's brain, a minor
-        /// deviation -- the original kept animating a grabbed enemy too).
+        /// <c>animateEnemy</c> advances it every <see cref="DefaultFrameDuration"/> while this enemy is
+        /// alive, whatever its AI: <see cref="Step"/> advances it, and a held enemy, whose brain the world
+        /// does not step, still animates through <see cref="Animate"/> (renderEnemy calls animateEnemy for a
+        /// Grabbed enemy too; U.CHN-T84).
         /// </summary>
         public int Frame { get; private set; }
 
@@ -336,6 +337,18 @@ namespace MindAttic.Chain.Core
             }
 
             return Calc.Sign(difference);
+        }
+
+        /// <summary>
+        /// Advances only the animation, for a live enemy the world does not step (a held one): Enemy.vb's
+        /// renderEnemy calls animateEnemy for every live enemy, Grabbed included (U.CHN-T84).
+        /// </summary>
+        public void Animate(float deltaTime)
+        {
+            if (IsAlive)
+            {
+                AdvanceFrame(deltaTime);
+            }
         }
 
         /// <summary>Enemy.vb's animateEnemy: loops 0..<see cref="FrameCount"/>-1 every <see cref="DefaultFrameDuration"/>.</summary>

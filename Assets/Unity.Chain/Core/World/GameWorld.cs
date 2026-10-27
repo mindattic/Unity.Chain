@@ -754,8 +754,15 @@ namespace MindAttic.Chain.Core
             for (var i = 0; i < count; i++)
             {
                 var enemy = _enemies[i];
-                if (!enemy.IsAlive || enemy.State == EnemyState.Grabbed)
+                if (!enemy.IsAlive)
                 {
+                    continue;
+                }
+
+                if (enemy.State == EnemyState.Grabbed)
+                {
+                    // The grapple carries it; renderEnemy still animates it (U.CHN-T84).
+                    enemy.Brain.Animate(deltaTime);
                     continue;
                 }
 
