@@ -82,8 +82,10 @@ namespace MindAttic.Chain.Tests
             _rig.Chain.RenderChain(1f);
             _rig.Mace.RenderMace();
 
-            Assert.AreEqual(shown.Angel.X, _rig.Angel.transform.position.x, 1e-5f, "the angel stands where the authority has this seat's");
-            Assert.AreEqual(shown.Angel.Y, _rig.Angel.transform.position.y, 1e-5f);
+            // Drawn on renderAngel's quad, off the shown body (U.CHN-T93).
+            var offset = _rig.Angel.SpriteOffset;
+            Assert.AreEqual(shown.Angel.X + offset.x, _rig.Angel.transform.position.x, 1e-5f, "the angel stands where the authority has this seat's");
+            Assert.AreEqual(shown.Angel.Y + offset.y, _rig.Angel.transform.position.y, 1e-5f);
             Assert.AreNotEqual(_rig.Player.AngelPosition.X, _rig.Angel.transform.position.x, "not where the frozen local world has it");
 
             var line = _rig.Chain.GetComponent<LineRenderer>();
@@ -96,8 +98,10 @@ namespace MindAttic.Chain.Tests
             }
 
             Assert.AreEqual(shown.MaceIndex, _rig.Mace.MaceIndex);
-            Assert.AreEqual(shown.Mace.X, mace.position.x, 1e-5f, "the mace sits on the shown chain's last link");
-            Assert.AreEqual(shown.Mace.Y, mace.position.y, 1e-5f);
+            // Chain.vb's 3.5x quad is drawn from the mace link's X, so its centre is half a quad right (U.CHN-T93).
+            var half = _rig.Mace.LinkWidth * _rig.Mace.CurrentScale / 2f;
+            Assert.AreEqual(shown.Mace.X + half + (_rig.Mace.CurrentScale > 1f ? _rig.Mace.SpriteOffset.x : 0f), mace.position.x, 1e-5f, "the mace sits on the shown chain's last link");
+            Assert.AreEqual(shown.Mace.Y + (_rig.Mace.CurrentScale > 1f ? _rig.Mace.SpriteOffset.y : 0f), mace.position.y, 1e-5f);
             Assert.IsTrue(_rig.Mace.IsGrappleArmed, "the authority's grapple is armed for this seat");
             Assert.IsFalse(_rig.Player.Grapple.IsArmed, "though the local world's is not");
         }

@@ -48,6 +48,8 @@ namespace MindAttic.Chain
         [SerializeField] private Transform handSocketTransform;
 
         private bool _levelSearched;
+        // Where the angel stood when first seated: the sprite is drawn off it afterwards (U.CHN-T93).
+        private Vector3? _home;
 
         /// <summary>The session this angel sends its commands to, once seated.</summary>
         public GameSession Session { get; private set; }
@@ -111,7 +113,8 @@ namespace MindAttic.Chain
         {
             var flight = setup.Flight;
             var sprites = Mathf.Max(rightFrames.Length, leftFrames.Length);
-            setup.Start = transform.position.ToCore();
+            _home = _home ?? transform.position;
+            setup.Start = ((Vector2)_home.Value).ToCore();
             setup.Flight = new AngelFlight.Settings(
                 flight.Sensitivity,
                 settings.Angel.Port.ArenaBounds ? ComputeBounds(settings.Angel.Port.BoundsMargin.ToUnity()).ToCore() : flight.Bounds,
@@ -119,7 +122,8 @@ namespace MindAttic.Chain
                 flight.HoverPeriod,
                 flight.FrameDuration,
                 sprites > 0 ? sprites : flight.FrameCount,
-                flight.HandOffset);
+                flight.HandOffset,
+                flight.HandOffsetLeft);
         }
 
         /// <summary>
@@ -230,9 +234,26 @@ namespace MindAttic.Chain
             Draw(flight.RenderPosition, flight.HandSocket, flight.Facing, flight.Frame);
         }
 
+        /// <summary>
+        /// Where the sprite's centre is drawn from the body (the flight position plus the hover), world units: renderAngel
+        /// draws the angelSize quad from X + angelOffset.X, centred on Y + angelOffset.Y (U.CHN-T93).
+        /// </summary>
+        public Vector2 SpriteOffset
+        {
+            get
+            {
+                var angel = Settings.Angel;
+                var m = Settings.Mapping;
+                return new Vector2(m.Length(angel.AngelOffset.X + angel.AngelSize / 2f), m.Length(angel.AngelOffset.Y));
+            }
+        }
+
+        /// <summary>The width the whole sprite is drawn at: angel.json's angelSize quad, world units.</summary>
+        public float SpriteWidth => Settings.Mapping.Length(Settings.Angel.AngelSize);
+
         private void Draw(Vec2 body, Vec2 handSocket, Facing facing, int frame)
         {
-            var p = body.ToUnity();
+            var p = body.ToUnity() + SpriteOffset;
             transform.position = new Vector3(p.x, p.y, transform.position.z);
 
             if (handSocketTransform != null)
@@ -256,17 +277,16 @@ namespace MindAttic.Chain
                 spriteRenderer.sprite = frames[Mathf.Abs(frame) % frames.Length];
             }
 
-            // The sprite's import is a 1-unit-wide baseline (ArtImportSettings, UNI-T19); scale it to
-            // the angel's own contact circle (angel.json's port.contactRadius x2) the same way
-            // HeartPickup scales heart.png to itemSize, so the art matches what it collides as.
+            // The whole picture is drawn on renderAngel's angelSize quad (setupVertex), whatever its import size, so the
+            // angel stands as large as in the original (U.CHN-T93; it had been shrunk to the port's contact circle).
             var sprite = spriteRenderer.sprite;
             if (sprite != null)
             {
                 var nativeWidth = sprite.bounds.size.x;
-                var diameter = Settings.Angel.Port.ContactRadius * 2f;
-                if (nativeWidth > 0f && diameter > 0f)
+                var width = SpriteWidth;
+                if (nativeWidth > 0f && width > 0f)
                 {
-                    transform.localScale = Vector3.one * (diameter / nativeWidth);
+                    transform.localScale = Vector3.one * (width / nativeWidth);
                 }
             }
         }

@@ -221,14 +221,18 @@ namespace MindAttic.Chain
                 return;
             }
 
+            // Chain.vb draws the mace on the mace link's linkSize quad scaled 3.5x (1x with follow off): from the link's
+            // X, centred on its Y (setupVertex), so the picture's centre is half the drawn width right of the link
+            // (U.CHN-T93; it had been drawn on the port's thin line width, centred on the link).
             var following = Chain.IsFollowing;
             var linkPosition = Chain.GetRenderedLinkPosition(MaceIndex);
-            maceVisual.position = linkPosition + (following ? (Vector3)_spriteOffset : Vector3.zero);
-
-            var line = Chain.GetComponent<LineRenderer>();
-            var width = line != null ? line.widthMultiplier : 1f;
-            maceVisual.localScale = Vector3.one * (width * CurrentScale);
+            var width = LinkWidth * CurrentScale;
+            maceVisual.position = linkPosition + new Vector3(width / 2f, 0f, 0f) + (following ? (Vector3)_spriteOffset : Vector3.zero);
+            maceVisual.localScale = Vector3.one * width;
         }
+
+        /// <summary>One link across: chain.json's linkSize quad (Chain.vb setupVertex), world units.</summary>
+        public float LinkWidth => Chain.Settings.Mapping.Length(Chain.Settings.Chain.LinkSize);
 
         /// <summary>
         /// Puts the current picture on the visual's sprite renderer, when both are there: Input.vb's grapple

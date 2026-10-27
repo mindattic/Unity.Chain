@@ -83,6 +83,16 @@ namespace MindAttic.Chain
             }
         }
 
+        /// <summary>The width an enemy's whole picture is drawn at: enemies.json's enemySize quad, world units.</summary>
+        public static float SpriteWidth
+        {
+            get
+            {
+                var settings = SettingsStore.Current;
+                return settings.Mapping.Length(settings.Enemies.EnemySize);
+            }
+        }
+
         private void Draw(Vec2 p, int frame, float radius)
         {
             transform.position = new Vector3(p.X, p.Y, transform.position.z);
@@ -97,17 +107,16 @@ namespace MindAttic.Chain
                 spriteRenderer.sprite = frames[Mathf.Abs(frame) % frames.Length];
             }
 
-            // The sprite's import is a 1-unit-wide baseline (ArtImportSettings, UNI-T19); scale it to
-            // this enemy's own physics circle (EnemyEntity.Radius x2) the same way HeartPickup scales
-            // heart.png to itemSize, so the art matches what it collides, is hit and is grabbed as.
+            // The whole picture is drawn on Enemy.vb's enemySize quad (setupVertex), centred on the position, whatever its
+            // import size, so an enemy stands as large as in the original (U.CHN-T93; it had been shrunk to its circle).
             var sprite = spriteRenderer.sprite;
             if (sprite != null)
             {
                 var nativeWidth = sprite.bounds.size.x;
-                var diameter = radius * 2f;
-                if (nativeWidth > 0f && diameter > 0f)
+                var width = SpriteWidth;
+                if (nativeWidth > 0f && width > 0f)
                 {
-                    transform.localScale = Vector3.one * (diameter / nativeWidth);
+                    transform.localScale = Vector3.one * (width / nativeWidth);
                 }
             }
         }

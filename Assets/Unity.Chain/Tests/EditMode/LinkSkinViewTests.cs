@@ -61,14 +61,14 @@ namespace MindAttic.Chain.Tests
             Render();
 
             Assert.IsNull(_view.RendererFor(0), "the anchor keeps link.png (the line)");
-            var width = _rig.Chain.GetComponent<LineRenderer>().widthMultiplier;
+            var width = _view.LinkWidth;
             for (var i = 1; i <= 5; i++)
             {
                 var renderer = _view.RendererFor(i);
                 Assert.IsNotNull(renderer, $"link {i}");
                 Assert.AreSame(_sprites[i], renderer.sprite, $"link {i} is {Names[i]}");
                 Assert.AreEqual(LinkSkinView.SortingOrder, renderer.sortingOrder);
-                Vector2 drawn = _rig.Chain.GetRenderedLinkPosition(i);
+                Vector2 drawn = _rig.Chain.GetRenderedLinkPosition(i) + new Vector3(width / 2f, 0f, 0f);
                 Assert.That(Vector2.Distance(drawn, renderer.transform.position), Is.LessThan(1e-4f));
                 Assert.AreEqual(width, renderer.transform.localScale.x, 1e-6f);
             }

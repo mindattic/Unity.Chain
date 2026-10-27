@@ -489,7 +489,8 @@ namespace MindAttic.Chain.Tests
             var flown = new Vector2(100f, -50f) * _rig.Player.Setup.Flight.Sensitivity; // angel.json's Ratio3D
             Assert.AreEqual(flown.x, _rig.Player.Flight.Position.X, 1e-5f);
             Assert.AreEqual(flown.y, _rig.Player.Flight.Position.Y, 1e-5f);
-            Assert.AreEqual(flown, (Vector2)_rig.Angel.transform.position);
+            Assert.AreEqual(flown + _rig.Angel.SpriteOffset + new Vector2(0f, _rig.Player.Flight.HoverOffset), (Vector2)_rig.Angel.transform.position,
+                "the sprite is drawn on renderAngel's quad, off the flight position (U.CHN-T93)");
             Assert.Throws<System.ArgumentException>(() => Session.Join(_rig.Angel), "a seat is taken once");
         }
 

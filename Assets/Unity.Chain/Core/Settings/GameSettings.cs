@@ -216,7 +216,9 @@ namespace MindAttic.Chain.Core
                 hoverPeriod: m.Seconds(4f * angel.HoverMax / angel.HoverRate),
                 frameDuration: angel.FlapRate,
                 frameCount: angel.FlapFrames,
-                handOffset: angel.Port.HandOffset);
+                // renderAngel's linkOffset: the hand hangs at X facing right, X + 0.033 facing left, at Y plus the hover.
+                handOffset: new Vec2(m.Length(angel.LinkOffsetX.X), 0f),
+                handOffsetLeft: new Vec2(m.Length(angel.LinkOffsetX.Y), 0f));
 
             Player = new PlayerSetup
             {
@@ -567,6 +569,10 @@ namespace MindAttic.Chain.Core
         public float AngelSize { get; private set; }
         public float RectWidth { get; private set; }
         public float RectBottom { get; private set; }
+        /// <summary>Where renderAngel draws the angelSize quad from X, Y (the hover added to its y), screen units.</summary>
+        public Vec2 AngelOffset { get; private set; }
+        /// <summary>Where the hand (Chain.vb's link 0) hangs from X: (facing right, facing left), screen units.</summary>
+        public Vec2 LinkOffsetX { get; private set; }
         /// <summary>Angel.vb checkBounds' clamp on X: (left, right), screen units.</summary>
         public Vec2 BoundsX { get; private set; }
         /// <summary>Angel.vb checkBounds' clamp on Y: (bottom, top), screen units.</summary>
@@ -587,6 +593,8 @@ namespace MindAttic.Chain.Core
                 AngelSize = r.Positive("angelSize"),
                 RectWidth = r.Positive("rectWidth"),
                 RectBottom = r.Number("rectBottom"),
+                AngelOffset = r.Pair("angelOffset"),
+                LinkOffsetX = r.Pair("linkOffsetX"),
                 BoundsX = r.Pair("boundsX"),
                 BoundsY = r.Pair("boundsY"),
             };
@@ -595,7 +603,6 @@ namespace MindAttic.Chain.Core
 
             var port = r.Section("port");
             data.Port = new AngelPort(
-                handOffset: port.Pair("handOffset"),
                 boundsMargin: port.Pair("boundsMargin", 0f),
                 contactRadius: port.Number("contactRadius", 0f),
                 arenaBounds: port.Flag("arenaBounds"));
@@ -607,16 +614,13 @@ namespace MindAttic.Chain.Core
     /// <summary>angel.json's port-only figures, world units.</summary>
     public readonly struct AngelPort
     {
-        public AngelPort(Vec2 handOffset, Vec2 boundsMargin, float contactRadius, bool arenaBounds = false)
+        public AngelPort(Vec2 boundsMargin, float contactRadius, bool arenaBounds = false)
         {
             ArenaBounds = arenaBounds;
-            HandOffset = handOffset;
             BoundsMargin = boundsMargin;
             ContactRadius = contactRadius;
         }
 
-        /// <summary>Where link 0 hangs from the body's centre facing right (the port's sprites are centred).</summary>
-        public Vec2 HandOffset { get; }
         /// <summary>
         /// False (the default): the angel is clamped to Angel.vb's checkBounds (<see cref="AngelData.BoundsX"/>,
         /// <see cref="AngelData.BoundsY"/>, U.CHN-T86). True: the port's earlier arena inset by <see cref="BoundsMargin"/>.
@@ -640,6 +644,8 @@ namespace MindAttic.Chain.Core
         public float LoadHP { get; private set; }
         public float ResetHP { get; private set; }
         public float CautiousSeekMultiple { get; private set; }
+        /// <summary>The quad an enemy is drawn on (Enemy.vb's enemySize), screen units.</summary>
+        public float EnemySize { get; private set; }
         public EnemyPort Port { get; private set; }
 
         internal static EnemyData Read(SettingsReader r)
@@ -655,6 +661,7 @@ namespace MindAttic.Chain.Core
                 LoadHP = r.Positive("loadHP"),
                 ResetHP = r.Positive("resetHP"),
                 CautiousSeekMultiple = r.Number("cautiousSeekMultiple", 0f),
+                EnemySize = r.Positive("enemySize"),
             };
 
             var port = r.Section("port");

@@ -76,7 +76,7 @@ namespace MindAttic.Chain
         /// </summary>
         public static void TakeAHit(GameSession session, AngelController angel, float stepSeconds)
         {
-            SpawnEnemyAt(session, angel.transform.position, hp: 999f);
+            SpawnEnemyAt(session, Body(angel), hp: 999f);
             session.Step(stepSeconds);
         }
 
@@ -97,6 +97,10 @@ namespace MindAttic.Chain
         /// miss. Landing at the middle of the heart's width keeps full margin either way.</item>
         /// </list>
         /// </summary>
+        /// <summary>The angel's body (its flight position, where enemies touch it), not where its sprite is drawn.</summary>
+        public static Vector3 Body(AngelController angel) =>
+            angel.Flight != null ? (Vector3)angel.Flight.Position.ToUnity() : angel.transform.position;
+
         public static Vec2 HeartTeleportTarget(HeartFloat rules) =>
             new Vec2(rules.X + rules.Config.RectWidth / 2f, rules.Y - rules.Config.AngelRectBottom);
 
@@ -121,7 +125,7 @@ namespace MindAttic.Chain
             var steps = 0;
             while (!session.State.IsGameOver && steps < maxSteps)
             {
-                SpawnEnemyAt(session, angel.transform.position, hp: 999f);
+                SpawnEnemyAt(session, Body(angel), hp: 999f);
                 session.Step(stepSeconds);
                 steps++;
             }

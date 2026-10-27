@@ -104,9 +104,11 @@ namespace MindAttic.Chain.Tests
             _mace.RenderMace();
             _mace.RenderMace();
 
-            var expected = _rig.Chain.GetRenderedLinkPosition(6) + new Vector3(0.1f, -0.2f, 0f);
-            Assert.AreEqual(expected, visual.position);
-            Assert.AreEqual(0.35f, visual.localScale.x, 1e-5f);
+            // Chain.vb's 3.5x linkSize quad, from the mace link's X and centred on its Y (U.CHN-T93).
+            var width = _mace.LinkWidth * 3.5f;
+            var expected = _rig.Chain.GetRenderedLinkPosition(6) + new Vector3(width / 2f, 0f, 0f) + new Vector3(0.1f, -0.2f, 0f);
+            Assert.That(Vector3.Distance(expected, visual.position), Is.LessThan(1e-5f));
+            Assert.AreEqual(width, visual.localScale.x, 1e-5f);
             Assert.AreEqual(before, _mace.MacePosition, "the sprite offset is render-only");
         }
 
@@ -128,12 +130,13 @@ namespace MindAttic.Chain.Tests
             _rig.Step();
             _rig.Chain.RenderChain(1f);
             _mace.RenderMace();
-            Assert.AreEqual(_rig.Chain.GetRenderedLinkPosition(6), visual.position);
-            Assert.AreEqual(0.1f, visual.localScale.x, 1e-5f);
+            var link = _mace.LinkWidth;
+            Assert.That(Vector3.Distance(_rig.Chain.GetRenderedLinkPosition(6) + new Vector3(link / 2f, 0f, 0f), visual.position), Is.LessThan(1e-5f));
+            Assert.AreEqual(link, visual.localScale.x, 1e-5f, "one linkSize quad with follow off");
 
             Assert.IsTrue(_rig.Chain.ToggleFollow());
             _mace.RenderMace();
-            Assert.AreEqual(0.35f, visual.localScale.x, 1e-5f);
+            Assert.AreEqual(link * _mace.MaceScale, visual.localScale.x, 1e-5f);
         }
 
         [Test]
@@ -170,8 +173,9 @@ namespace MindAttic.Chain.Tests
             Assert.IsTrue(_events.Exists(e => e is MaceModeChanged changed && changed.Player == _rig.Id && changed.Mode == MaceMode.Magnet));
             _mace.RenderMace();
             Assert.AreSame(magnet, renderer.sprite);
-            Assert.AreEqual(0.35f, visual.transform.localScale.x, 1e-5f, "the magnet is drawn at the mace's 3.5x, as the ball is");
-            Assert.AreEqual(_rig.Chain.GetRenderedLinkPosition(6), visual.transform.position);
+            var width = _mace.LinkWidth * 3.5f;
+            Assert.AreEqual(width, visual.transform.localScale.x, 1e-5f, "the magnet is drawn at the mace's 3.5x, as the ball is");
+            Assert.That(Vector3.Distance(_rig.Chain.GetRenderedLinkPosition(6) + new Vector3(width / 2f, 0f, 0f), visual.transform.position), Is.LessThan(1e-5f));
 
             Assert.IsTrue(_mace.ToggleMode());
             _mace.RenderMace();

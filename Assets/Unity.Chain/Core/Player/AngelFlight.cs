@@ -39,9 +39,12 @@ namespace MindAttic.Chain.Core
             public readonly float FrameDuration;
             /// <summary>Number of frames in the flap loop (Angel.vb had 4 per direction).</summary>
             public readonly int FrameCount;
-            /// <summary>Hand socket offset from the rendered body when facing right; mirrored
-            /// on X when facing left (Angel.vb's linkOffset shift). Link 0 of the chain anchors here.</summary>
+            /// <summary>Hand socket offset from the rendered body when facing right (Angel.vb's linkOffset). Link 0 of
+            /// the chain anchors here.</summary>
             public readonly Vec2 HandOffset;
+            /// <summary>Hand socket offset from the rendered body when facing left: the right one mirrored on X unless
+            /// given (the shipped figures are renderAngel's own, 0 facing right and 0.033 facing left, U.CHN-T93).</summary>
+            public readonly Vec2 HandOffsetLeft;
 
             public Settings(
                 float sensitivity,
@@ -50,7 +53,8 @@ namespace MindAttic.Chain.Core
                 float hoverPeriod,
                 float frameDuration,
                 int frameCount,
-                Vec2 handOffset)
+                Vec2 handOffset,
+                Vec2? handOffsetLeft = null)
             {
                 Sensitivity = sensitivity;
                 Bounds = bounds;
@@ -59,6 +63,7 @@ namespace MindAttic.Chain.Core
                 FrameDuration = frameDuration;
                 FrameCount = frameCount;
                 HandOffset = handOffset;
+                HandOffsetLeft = handOffsetLeft ?? handOffset.WithX(-handOffset.X);
             }
 
             public static Settings Default => new Settings(
@@ -71,7 +76,7 @@ namespace MindAttic.Chain.Core
                 handOffset: new Vec2(0.25f, -0.1f));
 
             public Settings WithBounds(Rect2 bounds) => new Settings(
-                Sensitivity, bounds, HoverAmplitude, HoverPeriod, FrameDuration, FrameCount, HandOffset);
+                Sensitivity, bounds, HoverAmplitude, HoverPeriod, FrameDuration, FrameCount, HandOffset, HandOffsetLeft);
         }
 
         public Settings Config;
@@ -98,13 +103,7 @@ namespace MindAttic.Chain.Core
         {
             get
             {
-                var offset = Config.HandOffset;
-                if (Facing == Facing.Left)
-                {
-                    offset = offset.WithX(-offset.X);
-                }
-
-                return RenderPosition + offset;
+                return RenderPosition + (Facing == Facing.Left ? Config.HandOffsetLeft : Config.HandOffset);
             }
         }
 

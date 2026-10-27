@@ -106,9 +106,9 @@ namespace MindAttic.Chain
             yield return Shot(capturing, "06-kill");
 
             // A couple of hits: an enemy put on the angel, twice, a beat apart (checkAngelHit's own cooldown).
-            PlaythroughActions.SpawnEnemyAt(session, angel.transform.position, 999f);
+            PlaythroughActions.SpawnEnemyAt(session, PlaythroughActions.Body(angel), 999f);
             yield return new WaitForSeconds(StepPause);
-            PlaythroughActions.SpawnEnemyAt(session, angel.transform.position, 999f);
+            PlaythroughActions.SpawnEnemyAt(session, PlaythroughActions.Body(angel), 999f);
             yield return new WaitForSeconds(0.3f);
             yield return Shot(capturing, "07-take-hits");
 
@@ -128,7 +128,7 @@ namespace MindAttic.Chain
             var deadline = Time.unscaledTime + 30f;
             while (!session.State.IsGameOver && Time.unscaledTime < deadline)
             {
-                PlaythroughActions.SpawnEnemyAt(session, angel.transform.position, 999f);
+                PlaythroughActions.SpawnEnemyAt(session, PlaythroughActions.Body(angel), 999f);
                 yield return new WaitForSeconds(StepPause);
             }
 

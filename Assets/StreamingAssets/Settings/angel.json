@@ -1,5 +1,5 @@
 {
-  "_source": "Angel.vb. Screen units, per frame; flapRate and hurtDelay are seconds. rectWidth and rectBottom are the angel's hit rectangle (X..X+0.06 by Y+0.03..Y+angelSize/2), used by the heart. boundsX and boundsY are checkBounds' clamp on X and Y (left -0.6, right 0.5, bottom -0.6, top 0.4).",
+  "_source": "Angel.vb. Screen units, per frame; flapRate and hurtDelay are seconds. rectWidth and rectBottom are the angel's hit rectangle (X..X+0.06 by Y+0.03..Y+angelSize/2), used by the heart. boundsX and boundsY are checkBounds' clamp on X and Y (left -0.6, right 0.5, bottom -0.6, top 0.4). angelOffset is where the angelSize quad is drawn from X, Y (renderAngel's matAngel translation, the hover added to its y); linkOffsetX is where the hand (Chain.vb's link 0) hangs from X, facing right then left (renderAngel's linkOffset.X 0 and 0.033); it hangs at Y plus the hover.",
   "Ratio3D": 0.00171,
   "hoverMax": 0.01,
   "hoverRate": 0.001,
@@ -8,13 +8,14 @@
   "maxHP": 30,
   "hurtDelay": 0.25,
   "angelSize": 0.3,
+  "angelOffset": [-0.122, 0.1],
+  "linkOffsetX": [0, 0.033],
   "rectWidth": 0.06,
   "rectBottom": 0.03,
   "boundsX": [-0.6, 0.5],
   "boundsY": [-0.6, 0.4],
   "port": {
     "_about": "Not in the original; world units, never mapped. arenaBounds false (the default, U.CHN-T86) clamps the angel to checkBounds' boundsX/boundsY; true is the port's earlier choice, the level's arena inset by boundsMargin, kept only as a data option.",
-    "handOffset": [0.3, 0],
     "arenaBounds": false,
     "boundsMargin": [0.5, 0.6],
     "contactRadius": 0.4

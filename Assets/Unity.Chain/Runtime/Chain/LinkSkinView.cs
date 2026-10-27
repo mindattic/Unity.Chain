@@ -99,22 +99,16 @@ namespace MindAttic.Chain
                 var link = LinkRenderer(i);
                 link.sprite = sprite;
                 link.enabled = true;
-                var position = Chain.GetRenderedLinkPosition(i);
+                // Chain.vb draws each link's linkSize quad from the link's X, centred on its Y (setupVertex).
+                var position = Chain.GetRenderedLinkPosition(i) + new Vector3(LinkWidth / 2f, 0f, 0f);
                 position.z -= (i + 1) * LinkDepthStep;
                 link.transform.position = position;
                 link.transform.localScale = Vector3.one * LinkWidth;
             }
         }
 
-        /// <summary>One link across: the chain line's width (each sprite is one world unit wide at scale 1).</summary>
-        private float LinkWidth
-        {
-            get
-            {
-                var line = Chain.GetComponent<LineRenderer>();
-                return line != null ? line.widthMultiplier : 1f;
-            }
-        }
+        /// <summary>One link across: chain.json's linkSize quad (each sprite is one world unit wide at scale 1; U.CHN-T93).</summary>
+        public float LinkWidth => Chain.Settings.Mapping.Length(Chain.Settings.Chain.LinkSize);
 
         private SpriteRenderer LinkRenderer(int index)
         {

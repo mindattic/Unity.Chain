@@ -1,5 +1,5 @@
 {
-  "_source": "Enemy.vb. Screen units, per frame. maxEnemy 13 is 14 enemies; mass is massBase + massRandom x rand. loadHP is loadEnemy's, resetHP Root.vb Reset's (every wave is a reset's). cautiousSeekMultiple is the Cautious state's 6 x seekSpd.",
+  "_source": "Enemy.vb. Screen units, per frame. maxEnemy 13 is 14 enemies; mass is massBase + massRandom x rand. loadHP is loadEnemy's, resetHP Root.vb Reset's (every wave is a reset's). cautiousSeekMultiple is the Cautious state's 6 x seekSpd. enemySize is the quad an enemy is drawn on (setupVertex, from its X, centred on its Y; the port's position is the quad's centre).",
   "maxEnemy": 13,
   "seekSpd": 0.006,
   "resistSPD": 0.001,
@@ -9,6 +9,7 @@
   "loadHP": 0.2,
   "resetHP": 1.0,
   "cautiousSeekMultiple": 6,
+  "enemySize": 0.3,
   "port": {
     "_about": "Not in the original. radius is world units, never mapped. seekCap is how many enemies may Seek at once: 14, every one, as Enemy.vb loadEnemy, Root.vb Reset and the Hurt recovery set Seek for all (BIBLE D18, settled by U.CHN-T81). A lower cap is UNI-T65's hang-back, kept only as a data option (spike U.CHN-T90): the rest wait in Cautious or Align. hangBackNear and hangBackFar (screen units, mapped by space.json) are the band waiting enemies hold: Align stalks in to the near edge, one angel width (angelSize 0.3) out, and Cautious backs off to the far edge, half as far again.",
     "radius": 0.3,

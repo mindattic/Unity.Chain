@@ -169,6 +169,27 @@ namespace MindAttic.Chain.Tests
         }
 
         [Test]
+        public void Shipped_HandHangsAtRenderAngelsLinkOffset()
+        {
+            // U.CHN-T93: Chain.vb's link 0 is X + linkOffset.X (0 facing right, 0.033 facing left), Y plus the hover.
+            var settings = Load();
+            var flight = settings.Player.Flight;
+
+            Assert.AreEqual(new Vec2(-0.122f, 0.1f), settings.Angel.AngelOffset);
+            Assert.AreEqual(new Vec2(0f, 0f), flight.HandOffset);
+            Assert.AreEqual(0.033f * 9f, flight.HandOffsetLeft.X, 1e-5f);
+            Assert.AreEqual(0f, flight.HandOffsetLeft.Y);
+            Assert.AreEqual(0.3f, settings.Enemies.EnemySize);
+
+            var angel = new AngelFlight(Vec2.Zero, flight);
+            angel.Step(new Vec2(-1f, 0f), 0f);
+            Assert.AreEqual(Facing.Left, angel.Facing);
+            Assert.AreEqual(angel.RenderPosition.X + 0.297f, angel.HandSocket.X, 1e-4f);
+            angel.Step(new Vec2(1f, 0f), 0f);
+            Assert.AreEqual(angel.RenderPosition.X, angel.HandSocket.X, 1e-5f);
+        }
+
+        [Test]
         public void ChainWallBounce_StaysReachableAsAnOption()
         {
             var settings = GameSettings.Load(Patched(GameSettings.ChainFile, text => text.Replace("\"keepInArena\": false", "\"keepInArena\": true")));
