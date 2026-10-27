@@ -189,8 +189,8 @@ DirectSound `SecondaryBuffer`s are loaded for `sword_swing_1..7`, `sword_hit_1..
 `death_1..4` (11 copies each) and `music\music.wma` plays through `AudioVideoPlayback` with a random start
 (`rndMusicPos`, at init and on `Reset`). `playSFX` is **never called**, and `bSound` and `bMusic` both default to
 `False`, so the shipped game is silent. Volumes: music 0, sfx -1000, ambient -1500 (unused). The rebuild
-plays swing, hit, death, catch and throw sounds and loops music (more than the original) from the original's own clips
-(15 WAVs plus `music.ogg`, converted from the WMA; `throw.wav` is the one new clip, U.CHN-T71): UNI-T20. `footstep` is unused in both; `defend` is unused in the original and is the rebuild's catch sound. Volumes and mutes are the shared profile's since UNI-T36, with these as the stock ones; frmConfig's options screen (UNI-T59) sets them, and the ambient volume in Chain's own `game.ambientVolume`.
+plays swing, hit, death and catch sounds and loops music (more than the original) from the original's own clips
+(15 WAVs plus `music.ogg`, converted from the WMA; `throw.wav` is the one new clip, U.CHN-T71, and plays only when `audio.json`'s `throwSound` is on, off by default as the original has no throw sound, U.CHN-T80): UNI-T20. `footstep` is unused in both; `defend` is unused in the original and is the rebuild's catch sound. Volumes and mutes are the shared profile's since UNI-T36, with these as the stock ones; frmConfig's options screen (UNI-T59) sets them, and the ambient volume in Chain's own `game.ambientVolume`.
 
 ### 3.9 Script language (`Script.vb`)
 
@@ -366,7 +366,7 @@ one of four states. Nothing is **missing** and nothing is **partial**.
 |---|---|---|
 | Ported | every Chain, Angel, Enemy, Item, Input, Game rules, Lighting and Script row, including the two that were stale (Count and spawn, Game over) | the ticket in each row's last column, whose Ref names its test or commit; the whole path is also asserted end to end by `ScriptedPlaythroughTests` (U.CHN-T62) |
 | Fixed defect | the rows the original's source breaks (magnet unreachable, no HUD text, silent game, never-applied game speed, joystick, the shake key, FPS, zones, F2/F3, frmConfig, script LIGHT and arithmetic, and the rest) | BIBLE §7, D1 to D33, each `fixed` or `settled` |
-| Deliberate deviation | contact rectangles as physics circles, the orthographic camera fit, the window title (V12), music as OGG, online play, the added catch and throw sounds | BIBLE §8, V1 to V26, each `kept`, `settled` or `matches` (V4 and V12 settled by U.CHN-T76) |
+| Deliberate deviation | contact rectangles as physics circles, the orthographic camera fit, the window title (V12), music as OGG, online play, the added catch sound | BIBLE §8, V1 to V26, each `kept`, `settled` or `matches` (V4 and V12 settled by U.CHN-T76) |
 | Dead | `angelAI.Hurt`; the `Retreat`, `Wander`, `Limbo`, `Death` AI states; right and wheel mouse buttons; the arrow keys and `btnAttack`..`btnDashRight`; `ExtraLife`, `Health5`, `Health20`, `Money`, the `Center` and `Wander` motions; `renderTime`, `renderDate`, `levelText`; `SetupLights`; `Terrains`; the nine cursors; `bRicochet`; `Make`; `Character` | recorded in BIBLE §7's "Not restored, on purpose": each has no body, no caller or no key, and restoring it would invent behaviour |
 
 Stale rows corrected by this pass: 3.3 Count and spawn (was `missing, UNI-T21`), 3.6 Game over (was `missing,

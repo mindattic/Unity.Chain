@@ -63,6 +63,7 @@ namespace MindAttic.Chain
         private float swingRepeatInterval;
         private float fullVolumeSpeed;
         private float minSpeedVolume;
+        private bool throwSound;
 
         private readonly ClipPicker[] _pickers = new ClipPicker[Enum.GetValues(typeof(ChainSound)).Length];
         private SwingSoundTrigger _swing;
@@ -140,6 +141,16 @@ namespace MindAttic.Chain
             set => Tuned().fullVolumeSpeed = Mathf.Max(0f, value);
         }
 
+        /// <summary>
+        /// Whether a grapple release plays <see cref="ChainSound.GrappleThrow"/>: audio.json's <c>throwSound</c>, off by
+        /// default since the original has no throw sound (U.CHN-T80, BIBLE V10).
+        /// </summary>
+        public bool ThrowSound
+        {
+            get => Tuned().throwSound;
+            set => Tuned().throwSound = value;
+        }
+
         /// <summary>The mace link: the chain's <see cref="MaceController"/> index if it has one, else this component's.</summary>
         public int MaceIndex
         {
@@ -182,6 +193,7 @@ namespace MindAttic.Chain
                 swingRepeatInterval = audio.Swing.SwingRepeatInterval;
                 fullVolumeSpeed = audio.Swing.FullVolumeSpeed;
                 minSpeedVolume = audio.Swing.MinSpeedVolume;
+                throwSound = audio.Swing.ThrowSound;
                 _tuned = true;
             }
 
@@ -312,7 +324,7 @@ namespace MindAttic.Chain
                     Play(ChainSound.GrappleCatch);
                     break;
 
-                case Thrown thrown when thrown.Player == player:
+                case Thrown thrown when thrown.Player == player && ThrowSound:
                     Play(ChainSound.GrappleThrow, SpeedVolume(thrown.Velocity.Magnitude));
                     break;
             }

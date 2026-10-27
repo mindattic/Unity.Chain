@@ -860,7 +860,8 @@ namespace MindAttic.Chain.Core
                 swingCooldown: port.Number("swingCooldown", 0f),
                 swingRepeatInterval: port.Number("swingRepeatInterval", 0f),
                 fullVolumeSpeed: port.Number("fullVolumeSpeed", 0f),
-                minSpeedVolume: port.Number("minSpeedVolume", 0f, 1f));
+                minSpeedVolume: port.Number("minSpeedVolume", 0f, 1f),
+                throwSound: port.Flag("throwSound"));
             port.Check(data.Port.SwingRearmSpeed <= data.Port.SwingSpeed, "swingRearmSpeed", $"must not be above swingSpeed ({data.Port.SwingSpeed})");
             port.Done();
             return data;
@@ -870,8 +871,9 @@ namespace MindAttic.Chain.Core
     /// <summary>audio.json's port-only figures: when the swing whoosh fires (V10), world units per second.</summary>
     public readonly struct AudioPort
     {
-        public AudioPort(float swingSpeed, float swingRearmSpeed, float swingCooldown, float swingRepeatInterval, float fullVolumeSpeed, float minSpeedVolume)
+        public AudioPort(float swingSpeed, float swingRearmSpeed, float swingCooldown, float swingRepeatInterval, float fullVolumeSpeed, float minSpeedVolume, bool throwSound = false)
         {
+            ThrowSound = throwSound;
             SwingSpeed = swingSpeed;
             SwingRearmSpeed = swingRearmSpeed;
             SwingCooldown = swingCooldown;
@@ -886,6 +888,8 @@ namespace MindAttic.Chain.Core
         public float SwingRepeatInterval { get; }
         public float FullVolumeSpeed { get; }
         public float MinSpeedVolume { get; }
+        /// <summary>Whether a grapple release plays throw.wav: off, as the original has no throw sound (U.CHN-T80, BIBLE V10).</summary>
+        public bool ThrowSound { get; }
     }
 
     /// <summary>The audio the port plays with: Sound.vb's volumes as gains, and the swing sound's tuning.</summary>

@@ -111,8 +111,27 @@ namespace MindAttic.Chain.Tests
         }
 
         [Test]
-        public void Grapple_PlaysCatchAndThrow()
+        public void Grapple_PlaysCatch_AndNoThrowSound_AsTheOriginalHasNone()
         {
+            Assert.IsFalse(_audio.ThrowSound, "audio.json throwSound is off by default (U.CHN-T80)");
+            _rig.Swing();
+            _rig.Grapple.SetButtonHeld(true);
+            _rig.Step();
+            _rig.SpawnEnemy(_rig.Player.MacePosition.ToUnity());
+            _rig.Step();
+            Assert.IsNotNull(_rig.Grapple.HeldEnemy);
+            Assert.AreEqual(ChainSound.GrappleCatch, _played[_played.Count - 1].sound);
+
+            _played.Clear();
+            _rig.Grapple.SetButtonHeld(false);
+            _rig.Step();
+            CollectionAssert.DoesNotContain(_played.ConvertAll(p => p.sound), ChainSound.GrappleThrow);
+        }
+
+        [Test]
+        public void Grapple_PlaysCatchAndThrow_WhenThrowSoundIsOn()
+        {
+            _audio.ThrowSound = true;
             _rig.Swing();
             _rig.Grapple.SetButtonHeld(true);
             _rig.Step();

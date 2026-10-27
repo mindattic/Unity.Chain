@@ -130,6 +130,16 @@ namespace MindAttic.Chain.Tests
         }
 
         [Test]
+        public void Shipped_NoThrowSound_AsSoundVbHasNone()
+        {
+            // BIBLE V10, settled by U.CHN-T80: the invented throw.wav is a data option, off by default.
+            Assert.IsFalse(Load().Audio.Port.ThrowSound);
+            Assert.IsFalse(Load().AudioTuning.Swing.ThrowSound);
+            var on = GameSettings.Load(Patched(GameSettings.AudioFile, text => text.Replace("\"throwSound\": false", "\"throwSound\": true")));
+            Assert.IsTrue(on.AudioTuning.Swing.ThrowSound);
+        }
+
+        [Test]
         public void ChainWallBounce_StaysReachableAsAnOption()
         {
             var settings = GameSettings.Load(Patched(GameSettings.ChainFile, text => text.Replace("\"keepInArena\": false", "\"keepInArena\": true")));

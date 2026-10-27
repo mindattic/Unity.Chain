@@ -5,12 +5,13 @@
   "ambientVolume": -1500,
   "rndMusicPos": true,
   "port": {
-    "_about": "The swing whoosh, not in the original (it never called playSFX, BIBLE D2, V10); mace speeds in world units per second.",
+    "_about": "The swing whoosh, not in the original (it never called playSFX, BIBLE D2, V10); mace speeds in world units per second. throwSound plays throw.wav on a grapple release: the original has no throw sound, so it is off (U.CHN-T80, BIBLE V10), kept only as a data option.",
     "swingSpeed": 6,
     "swingRearmSpeed": 3,
     "swingCooldown": 0.15,
     "swingRepeatInterval": 0.6,
     "fullVolumeSpeed": 14,
-    "minSpeedVolume": 0.35
+    "minSpeedVolume": 0.35,
+    "throwSound": false
   }
 }

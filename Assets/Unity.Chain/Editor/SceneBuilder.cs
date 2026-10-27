@@ -240,8 +240,8 @@ namespace MindAttic.Chain.EditorTools
             chainAudio.SetClips(ChainSound.EnemyDeath, LoadClips(SfxPath, "death_", 1, 4));
 
             // GrappleCatch is defend.wav, as ChainSound's own doc comment says (UNI-T20). The original
-            // has no throw sound to port, so GrappleThrow is throw.wav, a synthesized whoosh (BIBLE
-            // V10, UNI-T71).
+            // has no throw sound to port; GrappleThrow's throw.wav (a synthesized whoosh, UNI-T71) plays only
+            // when audio.json's throwSound is on, off by default (BIBLE V10, U.CHN-T80).
             chainAudio.SetClips(ChainSound.GrappleCatch, new[] { LoadClip(SfxPath + "defend.wav") });
             chainAudio.SetClips(ChainSound.GrappleThrow, new[] { LoadClip(SfxPath + "throw.wav") });
 
