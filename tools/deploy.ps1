@@ -10,7 +10,7 @@
 .DESCRIPTION
     1. Pulls latest (skipped if the worktree has uncommitted changes, or the pull fails).
     2. Skips the rebuild if nothing under Assets/Packages/ProjectSettings changed since the last
-       deploy at this commit.
+       deploy at this commit (unless -Force).
     3. Stops any running Unity.Chain.exe process (dev copy or deployed copy).
     4. Clears Builds\Windows -- the build OUTPUT only, never Library\ -- so the build below is
        never a stale incremental copy.
@@ -22,11 +22,22 @@
 .PARAMETER Launch
     After publishing, immediately run the deployed Unity.Chain.exe.
 
+.PARAMETER Force
+    Rebuild and republish even when no player source changed since the last deploy (skips only
+    the up-to-date check; Library\ and user settings are untouched).
+
+.NOTES
+    This script never prompts, so agents and /deploy can run it unattended. The repo-root
+    deploy.bat (the Desktop shortcut's target) is the interactive entry point: it asks
+    1) Deploy & Run (this script with -Force -Launch) or 2) Run (starts the copy already in
+    C:\Apps\Unity.Chain without calling this script, deploying first if none is there).
+
 .EXAMPLE
     powershell -ExecutionPolicy Bypass -File tools\deploy.ps1
     powershell -ExecutionPolicy Bypass -File tools\deploy.ps1 -Launch
+    powershell -ExecutionPolicy Bypass -File tools\deploy.ps1 -Force -Launch
 #>
-param([switch]$Launch)
+param([switch]$Launch, [switch]$Force)
 
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
@@ -67,7 +78,7 @@ function Set-Shortcut([string]$exe) {
 # Up to date when nothing the player is built from (Assets, Packages, ProjectSettings) differs between
 # the deployed commit and HEAD: a docs- or tickets-only commit doesn't rebuild the game.
 $upToDate = $false
-if ((Test-Path (Join-Path $out $exeName)) -and (Test-Path $marker)) {
+if (-not $Force -and (Test-Path (Join-Path $out $exeName)) -and (Test-Path $marker)) {
     $deployed = (Get-Content -LiteralPath $marker -Raw).Trim()
     # Under $ErrorActionPreference = 'Stop', redirecting a native command's stderr in Windows
     # PowerShell 5.1 turns every stderr line into a terminating ErrorRecord. A $marker naming a

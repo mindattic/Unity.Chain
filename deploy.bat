@@ -1,11 +1,35 @@
 @echo off
-rem Pulls latest, builds only if the source changed, publishes to C:\Apps\Unity.Chain,
-rem refreshes the Desktop shortcut, and launches it (tools\deploy.ps1 does the work).
-powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0tools\deploy.ps1" -Launch %*
+rem Asks first: 1) Deploy & Run pulls latest, always rebuilds, publishes to C:\Apps\Unity.Chain,
+rem refreshes the Desktop shortcut and launches it (tools\deploy.ps1 -Force -Launch does the work);
+rem 2) Run just launches the copy already in C:\Apps\Unity.Chain.
+setlocal
+set "EXE=C:\Apps\Unity.Chain\Unity.Chain.exe"
+echo.
+echo   Unity.Chain
+echo     1^) Deploy ^& Run
+echo     2^) Run
+echo.
+choice /c 12 /n /m "  Choose 1 or 2: "
+if errorlevel 2 goto run
+
+:deploy
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0tools\deploy.ps1" -Force -Launch %*
 if errorlevel 1 (
     echo.
     echo   Deploy failed. See Logs\build-scene.log, build-settings.log or build-player.log.
+    if exist "%EXE%" (
+        echo   Launching the installed copy instead.
+        start "" /d "C:\Apps\Unity.Chain" "%EXE%"
+    )
     pause
     exit /b 1
 )
 timeout /t 5
+exit /b 0
+
+:run
+if not exist "%EXE%" (
+    echo   Nothing is deployed to C:\Apps\Unity.Chain yet; deploying first.
+    goto deploy
+)
+start "" /d "C:\Apps\Unity.Chain" "%EXE%" %*
