@@ -102,7 +102,7 @@ but unreachable or does nothing; not ported, recorded here), **n/a** (DirectX pl
 | Seek | `d = (angel - offset - pos) * 0.006` (proportional, so it eases in) | `EnemyBrain` | ported |
 | Hurt | decays velocity by `resistSPD` 0.001 per axis, back to Seek when both are near zero | `EnemyBrain` | ported |
 | Grabbed | follows the mace link (+0.03, small random jitter), spins | `Grapple` in `GameWorld` | ported |
-| Thrown | velocity = mace velocity, **no drag, no end state** (it leaves the arena) | thrown rules decelerate it like a knocked enemy (`EnemyBrain.Throw`), then it seeks again; the rate is `enemies.json`'s own `resistSPD` (BIBLE D5) | fixed, rate confirmed (U.CHN-T45) |
+| Thrown | Input.vb's release sets velocity = mace velocity and `Thrown`, and `thrownNum` stays set until the next press. As written the `Thrown` state never lasts a frame: `checkThrowImpact` loops over every enemy, **the thrown one included**, and `rectIntersect` of a rectangle with itself is true, so in the frame it is released it divides its own velocity by its mass and turns `Hurt`, and does so again every frame until the next press. As run, a thrown enemy flies a short way (its speed divided by its mass each frame, then `resistSPD` drag), then stays `Hurt` (immune to the mace, never seeking) until the button is pressed again, and stuns any enemy that touches it meanwhile. With the self-hit removed, `Thrown` has no drag and no end state, so it would leave the arena for good | the self-hit is the defect fixed (BIBLE D5): the thrown enemy goes `Hurt` and decelerates like a knocked one, knocks the enemies it touches while it flies, then seeks again (`EnemyBrain.Throw`); the rate is `enemies.json`'s own `resistSPD` | fixed, rate confirmed (U.CHN-T45); as-run reading corrected (U.CHN-T89) |
 | Dead | HP <= 0: skipped entirely (vanishes) | dead state | ported |
 | Mace hit | alive, not Hurt, not Grabbed: velocity = mace velocity / mass, damage = abs(dX + dY/2), score += damage * 1000; a held enemy takes the same | `GameWorld` mace step (swept circle); `MaceDamageFormula.Original` by default, the original's own abs(dX + dY/2) of the mass-divided velocity (`VelocityToOriginalScale` converts back to the original's per-frame units); `SpeedTimesFactor` (mace speed x `damagePerSpeed`) kept only where asked for explicitly | settled, default matches (U.CHN-T45, BIBLE D11) |
 | Throw impact | thrown enemy knocks any overlapping enemy: v = thrown v / mass, Hurt | `EnemyBrain` | ported |
@@ -223,7 +223,9 @@ second line (D32). The console that types and runs them is `Scripter` and `Scrip
 ## 4. Observed quirks worth keeping in mind
 
 - Every enemy spawns on top of the others at a corner; flocking is what spreads them (UNI-T21 before UNI-T23).
-- A thrown enemy never slows. The only ways it ends are leaving the play space (no bounds for enemies) or dying.
+- `checkThrowImpact` hits the thrown enemy with itself, so the `Thrown` state never survives its first frame: as run, a
+  throw is a short toss that leaves the enemy stunned (`Hurt`) until the next press. Without that self-hit, a thrown
+  enemy would never slow and could only end by leaving the play space or dying (U.CHN-T89, BIBLE D5).
 - `getRndNum` is integer valued, so "random" positions are only -1, 0, 1.
 - `battle.ico` (every copy checked: `Chain Game`, `Chain Game - Copy`, `Battle 2`, both `Backup` folders) is a single
   32x32 frame that is fully transparent -- `(0,0,0,0)` on all 1024 pixels, never drawn. It was never finished, like
