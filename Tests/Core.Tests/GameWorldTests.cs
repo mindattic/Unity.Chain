@@ -573,6 +573,32 @@ namespace MindAttic.Chain.Tests
         }
 
         [Test]
+        public void SpawnWave_WithTheOriginalRange_PutsEveryEnemyOutsideTheGapOnBothAxes()
+        {
+            // U.CHN-T87: loadEnemy and Reset draw X and Y each from -1..1 and redraw -0.5..0.05, so every
+            // enemy starts in -1..-0.5 or 0.05..1 on both axes (here x9 world units, X shifted by half the quad).
+            var settings = GameWorld.Settings.Default;
+            settings.Enemies.Count = 200;
+            settings.Enemies.Spawn = new GameWorld.SpawnRange { Min = -9f, Max = 9f, GapMin = -4.5f, GapMax = 0.45f, XOffset = 1.35f };
+            var world = new GameWorld(settings, new Random(1));
+            world.SpawnWave();
+
+            var lowSeen = false;
+            var highSeen = false;
+            foreach (var enemy in world.Enemies)
+            {
+                foreach (var v in new[] { enemy.Position.X - 1.35f, enemy.Position.Y })
+                {
+                    Assert.IsTrue((v >= -9f && v <= -4.5f) || (v >= 0.45f && v <= 9f), "in the gap or out of range: " + v);
+                    lowSeen |= v < 0f;
+                    highSeen |= v > 0f;
+                }
+            }
+
+            Assert.IsTrue(lowSeen && highSeen, "both sides of the gap are drawn");
+        }
+
+        [Test]
         public void RandomPositions_AreInsideTheArea()
         {
             var area = new Rect2(-8f, -4.5f, 16f, 9f);

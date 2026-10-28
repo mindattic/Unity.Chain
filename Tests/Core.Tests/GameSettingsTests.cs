@@ -523,6 +523,19 @@ namespace MindAttic.Chain.Tests
             Assert.Greater(hardDamage, loadHp * 0.01f, "a hard swing should not be a rounding error against the lightest enemy's HP");
         }
 
+        [Test]
+        public void Shipped_EnemySpawnRange_IsTheOriginalsMinusOneToOneWithItsGap()
+        {
+            // U.CHN-T87: Enemy.vb loadEnemy / Root.vb Reset draw -1..1 and redraw -0.5..0.05, x lengthScale 9.
+            var spawn = Load().World.Enemies.Spawn;
+            Assert.IsTrue(spawn.IsSet);
+            Assert.AreEqual(-9f, spawn.Min, 1e-4f);
+            Assert.AreEqual(9f, spawn.Max, 1e-4f);
+            Assert.AreEqual(-4.5f, spawn.GapMin, 1e-4f);
+            Assert.AreEqual(0.45f, spawn.GapMax, 1e-4f);
+            Assert.AreEqual(1.35f, spawn.XOffset, 1e-4f, "half the 0.3 quad, as the quad's left edge becomes its centre");
+        }
+
         // --- Validation -------------------------------------------------------------------------
 
         [Test]

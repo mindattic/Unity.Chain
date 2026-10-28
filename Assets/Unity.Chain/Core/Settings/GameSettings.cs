@@ -302,6 +302,16 @@ namespace MindAttic.Chain.Core
                         HangBackFar = m.Length(enemies.Port.HangBackFar),
                     },
                     SeekCap = enemies.Port.SeekCap,
+                    // loadEnemy and Reset draw X and Y each from spawnMin..spawnMax, redrawing a value in the gap. X is
+                    // the quad's left edge, so the port's centre is size / 2 further right; Y is already the centre.
+                    Spawn = new GameWorld.SpawnRange
+                    {
+                        Min = m.Length(enemies.SpawnMin),
+                        Max = m.Length(enemies.SpawnMax),
+                        GapMin = m.Length(enemies.SpawnGapMin),
+                        GapMax = m.Length(enemies.SpawnGapMax),
+                        XOffset = m.Length(enemies.EnemySize / 2f),
+                    },
                     // Seek: d = ((Angel.X + aimX) - X, (Angel.Y + aimY) - (Y - size / 2)) from the quad's X (left edge)
                     // and Y. The port's position is the quad's centre (X + size / 2, Y), so the point it closes on is
                     // the angel + (aimX + size / 2, aimY + size / 2).
@@ -662,6 +672,11 @@ namespace MindAttic.Chain.Core
         /// <summary>Seek's aim, from the angel (Enemy.vb: Angel.X - 0.1, Angel.Y - 0.05), screen units.</summary>
         public float SeekAimX { get; private set; }
         public float SeekAimY { get; private set; }
+        /// <summary>The range X and Y are each drawn from at spawn (Enemy.vb loadEnemy, Root.vb Reset), and the gap redrawn, screen units.</summary>
+        public float SpawnMin { get; private set; }
+        public float SpawnMax { get; private set; }
+        public float SpawnGapMin { get; private set; }
+        public float SpawnGapMax { get; private set; }
         public EnemyPort Port { get; private set; }
 
         internal static EnemyData Read(SettingsReader r)
@@ -680,6 +695,10 @@ namespace MindAttic.Chain.Core
                 EnemySize = r.Positive("enemySize"),
                 SeekAimX = r.Number("seekAimX"),
                 SeekAimY = r.Number("seekAimY"),
+                SpawnMin = r.Number("spawnMin"),
+                SpawnMax = r.Number("spawnMax"),
+                SpawnGapMin = r.Number("spawnGapMin"),
+                SpawnGapMax = r.Number("spawnGapMax"),
             };
 
             var port = r.Section("port");

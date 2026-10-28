@@ -27,6 +27,32 @@ namespace MindAttic.Chain.Core
     public sealed class GameWorld
     {
         /// <summary>The enemies a reset spawns (Enemy.vb loadEnemy).</summary>
+        /// <summary>
+        /// The original's spawn draw: X and Y each from <see cref="Min"/>..<see cref="Max"/> (getRndNum(-1, 1)),
+        /// a value inside <see cref="GapMin"/>..<see cref="GapMax"/> redrawn, so each lands in Min..GapMin or
+        /// GapMax..Max. World units; <see cref="XOffset"/> moves X from the quad's left edge to its centre.
+        /// Unset (Max not above Min) means no range.
+        /// </summary>
+        public struct SpawnRange
+        {
+            public float Min;
+            public float Max;
+            public float GapMin;
+            public float GapMax;
+            public float XOffset;
+
+            public bool IsSet => Max > Min;
+
+            /// <summary>One axis's value: uniform over Min..GapMin and GapMax..Max.</summary>
+            public float Draw(Random random)
+            {
+                var low = Calc.Max(0f, Calc.Min(GapMin, Max) - Min);
+                var high = Calc.Max(0f, Max - Calc.Max(GapMax, Min));
+                var u = (float)random.NextDouble() * (low + high);
+                return u < low ? Min + u : Calc.Max(GapMax, Min) + (u - low);
+            }
+        }
+
         public struct EnemySetup
         {
             /// <summary>Enemies per wave (Enemy.vb: maxEnemy 13, so 14).</summary>
@@ -54,6 +80,8 @@ namespace MindAttic.Chain.Core
             public int SeekCap;
             /// <summary>Where Seek closes on, from the angel's position (Enemy.vb's offset aim, in the enemy centre's anchor).</summary>
             public Vec2 SeekAim;
+            /// <summary>Where a wave spawns (Enemy.vb loadEnemy, Root.vb Reset); unset, enemies spawn anywhere in the arena.</summary>
+            public SpawnRange Spawn;
 
             public static EnemySetup Default => new EnemySetup
             {
@@ -292,6 +320,19 @@ namespace MindAttic.Chain.Core
         {
             var hp = _spawnedFirstWave ? Config.Enemies.Hp : Config.Enemies.LoadHp;
             _spawnedFirstWave = true;
+            var spawn = Config.Enemies.Spawn;
+            if (spawn.IsSet)
+            {
+                for (var i = 0; i < Config.Enemies.Count; i++)
+                {
+                    var x = spawn.Draw(_random) + spawn.XOffset;
+                    var y = spawn.Draw(_random);
+                    SpawnEnemy(new Vec2(x, y), hp: hp);
+                }
+
+                return;
+            }
+
             foreach (var point in RandomPositions(Arena ?? DefaultArena, Config.Enemies.Count, _random))
             {
                 SpawnEnemy(point, hp: hp);
