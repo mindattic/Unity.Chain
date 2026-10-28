@@ -80,6 +80,10 @@ namespace MindAttic.Chain.Core
             public int SeekCap;
             /// <summary>Where Seek closes on, from the angel's position (Enemy.vb's offset aim, in the enemy centre's anchor).</summary>
             public Vec2 SeekAim;
+            /// <summary>What flocking and a throw's knock test: Enemy.vb's rectangles (the default, U.CHN-T88) or the collision circles.</summary>
+            public HitShape Shape;
+            /// <summary>Enemy.vb's hit rectangle, from the enemy's centre.</summary>
+            public HitBox Box;
             /// <summary>Where a wave spawns (Enemy.vb loadEnemy, Root.vb Reset); unset, enemies spawn anywhere in the arena.</summary>
             public SpawnRange Spawn;
 
@@ -94,6 +98,9 @@ namespace MindAttic.Chain.Core
                 FlockSpeed = EnemyBrain.DefaultFlockSpeed,
                 Brain = EnemyBrain.Settings.Default,
                 SeekCap = 14,
+                // A scale-less fixture: circles, as its radius is; the shipped data is rectangles (U.CHN-T88).
+                Shape = HitShape.Circle,
+                Box = new HitBox(-0.025f * 9f, 0.04f * 9f, 0.05f * 9f, -0.03f * 9f),
             };
         }
 
@@ -794,6 +801,8 @@ namespace MindAttic.Chain.Core
             }
 
             var flockSpeed = Config.Enemies.FlockSpeed;
+            var rectangles = Config.Enemies.Shape == HitShape.Rectangle;
+            var boxes = Config.Enemies.Box;
             for (var i = 0; i < count; i++)
             {
                 var enemy = _enemies[i];
@@ -816,18 +825,36 @@ namespace MindAttic.Chain.Core
                 for (var j = 0; j < count; j++)
                 {
                     var other = _enemies[j];
-                    if (j == i || !Touching(here, enemy.Radius, _snapshot[j], other.Radius))
+                    if (j == i)
                     {
                         continue;
                     }
 
-                    if (flockSpeed > 0f && other.IsAlive && other.State != EnemyState.Grabbed)
+                    // Rectangles: checkFlocking visits the ordered pair (d, c) and pushes both when d's edges are inside
+                    // c's, so this enemy is pushed once for each order that intersects; flockSpeed already carries the two
+                    // visits of a symmetric overlap, so one intersecting order is half of it.
+                    float visits;
+                    bool thrownTouch;
+                    if (rectangles)
                     {
-                        var tieBreak = enemy.Id.Value < other.Id.Value ? 1 : -1;
-                        push += EnemyBrain.FlockPush(here, _snapshot[j], flockSpeed, deltaTime, tieBreak);
+                        var mine = boxes.At(here);
+                        var theirs = boxes.At(_snapshot[j]);
+                        thrownTouch = HeartFloat.RectIntersect(mine, theirs);
+                        visits = (thrownTouch ? 0.5f : 0f) + (HeartFloat.RectIntersect(theirs, mine) ? 0.5f : 0f);
+                    }
+                    else
+                    {
+                        thrownTouch = Touching(here, enemy.Radius, _snapshot[j], other.Radius);
+                        visits = thrownTouch ? 1f : 0f;
                     }
 
-                    if (enemy.Brain.IsThrown && other.CanBeHit)
+                    if (visits > 0f && flockSpeed > 0f && other.IsAlive && other.State != EnemyState.Grabbed)
+                    {
+                        var tieBreak = enemy.Id.Value < other.Id.Value ? 1 : -1;
+                        push += EnemyBrain.FlockPush(here, _snapshot[j], flockSpeed, deltaTime, tieBreak) * visits;
+                    }
+
+                    if (thrownTouch && enemy.Brain.IsThrown && other.CanBeHit)
                     {
                         other.Brain.Knock(enemy.Brain.Velocity);
                         Emit(new EnemyKnocked(enemy.Id, other.Id));
@@ -937,7 +964,7 @@ namespace MindAttic.Chain.Core
             player.PreviousMaceIndex = index;
             player.PreviousMacePosition = position;
 
-            CollectTouched(from, position, player.Setup.HitRadius);
+            CollectTouched(from, position, player.Setup);
             if (_touched.Count == 0)
             {
                 return;
@@ -982,23 +1009,43 @@ namespace MindAttic.Chain.Core
             EmitGrappleChange(player, before);
         }
 
-        /// <summary>Enemies a circle of <paramref name="radius"/> touches moving from <paramref name="from"/> to <paramref name="to"/>, nearest the start first.</summary>
-        private void CollectTouched(Vec2 from, Vec2 to, float radius)
+        /// <summary>
+        /// Enemies the mace touches moving from <paramref name="from"/> to <paramref name="to"/>, nearest the start first:
+        /// Chain.vb's rectMace against Enemy.vb's rectangle through <c>rectIntersect</c>, the rectangle swept along the move
+        /// (BIBLE D12), or, with the circle option, the swept hit circle against the enemy's circle.
+        /// </summary>
+        private void CollectTouched(Vec2 from, Vec2 to, PlayerSetup setup)
         {
             _touched.Clear();
             _touchedAt.Clear();
             var moved = (to - from).SqrMagnitude > 1e-10f;
+            var rectangles = setup.MaceShape == HitShape.Rectangle;
+            var enemyBox = Config.Enemies.Box;
+            var radius = setup.HitRadius;
+            var side = Calc.Min(setup.MaceBox.MinSide, enemyBox.MinSide);
 
             foreach (var enemy in _enemies)
             {
                 float fraction;
-                if (moved && Sweep.CircleCast(from, to, radius, enemy.Position, enemy.Radius, out fraction))
+                if (rectangles)
+                {
+                    var target = enemyBox.At(enemy.Position);
+                    if (moved && Sweep.RectCast(setup.MaceBox.At(from), to - from, target, side, out fraction))
+                    {
+                        Insert(enemy, fraction);
+                    }
+                    else if (HeartFloat.RectIntersect(setup.MaceBox.At(to), target))
+                    {
+                        // Whatever the mace rests in now comes after everything the sweep met.
+                        Insert(enemy, 2f);
+                    }
+                }
+                else if (moved && Sweep.CircleCast(from, to, radius, enemy.Position, enemy.Radius, out fraction))
                 {
                     Insert(enemy, fraction);
                 }
                 else if (enemy.Overlaps(to, radius))
                 {
-                    // Whatever the mace rests in now comes after everything the sweep met.
                     Insert(enemy, 2f);
                 }
             }
@@ -1040,16 +1087,23 @@ namespace MindAttic.Chain.Core
         /// </summary>
         private void CheckContact(PlayerEntity player)
         {
+            var rectangles = player.Setup.ContactShape == HitShape.Rectangle;
             var radius = player.Setup.ContactRadius;
-            if (!State.IsPlaying || radius <= 0f)
+            if (!State.IsPlaying || (!rectangles && radius <= 0f))
             {
                 return;
             }
 
             var angel = player.AngelPosition;
+            var angelRect = player.Setup.AngelBox.At(angel);
+            var enemyBox = Config.Enemies.Box;
             foreach (var enemy in _enemies)
             {
-                if (!enemy.IsAlive || !enemy.Overlaps(angel, radius))
+                // checkAngelHit: rectIntersect(Angel.Rect, Enemy.Rect), only the angel's edges inside the enemy's.
+                var touching = rectangles
+                    ? HeartFloat.RectIntersect(angelRect, enemyBox.At(enemy.Position))
+                    : enemy.Overlaps(angel, radius);
+                if (!enemy.IsAlive || !touching)
                 {
                     continue;
                 }

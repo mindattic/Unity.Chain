@@ -54,8 +54,17 @@ namespace MindAttic.Chain.Core
         /// <summary>Launch velocity = mace velocity x this.</summary>
         public float ThrowMultiplier;
 
-        /// <summary>Radius around the angel that counts as an enemy touching it.</summary>
+        /// <summary>Radius around the angel that counts as an enemy touching it (with <see cref="ContactShape"/> Circle).</summary>
         public float ContactRadius;
+
+        /// <summary>What an enemy touching the angel is tested with: Angel.vb's rectangle (the default, U.CHN-T88) or the contact circle.</summary>
+        public HitShape ContactShape;
+        /// <summary>Angel.vb's hit rectangle, from <see cref="PlayerEntity.AngelPosition"/>.</summary>
+        public HitBox AngelBox;
+        /// <summary>What a mace hit is tested with: Chain.vb's rectMace swept along the move (the default, U.CHN-T88, BIBLE D12) or the swept hit circle.</summary>
+        public HitShape MaceShape;
+        /// <summary>Chain.vb's rectMace, from the mace link.</summary>
+        public HitBox MaceBox;
 
         public static PlayerSetup Default => new PlayerSetup
         {
@@ -80,6 +89,12 @@ namespace MindAttic.Chain.Core
             CatchRadius = 0.3f,
             ThrowMultiplier = 1f,
             ContactRadius = 0.35f,
+            // A setup built without the data files is a scale-less fixture: circles, as its radii are. The shipped
+            // data (GameSettings) is rectangles; the boxes are the original's figures at the shipped length scale 9.
+            ContactShape = HitShape.Circle,
+            AngelBox = new HitBox(0f, 0.06f * 9f, 0.15f * 9f, 0.03f * 9f),
+            MaceShape = HitShape.Circle,
+            MaceBox = new HitBox(0.01f * 9f, 0.075f * 9f, 0.0375f * 9f, -0.0275f * 9f),
         };
     }
 

@@ -1,5 +1,5 @@
 {
-  "_source": "Enemy.vb. Screen units, per frame. maxEnemy 13 is 14 enemies; mass is massBase + massRandom x rand. loadHP is loadEnemy's, resetHP Root.vb Reset's (every wave is a reset's). cautiousSeekMultiple is the Cautious state's 6 x seekSpd. enemySize is the quad an enemy is drawn on (setupVertex, from its X, centred on its Y; the port's position is the quad's centre). seekAimX and seekAimY are Seek's offsets from the angel: d = ((Angel.X - 0.1) - X, (Angel.Y - 0.05) - (Y - enemySize / 2)), so the point it closes on is the angel plus (seekAimX, seekAimY), seen from the quad's own X (left edge) and Y - enemySize / 2. spawnMin..spawnMax is the range loadEnemy and Reset draw each of X and Y from (getRndNum(-1, 1)), and a value inside spawnGapMin..spawnGapMax is redrawn, so an enemy starts in -1..-0.5 or 0.05..1 on both axes, mostly beyond the screen (-0.5..0.5 tall).",
+  "_source": "Enemy.vb. Screen units, per frame. rectX and rectY are the hit rectangle renderEnemy rebuilds (Left X + enemySize / 2 - 0.025, Right X + enemySize / 2 + 0.04, Top Y + 0.05, Bottom Y - 0.03), from the quad's centre, which is the port's position: rectX is (left, right), rectY is (bottom, top). maxEnemy 13 is 14 enemies; mass is massBase + massRandom x rand. loadHP is loadEnemy's, resetHP Root.vb Reset's (every wave is a reset's). cautiousSeekMultiple is the Cautious state's 6 x seekSpd. enemySize is the quad an enemy is drawn on (setupVertex, from its X, centred on its Y; the port's position is the quad's centre). seekAimX and seekAimY are Seek's offsets from the angel: d = ((Angel.X - 0.1) - X, (Angel.Y - 0.05) - (Y - enemySize / 2)), so the point it closes on is the angel plus (seekAimX, seekAimY), seen from the quad's own X (left edge) and Y - enemySize / 2. spawnMin..spawnMax is the range loadEnemy and Reset draw each of X and Y from (getRndNum(-1, 1)), and a value inside spawnGapMin..spawnGapMax is redrawn, so an enemy starts in -1..-0.5 or 0.05..1 on both axes, mostly beyond the screen (-0.5..0.5 tall).",
   "maxEnemy": 13,
   "seekSpd": 0.006,
   "resistSPD": 0.001,
@@ -12,15 +12,18 @@
   "enemySize": 0.3,
   "seekAimX": -0.1,
   "seekAimY": -0.05,
+  "rectX": [-0.025, 0.04],
+  "rectY": [-0.03, 0.05],
   "spawnMin": -1,
   "spawnMax": 1,
   "spawnGapMin": -0.5,
   "spawnGapMax": 0.05,
   "port": {
-    "_about": "Not in the original. radius is world units, never mapped. seekCap is how many enemies may Seek at once: 14, every one, as Enemy.vb loadEnemy, Root.vb Reset and the Hurt recovery set Seek for all (BIBLE D18, settled by U.CHN-T81). A lower cap is UNI-T65's hang-back, kept only as a data option (spike U.CHN-T90): the rest wait in Cautious or Align. hangBackNear and hangBackFar (screen units, mapped by space.json) are the band waiting enemies hold: Align stalks in to the near edge, one angel width (angelSize 0.3) out, and Cautious backs off to the far edge, half as far again.",
+    "_about": "Not in the original. shape Rectangle (the default, U.CHN-T88) tests Enemy.vb's rectangles (rectX, rectY) with Root.vb's rectIntersect for flocking and a throw's knock (and is what the mace and the angel are tested against); Circle is the port's earlier collision circle of radius, a data option only. radius is world units, never mapped. seekCap is how many enemies may Seek at once: 14, every one, as Enemy.vb loadEnemy, Root.vb Reset and the Hurt recovery set Seek for all (BIBLE D18, settled by U.CHN-T81). A lower cap is UNI-T65's hang-back, kept only as a data option (spike U.CHN-T90): the rest wait in Cautious or Align. hangBackNear and hangBackFar (screen units, mapped by space.json) are the band waiting enemies hold: Align stalks in to the near edge, one angel width (angelSize 0.3) out, and Cautious backs off to the far edge, half as far again.",
     "radius": 0.3,
     "seekCap": 14,
     "hangBackNear": 0.3,
-    "hangBackFar": 0.45
+    "hangBackFar": 0.45,
+    "shape": "Rectangle"
   }
 }

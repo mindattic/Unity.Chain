@@ -15,9 +15,10 @@
   "boundsX": [-0.6, 0.5],
   "boundsY": [-0.6, 0.4],
   "port": {
-    "_about": "Not in the original; world units, never mapped. arenaBounds false (the default, U.CHN-T86) clamps the angel to checkBounds' boundsX/boundsY; true is the port's earlier choice, the level's arena inset by boundsMargin, kept only as a data option.",
+    "_about": "Not in the original; world units, never mapped. contactShape Rectangle (the default, U.CHN-T88) tests Angel.vb's rectangle (rectWidth, rectBottom and angelSize above, from X, Y) against Enemy.vb's with Root.vb's rectIntersect (only the angel's edges inside the enemy's); Circle is the port's earlier contactRadius circle, a data option only. arenaBounds false (the default, U.CHN-T86) clamps the angel to checkBounds' boundsX/boundsY; true is the port's earlier choice, the level's arena inset by boundsMargin, kept only as a data option.",
     "arenaBounds": false,
     "boundsMargin": [0.5, 0.6],
-    "contactRadius": 0.4
+    "contactRadius": 0.4,
+    "contactShape": "Rectangle"
   }
 }

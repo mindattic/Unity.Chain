@@ -1,6 +1,6 @@
 namespace MindAttic.Chain.Core
 {
-    /// <summary>Circle geometry for the world's contact checks (the mace's swept circle, which replaced Chain.vb's per-frame rectMace box).</summary>
+    /// <summary>Geometry for the world's swept mace checks (BIBLE D12): a circle cast, and the rectangle cast that sweeps Chain.vb's rectMace.</summary>
     public static class Sweep
     {
         /// <summary>
@@ -46,6 +46,41 @@ namespace MindAttic.Chain.Core
 
             fraction = t;
             return true;
+        }
+
+        /// <summary>The most samples one <see cref="RectCast"/> takes along a move.</summary>
+        private const int MaxRectSamples = 256;
+
+        /// <summary>
+        /// Where along a move of <paramref name="delta"/> the rectangle <paramref name="mover"/> (as it stands at the start) first
+        /// intersects <paramref name="target"/> by Root.vb's <c>rectIntersect</c> (only the mover's edges inside the target's),
+        /// as a fraction 0-1 (0 when it starts touching). Samples the move at steps of at most a quarter of
+        /// <paramref name="minSide"/> (the smaller side of the rectangles), so a fast swing cannot pass through between two steps.
+        /// </summary>
+        public static bool RectCast(HeartRect mover, Vec2 delta, HeartRect target, float minSide, out float fraction)
+        {
+            var step = Calc.Max(minSide * 0.25f, 1e-4f);
+            var samples = (int)(delta.Magnitude / step) + 1;
+            if (samples > MaxRectSamples)
+            {
+                samples = MaxRectSamples;
+            }
+
+            for (var i = 0; i <= samples; i++)
+            {
+                var t = (float)i / samples;
+                var dx = delta.X * t;
+                var dy = delta.Y * t;
+                var at = new HeartRect(mover.Left + dx, mover.Top + dy, mover.Right + dx, mover.Bottom + dy);
+                if (HeartFloat.RectIntersect(at, target))
+                {
+                    fraction = t;
+                    return true;
+                }
+            }
+
+            fraction = 0f;
+            return false;
         }
     }
 }

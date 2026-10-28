@@ -1,5 +1,5 @@
 {
-  "_source": "Chain.vb (and Form1.vb for the [ ] mace range and the live-tuning keys). Screen units, per frame. The F key's followMouse is UNI-T47.",
+  "_source": "Chain.vb (and Form1.vb for the [ ] mace range and the live-tuning keys). Screen units, per frame. The F key's followMouse is UNI-T47. maceSize and maceRect are rectMace's: Left link.X + maceRect.x, Top link.Y + maceSize / 2, Right link.X + maceSize, Bottom link.Y - maceSize / 2 + maceRect.y (renderChain, with the mace's maceOffset already added).",
   "maxLinks": 25,
   "segLength": 0.002,
   "springK": 0.1,
@@ -17,6 +17,8 @@
   "maceScale": 3.5,
   "link1DropPerFrame": 0.0004,
   "maceOffset": [-0.012, -0.012],
+  "maceSize": 0.075,
+  "maceRect": [0.01, 0.01],
   "tuning": {
     "_source": "Form1.vb's live-tuning keys (UNI-T51): Insert/Delete changeResistance(+/-0.001), Home/End changeGravity(-/+0.00001) on gravity's y, PageUp/PageDown changeSpring(+/-0.001). Same units as the figures above (the HUD's Res/Grav/Spring readout).",
     "_limits": "Not in the original, which just added (BIBLE V19): resistance 0..1 (no negative drag, never more than a frame's speed), gravity's y -0.01 (4x the pull) .. 0.0025 (the pull reversed), spring 0.001 (one step above none) .. 0.25 (2.5x, under the stiffness the fixed step stays stable at with the overhead boost). A reset puts the figures above back.",
@@ -62,7 +64,7 @@
     }
   },
   "port": {
-    "_about": "Not in the original; world units and seconds, never mapped. keepInArena, pullBothNeighbors, simulateAllLinks and maceDamageFormula are settled deviations (U.CHN-T45, and keepInArena U.CHN-T76: false, as checkBounds is commented out in Chain.vb, BIBLE V4; true bounces links off the arena at wallBounce): false/false/true/Original reproduce Chain.vb's own behaviour (its If/ElseIf only ever pulls the previous link, BIBLE D7; animateChain always loops every link, BIBLE V3/D8; checkMaceImpact's abs(dX + dY/2) of the mass-divided velocity, BIBLE D11); true/false/SpeedTimesFactor are the rebuild's earlier choices, kept only where this file asks for them explicitly. chainLine false (the default, U.CHN-T94) draws link.png on each link's linkSize quad as renderChain does; true is the port's earlier tiled line through the links, a data option only.",
+    "_about": "Not in the original; world units and seconds, never mapped. keepInArena, pullBothNeighbors, simulateAllLinks and maceDamageFormula are settled deviations (U.CHN-T45, and keepInArena U.CHN-T76: false, as checkBounds is commented out in Chain.vb, BIBLE V4; true bounces links off the arena at wallBounce): false/false/true/Original reproduce Chain.vb's own behaviour (its If/ElseIf only ever pulls the previous link, BIBLE D7; animateChain always loops every link, BIBLE V3/D8; checkMaceImpact's abs(dX + dY/2) of the mass-divided velocity, BIBLE D11); true/false/SpeedTimesFactor are the rebuild's earlier choices, kept only where this file asks for them explicitly. chainLine false (the default, U.CHN-T94) draws link.png on each link's linkSize quad as renderChain does; true is the port's earlier tiled line through the links, a data option only. hitShape Rectangle (the default, U.CHN-T88) tests rectMace against Enemy.vb's rectangle with Root.vb's rectIntersect (only the mace's edges inside the enemy's), sweeping the rectangle along each step's move so a fast swing cannot tunnel (BIBLE D12); Circle is the port's earlier swept circle of hitRadius, a data option only.",
     "keepInArena": false,
     "wallBounce": 0.5,
     "hitRadius": 0.3,
@@ -72,6 +74,7 @@
     "pullBothNeighbors": false,
     "simulateAllLinks": true,
     "maceDamageFormula": "Original",
-    "chainLine": false
+    "chainLine": false,
+    "hitShape": "Rectangle"
   }
 }

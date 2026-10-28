@@ -261,6 +261,16 @@ namespace MindAttic.Chain.Core
                 CatchRadius = chain.Port.CatchRadius,
                 ThrowMultiplier = chain.Port.ThrowMultiplier,
                 ContactRadius = angel.Port.ContactRadius,
+                // Angel.vb: Left X, Right X + rectWidth, Top Y + angelSize / 2, Bottom Y + rectBottom.
+                ContactShape = angel.Port.ContactShape,
+                AngelBox = new HitBox(0f, m.Length(angel.RectWidth), m.Length(angel.AngelSize / 2f), m.Length(angel.RectBottom)),
+                // Chain.vb rectMace: Left X + 0.01, Top Y + maceSize / 2, Right X + maceSize, Bottom Y - maceSize / 2 + 0.01.
+                MaceShape = chain.Port.HitShape,
+                MaceBox = new HitBox(
+                    m.Length(chain.MaceRect.X),
+                    m.Length(chain.MaceSize),
+                    m.Length(chain.MaceSize / 2f),
+                    m.Length(chain.MaceRect.Y - chain.MaceSize / 2f)),
             };
 
             var seekRate = m.PerSecond(enemies.SeekSpd);
@@ -302,6 +312,10 @@ namespace MindAttic.Chain.Core
                         HangBackFar = m.Length(enemies.Port.HangBackFar),
                     },
                     SeekCap = enemies.Port.SeekCap,
+                    // Enemy.vb: Left X + size / 2 + rectX.left, Right + rectX.right, Top Y + rectY.top, Bottom Y + rectY.bottom,
+                    // all from the quad's centre, which is the port's position.
+                    Shape = enemies.Port.Shape,
+                    Box = new HitBox(m.Length(enemies.RectX.X), m.Length(enemies.RectX.Y), m.Length(enemies.RectY.Y), m.Length(enemies.RectY.X)),
                     // loadEnemy and Reset draw X and Y each from spawnMin..spawnMax, redrawing a value in the gap. X is
                     // the quad's left edge, so the port's centre is size / 2 further right; Y is already the centre.
                     Spawn = new GameWorld.SpawnRange
@@ -428,6 +442,10 @@ namespace MindAttic.Chain.Core
 
         /// <summary>Chain.vb's <c>maceOffset</c> (-0.012, -0.012), added to the mace link's position every frame while following (BIBLE D8, U.CHN-T45).</summary>
         public Vec2 MaceOffset { get; private set; }
+        /// <summary>Chain.vb's maceSize (0.075), which sizes rectMace, screen units.</summary>
+        public float MaceSize { get; private set; }
+        /// <summary>rectMace's insets: Left is link X + this.X, Bottom is link Y - maceSize / 2 + this.Y, screen units.</summary>
+        public Vec2 MaceRect { get; private set; }
 
         /// <summary>Form1.vb's live-tuning keys: steps and limits, in the file's own units (UNI-T51).</summary>
         public ChainTuningData Tuning { get; private set; }
@@ -461,6 +479,8 @@ namespace MindAttic.Chain.Core
                 MaceScale = r.Positive("maceScale"),
                 Link1DropPerFrame = r.Number("link1DropPerFrame", 0f),
                 MaceOffset = r.Pair("maceOffset"),
+                MaceSize = r.Positive("maceSize"),
+                MaceRect = r.Pair("maceRect"),
             };
 
             r.Check(data.MaceMin <= data.MaceMax, "maceMin", $"must not be above maceMax ({data.MaceMax})");
@@ -494,7 +514,8 @@ namespace MindAttic.Chain.Core
                 pullBothNeighbors: port.Flag("pullBothNeighbors"),
                 simulateAllLinks: port.Flag("simulateAllLinks"),
                 maceDamageFormula: port.Choice<MaceDamageFormula>("maceDamageFormula"),
-                chainLine: port.Flag("chainLine"));
+                chainLine: port.Flag("chainLine"),
+                hitShape: port.Choice<HitShape>("hitShape"));
             port.Done();
             return data;
         }
@@ -542,8 +563,9 @@ namespace MindAttic.Chain.Core
     /// <summary>chain.json's port-only figures, world units and seconds.</summary>
     public readonly struct ChainPort
     {
-        public ChainPort(bool keepInArena, float wallBounce, float hitRadius, float damagePerSpeed, float catchRadius, float throwMultiplier, bool pullBothNeighbors, bool simulateAllLinks, MaceDamageFormula maceDamageFormula, bool chainLine = false)
+        public ChainPort(bool keepInArena, float wallBounce, float hitRadius, float damagePerSpeed, float catchRadius, float throwMultiplier, bool pullBothNeighbors, bool simulateAllLinks, MaceDamageFormula maceDamageFormula, bool chainLine = false, HitShape hitShape = HitShape.Rectangle)
         {
+            HitShape = hitShape;
             ChainLine = chainLine;
             KeepInArena = keepInArena;
             WallBounce = wallBounce;
@@ -564,8 +586,10 @@ namespace MindAttic.Chain.Core
         /// <summary>Links bounce off the arena (V4; Chain.vb's checkBounds is commented out).</summary>
         public bool KeepInArena { get; }
         public float WallBounce { get; }
-        /// <summary>The mace's hit circle (D12: a swept circle for Chain.vb's rectMace).</summary>
+        /// <summary>The mace's hit circle, used only with <see cref="HitShape"/> Circle (D12: the swept circle that was the port's earlier choice).</summary>
         public float HitRadius { get; }
+        /// <summary>Rectangle (the default, U.CHN-T88): Chain.vb's rectMace through rectIntersect, swept along the move (D12); Circle: the swept hit circle, a data option only.</summary>
+        public HitShape HitShape { get; }
         /// <summary>Damage per world unit per second of mace speed (D11: speed for abs(dX + dY/2), <see cref="MaceDamageFormula.SpeedTimesFactor"/> only).</summary>
         public float DamagePerSpeed { get; }
         public float CatchRadius { get; }
@@ -628,7 +652,8 @@ namespace MindAttic.Chain.Core
             data.Port = new AngelPort(
                 boundsMargin: port.Pair("boundsMargin", 0f),
                 contactRadius: port.Number("contactRadius", 0f),
-                arenaBounds: port.Flag("arenaBounds"));
+                arenaBounds: port.Flag("arenaBounds"),
+                contactShape: port.Choice<HitShape>("contactShape"));
             port.Done();
             return data;
         }
@@ -637,8 +662,9 @@ namespace MindAttic.Chain.Core
     /// <summary>angel.json's port-only figures, world units.</summary>
     public readonly struct AngelPort
     {
-        public AngelPort(Vec2 boundsMargin, float contactRadius, bool arenaBounds = false)
+        public AngelPort(Vec2 boundsMargin, float contactRadius, bool arenaBounds = false, HitShape contactShape = HitShape.Rectangle)
         {
+            ContactShape = contactShape;
             ArenaBounds = arenaBounds;
             BoundsMargin = boundsMargin;
             ContactRadius = contactRadius;
@@ -651,8 +677,10 @@ namespace MindAttic.Chain.Core
         public bool ArenaBounds { get; }
         /// <summary>With <see cref="ArenaBounds"/>, the angel's flight is kept this far inside the arena's edges.</summary>
         public Vec2 BoundsMargin { get; }
-        /// <summary>The angel's contact circle (V5: a circle for Angel.vb's rectangle).</summary>
+        /// <summary>The angel's contact circle, used only with <see cref="ContactShape"/> Circle (V5).</summary>
         public float ContactRadius { get; }
+        /// <summary>Rectangle (the default, U.CHN-T88): Angel.vb's rectangle through rectIntersect; Circle: the contact circle, a data option only.</summary>
+        public HitShape ContactShape { get; }
     }
 
     /// <summary>enemies.json: Enemy.vb, in its own units, with the Seek cap for Cautious and Align (UNI-T65).</summary>
@@ -672,6 +700,9 @@ namespace MindAttic.Chain.Core
         /// <summary>Seek's aim, from the angel (Enemy.vb: Angel.X - 0.1, Angel.Y - 0.05), screen units.</summary>
         public float SeekAimX { get; private set; }
         public float SeekAimY { get; private set; }
+        /// <summary>Enemy.vb's hit rectangle from the quad's centre: (left, right) and (bottom, top), screen units.</summary>
+        public Vec2 RectX { get; private set; }
+        public Vec2 RectY { get; private set; }
         /// <summary>The range X and Y are each drawn from at spawn (Enemy.vb loadEnemy, Root.vb Reset), and the gap redrawn, screen units.</summary>
         public float SpawnMin { get; private set; }
         public float SpawnMax { get; private set; }
@@ -695,6 +726,8 @@ namespace MindAttic.Chain.Core
                 EnemySize = r.Positive("enemySize"),
                 SeekAimX = r.Number("seekAimX"),
                 SeekAimY = r.Number("seekAimY"),
+                RectX = r.Pair("rectX"),
+                RectY = r.Pair("rectY"),
                 SpawnMin = r.Number("spawnMin"),
                 SpawnMax = r.Number("spawnMax"),
                 SpawnGapMin = r.Number("spawnGapMin"),
@@ -706,7 +739,8 @@ namespace MindAttic.Chain.Core
                 radius: port.Positive("radius"),
                 seekCap: port.Integer("seekCap", 0),
                 hangBackNear: port.Positive("hangBackNear"),
-                hangBackFar: port.Positive("hangBackFar"));
+                hangBackFar: port.Positive("hangBackFar"),
+                shape: port.Choice<HitShape>("shape"));
             port.Check(data.Port.SeekCap <= data.MaxEnemy + 1, "seekCap", $"must not be above the enemy count, maxEnemy + 1 ({data.MaxEnemy + 1})");
             port.Check(data.Port.HangBackFar > data.Port.HangBackNear, "hangBackFar", $"must be beyond hangBackNear ({data.Port.HangBackNear})");
             port.Done();
@@ -717,16 +751,19 @@ namespace MindAttic.Chain.Core
     /// <summary>enemies.json's port-only figures.</summary>
     public readonly struct EnemyPort
     {
-        public EnemyPort(float radius, int seekCap, float hangBackNear, float hangBackFar)
+        public EnemyPort(float radius, int seekCap, float hangBackNear, float hangBackFar, HitShape shape = HitShape.Rectangle)
         {
+            Shape = shape;
             Radius = radius;
             SeekCap = seekCap;
             HangBackNear = hangBackNear;
             HangBackFar = hangBackFar;
         }
 
-        /// <summary>An enemy's collision circle, world units.</summary>
+        /// <summary>An enemy's collision circle, world units; used only with <see cref="Shape"/> Circle.</summary>
         public float Radius { get; }
+        /// <summary>Rectangle (the default, U.CHN-T88): Enemy.vb's rectangles through rectIntersect for flocking and a throw's knock; Circle: the collision circles, a data option only.</summary>
+        public HitShape Shape { get; }
         /// <summary>How many enemies may Seek at once; the enemy count (the shipped default) lets every one seek, as the original does (U.CHN-T81); lower is UNI-T65's hang-back.</summary>
         public int SeekCap { get; }
         /// <summary>A waiting enemy stalking in (Align) turns Cautious this close to the angel, screen units (mapped).</summary>
