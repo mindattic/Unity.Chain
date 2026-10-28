@@ -302,6 +302,12 @@ namespace MindAttic.Chain.Core
                         HangBackFar = m.Length(enemies.Port.HangBackFar),
                     },
                     SeekCap = enemies.Port.SeekCap,
+                    // Seek: d = ((Angel.X + aimX) - X, (Angel.Y + aimY) - (Y - size / 2)) from the quad's X (left edge)
+                    // and Y. The port's position is the quad's centre (X + size / 2, Y), so the point it closes on is
+                    // the angel + (aimX + size / 2, aimY + size / 2).
+                    SeekAim = m.Length(new Vec2(
+                        enemies.SeekAimX + enemies.EnemySize / 2f,
+                        enemies.SeekAimY + enemies.EnemySize / 2f)),
                 },
                 GameSpeed = Game.GameSpeed,
                 // Input.vb's 0.01 a frame while Minus or Equals is held: a rate with no length in it.
@@ -653,6 +659,9 @@ namespace MindAttic.Chain.Core
         public float CautiousSeekMultiple { get; private set; }
         /// <summary>The quad an enemy is drawn on (Enemy.vb's enemySize), screen units.</summary>
         public float EnemySize { get; private set; }
+        /// <summary>Seek's aim, from the angel (Enemy.vb: Angel.X - 0.1, Angel.Y - 0.05), screen units.</summary>
+        public float SeekAimX { get; private set; }
+        public float SeekAimY { get; private set; }
         public EnemyPort Port { get; private set; }
 
         internal static EnemyData Read(SettingsReader r)
@@ -669,6 +678,8 @@ namespace MindAttic.Chain.Core
                 ResetHP = r.Positive("resetHP"),
                 CautiousSeekMultiple = r.Number("cautiousSeekMultiple", 0f),
                 EnemySize = r.Positive("enemySize"),
+                SeekAimX = r.Number("seekAimX"),
+                SeekAimY = r.Number("seekAimY"),
             };
 
             var port = r.Section("port");

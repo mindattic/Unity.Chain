@@ -52,6 +52,8 @@ namespace MindAttic.Chain.Core
             /// Align (<see cref="EnemyBrain.Settings"/>), and the nearest takes a slot as soon as one opens.
             /// </summary>
             public int SeekCap;
+            /// <summary>Where Seek closes on, from the angel's position (Enemy.vb's offset aim, in the enemy centre's anchor).</summary>
+            public Vec2 SeekAim;
 
             public static EnemySetup Default => new EnemySetup
             {
@@ -795,11 +797,12 @@ namespace MindAttic.Chain.Core
             }
         }
 
-        /// <summary>The nearest angel: enemies home on whoever is closest.</summary>
+        /// <summary>The point enemies close on: the nearest angel's position plus Seek's own offset (Enemy.vb's aim).</summary>
         private Vec2 SeekPoint(Vec2 from)
         {
             var best = from;
             var bestDistance = float.PositiveInfinity;
+            var aimed = false;
             foreach (var player in _players)
             {
                 var distance = (player.AngelPosition - from).SqrMagnitude;
@@ -807,10 +810,11 @@ namespace MindAttic.Chain.Core
                 {
                     best = player.AngelPosition;
                     bestDistance = distance;
+                    aimed = true;
                 }
             }
 
-            return best;
+            return aimed ? best + Config.Enemies.SeekAim : best;
         }
 
         /// <summary>
