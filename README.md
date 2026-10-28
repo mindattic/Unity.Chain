@@ -2,7 +2,8 @@
 
 A mouse-steered angel swings a spiked mace on a spring chain, knocking down, grabbing and throwing a flock of
 enemies. A Unity 6 rebuild of the 2005 VB.NET / DirectX 9 *Chain Game*, which was itself built on Philip Winston's
-2000 *Elastic Trail* script, a mouse-follow chain of spring-linked dots.
+2000 *Elastic Trail* script, a mouse-follow chain of spring-linked dots. The original project folder's own
+`Backup`, `Backup1`, `Backup2` and `.vs` folders are all last modified 1/10/2024, the most recent build on file.
 
 [![Unity](https://img.shields.io/badge/Unity-6000.4.3f1-222222)](ProjectSettings/ProjectVersion.txt)
 [![C#](https://img.shields.io/badge/language-C%23-512BD4)](Assets/Unity.Chain)
