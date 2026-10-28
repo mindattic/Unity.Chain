@@ -261,6 +261,7 @@ namespace MindAttic.Chain.Core
                 CatchRadius = chain.Port.CatchRadius,
                 ThrowMultiplier = chain.Port.ThrowMultiplier,
                 ContactRadius = angel.Port.ContactRadius,
+                // AngelPosition is Angel.X, Angel.Y itself (the heart and checkBounds use it so), not the quad centre.
                 // Angel.vb: Left X, Right X + rectWidth, Top Y + angelSize / 2, Bottom Y + rectBottom.
                 ContactShape = angel.Port.ContactShape,
                 AngelBox = new HitBox(0f, m.Length(angel.RectWidth), m.Length(angel.AngelSize / 2f), m.Length(angel.RectBottom)),

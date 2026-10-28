@@ -125,7 +125,7 @@ namespace MindAttic.Chain.Tests
             var mover = new HeartRect(0f, 0.5f, 0.5f, 0f);
 
             Assert.IsFalse(Sweep.RectCast(mover, new Vec2(10f, 0f), new HeartRect(4f, 3.5f, 4.5f, 3f), 0.5f, out _));
-            Assert.IsTrue(Sweep.RectCast(mover, new Vec2(10f, 0f), new HeartRect(0.1f, 0.4f, 0.4f, 0.1f), 0.3f, out var fraction));
+            Assert.IsTrue(Sweep.RectCast(mover, new Vec2(10f, 0f), new HeartRect(-0.1f, 0.6f, 0.6f, -0.1f), 0.5f, out var fraction));
             Assert.AreEqual(0f, fraction);
         }
 
