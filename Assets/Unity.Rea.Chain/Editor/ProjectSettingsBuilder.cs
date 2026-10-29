@@ -15,7 +15,7 @@ namespace MindAttic.Chain.EditorTools
     /// </summary>
     public static class ProjectSettingsBuilder
     {
-        private const string IconPath = "Assets/Unity.Chain/Art/Icon/battle.png";
+        private const string IconPath = "Assets/Unity.Rea.Chain/Art/Icon/battle.png";
 
         // The original's and the port's own: https://github.com's reverse-DNS-style identifier for a product
         // named "Unity.Chain" by "MindAttic" (UnityRonin, the closest sibling to set one, follows the same

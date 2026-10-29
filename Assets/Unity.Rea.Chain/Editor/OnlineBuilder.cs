@@ -20,17 +20,17 @@ namespace MindAttic.Chain.EditorTools
     /// </summary>
     public static class OnlineBuilder
     {
-        public const string Folder = "Assets/Unity.Chain/Resources/Online";
+        public const string Folder = "Assets/Unity.Rea.Chain/Resources/Online";
         public const string PlayerPrefabPath = Folder + "/ChainPlayer.prefab";
         public const string WorldSyncPrefabPath = Folder + "/ChainWorldSync.prefab";
-        public const string PrefabListPath = "Assets/Unity.Chain/Online/ChainNetPrefabs.asset";
+        public const string PrefabListPath = "Assets/Unity.Rea.Chain/Online/ChainNetPrefabs.asset";
 
         /// <summary>Resources paths the tests load the prefabs from.</summary>
         public const string PlayerResource = "Online/ChainPlayer";
         public const string WorldSyncResource = "Online/ChainWorldSync";
 
-        private const string MarkerSpritePath = "Assets/Unity.Chain/Art/Angel/angel_right1.png";
-        private const string MaceSpritePath = "Assets/Unity.Chain/Art/Chain/mace.png";
+        private const string MarkerSpritePath = "Assets/Unity.Rea.Chain/Art/Angel/angel_right1.png";
+        private const string MaceSpritePath = "Assets/Unity.Rea.Chain/Art/Chain/mace.png";
 
         /// <summary>The marker chain's width: the scene chain's (SceneBuilder.CreateChain).</summary>
         public const float MarkerChainWidth = 0.08f;

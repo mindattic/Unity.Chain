@@ -303,7 +303,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c73df4d148751a241be5708e037e278e, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Unity.Chain.Online::MindAttic.Chain.Online.ChainPlayer
+  m_EditorClassIdentifier: Unity.Rea.Chain.Online::MindAttic.Chain.Online.ChainPlayer
   ShowTopMostFoldoutHeaderGroup: 1
   marker: {fileID: 8410801646431146867}
   chainLine: {fileID: 5210460813598072811}

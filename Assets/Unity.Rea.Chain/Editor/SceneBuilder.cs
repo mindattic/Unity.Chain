@@ -21,10 +21,10 @@ namespace MindAttic.Chain.EditorTools
 
         /// <summary>The scene the player opens on (UNI-T58): Form1.vb Startup's loading picture, which then loads Main.</summary>
         public const string SplashScenePath = "Assets/Scenes/Splash.unity";
-        private const string LineMaterialPath = "Assets/Unity.Chain/Materials/ChainLine.mat";
-        private const string ZoneMaterialPath = "Assets/Unity.Chain/Materials/ZoneLine.mat";
-        private const string SfxPath = "Assets/Unity.Chain/Audio/Sfx/";
-        private const string MusicClipPath = "Assets/Unity.Chain/Audio/Music/music.ogg";
+        private const string LineMaterialPath = "Assets/Unity.Rea.Chain/Materials/ChainLine.mat";
+        private const string ZoneMaterialPath = "Assets/Unity.Rea.Chain/Materials/ZoneLine.mat";
+        private const string SfxPath = "Assets/Unity.Rea.Chain/Audio/Sfx/";
+        private const string MusicClipPath = "Assets/Unity.Rea.Chain/Audio/Music/music.ogg";
 
         [MenuItem("MindAttic/Chain/Build Main Scene")]
         public static void BuildMainScene()
@@ -117,7 +117,7 @@ namespace MindAttic.Chain.EditorTools
             return go.AddComponent<LevelBounds>();
         }
 
-        private const string AngelArtPath = "Assets/Unity.Chain/Art/Angel/";
+        private const string AngelArtPath = "Assets/Unity.Rea.Chain/Art/Angel/";
 
         private static AngelController CreateAngel(LevelBounds levelBounds)
         {
@@ -159,7 +159,7 @@ namespace MindAttic.Chain.EditorTools
             return rig;
         }
 
-        private const string ChainArtPath = "Assets/Unity.Chain/Art/Chain/";
+        private const string ChainArtPath = "Assets/Unity.Rea.Chain/Art/Chain/";
 
         private static (ChainController chain, GrappleController grapple) CreateChain()
         {
@@ -264,11 +264,11 @@ namespace MindAttic.Chain.EditorTools
             var spawner = go.AddComponent<EnemySpawner>();
             spawner.Session = session;
             // Enemy.vb's 7-frame loop (gfx/enemy/Shadow/enemy1-7), a random one per spawn; UNI-T19.
-            spawner.Frames = LoadSprites("Assets/Unity.Chain/Art/Enemies/", "enemy", 1, 7);
+            spawner.Frames = LoadSprites("Assets/Unity.Rea.Chain/Art/Enemies/", "enemy", 1, 7);
         }
 
-        private const string AreaArtPath = "Assets/Unity.Chain/Art/Background/";
-        private const string RoomArtPath = "Assets/Unity.Chain/Art/Room/";
+        private const string AreaArtPath = "Assets/Unity.Rea.Chain/Art/Background/";
+        private const string RoomArtPath = "Assets/Unity.Rea.Chain/Art/Room/";
 
         private static void CreateBackground(CameraRig rig)
         {
@@ -358,7 +358,7 @@ namespace MindAttic.Chain.EditorTools
             overlay.LineMaterial = LoadOrCreateMaterial(ZoneMaterialPath, "ZoneLine", "Universal Render Pipeline/2D/Sprite-Lit-Default");
         }
 
-        private const string HeartSpritePath = "Assets/Unity.Chain/Art/Items/heart.png";
+        private const string HeartSpritePath = "Assets/Unity.Rea.Chain/Art/Items/heart.png";
 
         private static void CreateHeart(GameSession session)
         {

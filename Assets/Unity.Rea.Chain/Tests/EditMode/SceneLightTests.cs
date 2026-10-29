@@ -107,7 +107,7 @@ namespace MindAttic.Chain.Tests
         {
             // UNI-T18: the pipeline the settings name exists, draws with the 2D renderer, and is the
             // one in GraphicsSettings and on every quality level (no level falls back to built-in).
-            var pipeline = AssetDatabase.LoadAssetAtPath<UniversalRenderPipelineAsset>("Assets/Unity.Chain/Rendering/ChainURP.asset");
+            var pipeline = AssetDatabase.LoadAssetAtPath<UniversalRenderPipelineAsset>("Assets/Unity.Rea.Chain/Rendering/ChainURP.asset");
             Assert.IsNotNull(pipeline, "the URP pipeline asset is committed");
             var renderers = new SerializedObject(pipeline).FindProperty("m_RendererDataList");
             Assert.IsInstanceOf<Renderer2DData>(renderers.GetArrayElementAtIndex(0).objectReferenceValue, "its renderer is the 2D renderer");

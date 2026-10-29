@@ -17,8 +17,8 @@ namespace MindAttic.Chain.EditorTools
     /// </summary>
     public sealed class AudioImportSettings : AssetPostprocessor
     {
-        private const string SfxFolder = "Assets/Unity.Chain/Audio/Sfx/";
-        private const string MusicFolder = "Assets/Unity.Chain/Audio/Music/";
+        private const string SfxFolder = "Assets/Unity.Rea.Chain/Audio/Sfx/";
+        private const string MusicFolder = "Assets/Unity.Rea.Chain/Audio/Music/";
 
         private void OnPreprocessAudio()
         {

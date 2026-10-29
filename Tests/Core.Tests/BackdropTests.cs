@@ -62,10 +62,10 @@ namespace MindAttic.Chain.Tests
             var area = Shipped.Area;
             foreach (var name in area.Areas)
             {
-                Assert.IsTrue(File.Exists(Path.Combine(assets, "Unity.Chain", "Art", "Background", area.File(name))), name);
+                Assert.IsTrue(File.Exists(Path.Combine(assets, "Unity.Rea.Chain", "Art", "Background", area.File(name))), name);
             }
 
-            Assert.IsTrue(File.Exists(Path.Combine(assets, "Unity.Chain", "Art", "Room", area.CubeTexture)), area.CubeTexture);
+            Assert.IsTrue(File.Exists(Path.Combine(assets, "Unity.Rea.Chain", "Art", "Room", area.CubeTexture)), area.CubeTexture);
         }
 
         [Test]

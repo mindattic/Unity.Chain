@@ -26,16 +26,16 @@ namespace MindAttic.Chain.EditorTools
     /// </summary>
     public sealed class ArtImportSettings : AssetPostprocessor
     {
-        private const string AngelFolder = "Assets/Unity.Chain/Art/Angel/";
-        private const string EnemiesFolder = "Assets/Unity.Chain/Art/Enemies/";
-        private const string ChainFolder = "Assets/Unity.Chain/Art/Chain/";
-        private const string BackgroundFolder = "Assets/Unity.Chain/Art/Background/";
+        private const string AngelFolder = "Assets/Unity.Rea.Chain/Art/Angel/";
+        private const string EnemiesFolder = "Assets/Unity.Rea.Chain/Art/Enemies/";
+        private const string ChainFolder = "Assets/Unity.Rea.Chain/Art/Chain/";
+        private const string BackgroundFolder = "Assets/Unity.Rea.Chain/Art/Background/";
 
         /// <summary>Cube.vb's texCube1, gfx/brick.jpg (UNI-T40): centred, AreaBackdrop stretches it over the room's far wall.</summary>
-        private const string RoomFolder = "Assets/Unity.Chain/Art/Room/";
+        private const string RoomFolder = "Assets/Unity.Rea.Chain/Art/Room/";
 
         /// <summary>Form1.vb Startup's loading pictures (UNI-T58), 640 x 480 each, drawn stretched over the window.</summary>
-        private const string LoadingFolder = "Assets/Unity.Chain/Resources/UI/Load/";
+        private const string LoadingFolder = "Assets/Unity.Rea.Chain/Resources/UI/Load/";
 
         private void OnPreprocessTexture()
         {

@@ -27,7 +27,7 @@ namespace MindAttic.Chain.Tests
         {
             // StreamingAssets/Settings -> Assets
             var assets = Path.GetFullPath(Path.Combine(GameSettingsTests.ShippedFolder, "..", ".."));
-            var folder = Path.Combine(assets, "Unity.Chain", "Resources", "UI", "Load");
+            var folder = Path.Combine(assets, "Unity.Rea.Chain", "Resources", "UI", "Load");
             var screen = Shipped;
             for (var n = 1; n <= screen.Pictures; n++)
             {

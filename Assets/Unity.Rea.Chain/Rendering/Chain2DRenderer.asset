@@ -11,7 +11,7 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b74aafef8a5d2b943998b28a56f001da, type: 3}
   m_Name: ViewRenderFeature
-  m_EditorClassIdentifier: Unity.Chain.Runtime::MindAttic.Chain.ViewRenderFeature
+  m_EditorClassIdentifier: Unity.Rea.Chain.Runtime::MindAttic.Chain.ViewRenderFeature
   m_Active: 1
   shader: {fileID: 4800000, guid: 6459279ec69eaed45a44e021a03ef5d5, type: 3}
 --- !u!114 &11400000

@@ -2,7 +2,7 @@
 .SYNOPSIS
   Headless verification gate for Unity.Chain: the engine-free Core rules (dotnet test, via
   run-core-tests.ps1), the EditMode component tests, and the PlayMode suite -- today just
-  MainSceneSmokeTests (Assets/Unity.Chain/Tests/PlayMode) -- each run in Unity batch mode
+  MainSceneSmokeTests (Assets/Unity.Rea.Chain/Tests/PlayMode) -- each run in Unity batch mode
   (tools/unity.ps1; the Editor must be closed). Mirrors the README's "Build and test" PowerShell
   block; see Unity.SpaceGod's and Unity.GridGame's tools/test.ps1.
 .PARAMETER SkipCore
@@ -51,7 +51,7 @@ if (-not $SkipEditMode) {
     Write-Host '  EditMode tests (Unity batch mode)...' -ForegroundColor Cyan
     $editResults = Join-Path $root 'TestResults-EditMode.xml'
     Remove-Item -LiteralPath $editResults -ErrorAction SilentlyContinue
-    & "$PSScriptRoot/unity.ps1" -Log test-editmode -Extra "-runTests -testPlatform EditMode -assemblyNames Unity.Chain.EditMode.Tests -testResults $editResults"
+    & "$PSScriptRoot/unity.ps1" -Log test-editmode -Extra "-runTests -testPlatform EditMode -assemblyNames Unity.Rea.Chain.EditMode.Tests -testResults $editResults"
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     Confirm-TestResults -Path $editResults
 }
@@ -64,7 +64,7 @@ if (-not $SkipPlayMode) {
     Write-Host '  PlayMode tests (Unity batch mode, includes MainSceneSmokeTests)...' -ForegroundColor Cyan
     $playResults = Join-Path $root 'TestResults-PlayMode.xml'
     Remove-Item -LiteralPath $playResults -ErrorAction SilentlyContinue
-    & "$PSScriptRoot/unity.ps1" -Log test-playmode -Extra "-runTests -testPlatform PlayMode -assemblyNames Unity.Chain.PlayMode.Tests;Unity.Chain.Online.Tests -testResults $playResults"
+    & "$PSScriptRoot/unity.ps1" -Log test-playmode -Extra "-runTests -testPlatform PlayMode -assemblyNames Unity.Rea.Chain.PlayMode.Tests;Unity.Rea.Chain.Online.Tests -testResults $playResults"
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     Confirm-TestResults -Path $playResults -MustContain 'MainSceneSmokeTests'
 }

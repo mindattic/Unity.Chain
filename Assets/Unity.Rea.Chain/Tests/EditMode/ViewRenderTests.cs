@@ -146,7 +146,7 @@ namespace MindAttic.Chain.Tests
         [Test]
         public void Pipeline_The2DRendererCarriesTheFeature_WithItsShader()
         {
-            var renderer = AssetDatabase.LoadAssetAtPath<Renderer2DData>("Assets/Unity.Chain/Rendering/Chain2DRenderer.asset");
+            var renderer = AssetDatabase.LoadAssetAtPath<Renderer2DData>("Assets/Unity.Rea.Chain/Rendering/Chain2DRenderer.asset");
             Assert.IsNotNull(renderer);
 
             var features = renderer.rendererFeatures.OfType<ViewRenderFeature>().ToArray();

@@ -21,7 +21,7 @@ namespace MindAttic.Chain.EditorTools
     /// </summary>
     public static class RenderPipelineBuilder
     {
-        public const string Folder = "Assets/Unity.Chain/Rendering";
+        public const string Folder = "Assets/Unity.Rea.Chain/Rendering";
         public const string PipelinePath = Folder + "/ChainURP.asset";
         public const string RendererPath = Folder + "/Chain2DRenderer.asset";
         public const string ViewShaderPath = Folder + "/ViewOptions.shader";
