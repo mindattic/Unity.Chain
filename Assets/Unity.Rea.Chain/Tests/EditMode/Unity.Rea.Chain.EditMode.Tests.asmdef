@@ -1,0 +1,29 @@
+{
+    "name": "Unity.Rea.Chain.EditMode.Tests",
+    "rootNamespace": "MindAttic.Chain.Tests",
+    "references": [
+        "Unity.Rea.Chain.Runtime",
+        "Unity.Rea.Chain.Core",
+        "Unity.Shared.Core",
+        "Unity.InputSystem",
+        "Unity.RenderPipelines.Universal.Runtime",
+        "Unity.RenderPipelines.Universal.2D.Runtime",
+        "UnityEngine.TestRunner",
+        "UnityEditor.TestRunner"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

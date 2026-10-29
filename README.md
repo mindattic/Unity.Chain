@@ -1,4 +1,4 @@
-# Unity.Chain
+# Unity.Rea.Chain
 
 A mouse-steered angel swings a spiked mace on a spring chain, knocking down, grabbing and throwing a flock of
 enemies. A Unity 6 rebuild of the 2005 VB.NET / DirectX 9 *Chain Game*, which was itself built on Philip Winston's

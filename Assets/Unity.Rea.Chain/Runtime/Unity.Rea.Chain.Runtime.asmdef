@@ -1,0 +1,22 @@
+{
+    "name": "Unity.Rea.Chain.Runtime",
+    "rootNamespace": "MindAttic.Chain",
+    "references": [
+        "Unity.Rea.Chain.Core",
+        "Unity.Shared.Core",
+        "Unity.InputSystem",
+        "Unity.RenderPipelines.Core.Runtime",
+        "Unity.RenderPipelines.Universal.Runtime",
+        "Unity.RenderPipelines.Universal.2D.Runtime",
+        "MindAttic.Capture.Unity"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

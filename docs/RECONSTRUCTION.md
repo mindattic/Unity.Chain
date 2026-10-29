@@ -1,13 +1,13 @@
 ---
 codex: 1
-project: Unity.Chain
+project: Unity.Rea.Chain
 code: UNI
 layer: reconstruction
 status: living
 updated: 2026-10-25
 ---
 
-# Unity.Chain: reconstruction of the original (REA) and parity audit
+# Unity.Rea.Chain: reconstruction of the original (REA) and parity audit
 
 Written for UNI-T25 (owner 2026-10-23). It records the reverse engineering of the original prototype
 in full, compares it with the rebuild as it stands on main, audits the project against Unity
@@ -230,7 +230,7 @@ second line (D32). The console that types and runs them is `Scripter` and `Scrip
 - `getRndNum` is integer valued, so "random" positions are only -1, 0, 1.
 - `battle.ico` (every copy checked: `Chain Game`, `Chain Game - Copy`, `Battle 2`, both `Backup` folders) is a single
   32x32 frame that is fully transparent -- `(0,0,0,0)` on all 1024 pixels, never drawn. It was never finished, like
-  the window's `*** UNDER DEVELOPMENT ***` title. UNI-T38 still imports and assigns it (`Assets/Unity.Chain/Art/Icon/battle.png`,
+  the window's `*** UNDER DEVELOPMENT ***` title. UNI-T38 still imports and assigns it (`Assets/Unity.Rea.Chain/Art/Icon/battle.png`,
   a point-filtered, alpha-preserving 256x256 conversion) rather than inventing new art: the data governs, even
   where the data is blank.
 - Damage uses `abs(dX + dY/2)` of the *enemy's new* velocity (mace velocity / mass), so heavier enemies take less.
@@ -247,12 +247,12 @@ Checked against `AGENTS.md` (the owner's rebuild standard) and the reference rep
 | Area | Finding | Ticket |
 |---|---|---|
 | Assembly definitions | Done: Core (`noEngineReferences`), Runtime, Editor, EditMode, PlayMode and the online tests are separate asmdefs with one-way references (BIBLE §5) | UNI-T30, done |
-| Engine-free Core | Done: `ChainSimulation`, `AngelFlight`, `EnemyBrain`, `GameState` and every rule live in `Unity.Chain.Core` | UNI-T30, done |
+| Engine-free Core | Done: `ChainSimulation`, `AngelFlight`, `EnemyBrain`, `GameState` and every rule live in `Unity.Rea.Chain.Core` | UNI-T30, done |
 | Tests outside Unity | Done: `Tests/Core.Tests`, run by `run-core-tests.ps1` | UNI-T31 |
 | Commands and events | Done: one `GameWorld` in Core, stepped only by `GameSession`; players send `GameCommand`s with a `PlayerId`, presentation plays `GameEvent`s (BIBLE §5.3) | UNI-T32 |
 | Data-driven content | Done: JSON data files in `StreamingAssets/Settings` holding the original's figures, validated on load and read by Core's `GameSettings` through `ISettingsSource`, one mapping (`space.json`) to the port's units (BIBLE §6) | UNI-T33 |
 | Input System | Done: one `InputActionAsset` built in code (`ChainControls`), keyboard, mouse and gamepad bindings, read per seat by `SeatInput` into that seat's commands; nothing polls `Keyboard.current` or `Mouse.current` | UNI-T34 |
-| URP | Done: a URP pipeline with the 2D renderer (`Assets/Unity.Chain/Rendering`, built by `Editor/RenderPipelineBuilder`) is assigned in GraphicsSettings and every quality level beside the committed global settings and volume profile; a headless import leaves them unchanged | UNI-T18 |
+| URP | Done: a URP pipeline with the 2D renderer (`Assets/Unity.Rea.Chain/Rendering`, built by `Editor/RenderPipelineBuilder`) is assigned in GraphicsSettings and every quality level beside the committed global settings and volume profile; a headless import leaves them unchanged | UNI-T18 |
 | Unity.Shared profiles and settings | Done: `com.mindattic.unity.shared` referenced; volumes, mutes and reduce motion in the profile's common block, resolution, window mode and tuning overrides in its game block, through Core's `IPreferencesStore`; music and SFX play at the profile's volumes (BIBLE §6) | UNI-T36 |
 | UI | Done: `GameHud` is a UI Toolkit tree laid out from `hud.json` (UNI-T50 onward); no IMGUI remains | UNI-T37, done |
 | Project settings | Done: 640x480 windowed default, borderless by default as Form1.vb's form (`WindowFrameBehaviour`, game.json `windowFrame`; BIBLE V12, U.CHN-T76), titled `Unity.Chain` (`productName`, replacing the original's unfinished `*** UNDER DEVELOPMENT ***`), snapped back to 4:3 once a border drag settles and left alone while maximized (`WindowAspectLock`/`WindowAspectLockBehaviour`; BIBLE V12), the Standalone icon from `battle.ico`, a global cursor policy (`CursorPolicy`: hidden and confined from the first frame; BIBLE V18), `applicationIdentifier` (`com.mindattic.unitychain`), company/product name and version set, all applied in code (`Editor/ProjectSettingsBuilder.cs`) | UNI-T38 |
@@ -272,7 +272,7 @@ than refiled. Every row has its own story.
 | # | Ticket | Story | What it builds |
 |---|---|---|---|
 | 1 | UNI-T29 | UNI-US-F1 | docs/BIBLE.md and a current README |
-| 2 | UNI-T30 | UNI-US-F2 | engine-free `Unity.Chain.Core` assembly, Runtime reduced to adapters |
+| 2 | UNI-T30 | UNI-US-F2 | engine-free `Unity.Rea.Chain.Core` assembly, Runtime reduced to adapters |
 | 3 | UNI-T31 | UNI-US-F3 | `dotnet test` project for Core, pure tests moved out of EditMode |
 | 4 | UNI-T32 | UNI-US-F4 | commands with a player id producing events; presentation only reads |
 | 5 | UNI-T33 | UNI-US-F5 | tuning and content as validated data files and a settings registry |
@@ -326,7 +326,7 @@ Player (Capture Enabled)`, `Builds/Capture/Unity.Chain.exe`) run with `-demo -ca
 loads; both call the same public API real input and the EditMode tests already use
 (`GameSession.Submit`, `GameWorld.SpawnEnemy`, `AngelFlight.Teleport`, `GrappleController.SetButtonHeld`),
 so every beat below happens for real, not by chance. `PlaythroughActions` is the shared, lower-level form of
-the same moves, driven directly by `ScriptedPlaythroughTests` (Assets/Unity.Chain/Tests/PlayMode) so the
+the same moves, driven directly by `ScriptedPlaythroughTests` (Assets/Unity.Rea.Chain/Tests/PlayMode) so the
 path is asserted on every test run, not just captured once by eye.
 
 Screenshots and one short highlight clip from the run are committed under `docs/demo/` and cross-referenced

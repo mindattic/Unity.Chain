@@ -1,0 +1,28 @@
+{
+    "name": "Unity.Rea.Chain.Editor",
+    "rootNamespace": "MindAttic.Chain.EditorTools",
+    "references": [
+        "Unity.Rea.Chain.Runtime",
+        "Unity.Rea.Chain.Core",
+        "Unity.Rea.Chain.Online",
+        "Unity.Multiplayer",
+        "Unity.Multiplayer.Core",
+        "Unity.Multiplayer.Editor",
+        "Unity.Multiplayer.UI",
+        "Unity.Netcode.Runtime",
+        "Unity.RenderPipelines.Core.Runtime",
+        "Unity.RenderPipelines.Universal.Runtime",
+        "Unity.RenderPipelines.Universal.2D.Runtime"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

@@ -69,7 +69,7 @@ both-neighbor pull is kept as an explicit opt-in, not the port's default.
   is grabbed if the grapple is armed, otherwise gets `velocity = mace velocity / mass`, loses HP
   and goes Hurt (slows by `resistSPD` per axis, then seeks again); a grabbed enemy takes the same
   damage. A thrown enemy knocks any enemy it touches (`checkThrowImpact`) without damage.
-- **In Unity** (`Assets/Unity.Chain/Core/World/`): the `GameWorld` step replaces the AABB with a
+- **In Unity** (`Assets/Unity.Rea.Chain/Core/World/`): the `GameWorld` step replaces the AABB with a
   swept circle: each step it sweeps a mace-sized circle (`Sweep.CircleCast`) from the mace link's
   previous position to its current one against every enemy's circle, plus an overlap at the end, so
   fast swings cannot tunnel. Each `EnemyEntity` (its own `IGrappleTarget`) runs `EnemyBrain`, the
@@ -85,7 +85,7 @@ both-neighbor pull is kept as an explicit opt-in, not the port's default.
 - **Audio** (Sound.vb): DirectSound buffers loaded from `sfx\` — `sword_swing_1..7`,
   `sword_hit_1..3`, `defend`, `footstep_1..2`, `death_1..4` — at `sfxVolume` -1000 mB, and one
   looping `music\music.wma` (DirectX AudioVideoPlayback) that `rndMusicPos` can start at a random
-  point; `bSound`/`bMusic` toggle each. **In Unity** (`Assets/Unity.Chain/Runtime/Audio/`):
+  point; `bSound`/`bMusic` toggle each. **In Unity** (`Assets/Unity.Rea.Chain/Runtime/Audio/`):
   `ChainAudio` sits on the chain object and plays one-shots from clip sets (a random clip each
   time, never the same twice running): a swing when the mace link's speed *relative to the hand*
   rises past `swingSpeed` (default 6 u/s, re-armed below 3 u/s, repeated every 0.6 s while it keeps

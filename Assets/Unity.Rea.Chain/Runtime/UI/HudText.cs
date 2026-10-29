@@ -1,0 +1,48 @@
+using System.Globalization;
+using MindAttic.Chain.Core;
+using UnityEngine;
+
+namespace MindAttic.Chain
+{
+    /// <summary>
+    /// The HUD's strings, in Engine.vb's <c>renderDisplay</c> and Gui.vb's <c>renderFPS</c> wording: an HP bar of
+    /// one <c>|</c> per hit point, the score, the grappled enemy's HP, the <c>Res</c>/<c>Grav</c>/<c>Spring</c>
+    /// readout, the round clock (Gui.vb's <c>updateClock</c>), the game speed (<c>FormatNumber(gameSpeed, 2)</c>), the frame rate and the pause banner. Pure so
+    /// it is unit-testable; <see cref="GameHud"/> draws them.
+    /// </summary>
+    public static class HudText
+    {
+        public const string Paused = "- PAUSE -";
+        public const string GameOver = "GAME OVER";
+
+        /// <summary>
+        /// Engine.vb's <c>renderDisplay</c>: <c>For n = 0 To Angel(0).HP</c> draws <c>hp + bonus</c> bars
+        /// (<paramref name="bonus"/> is <see cref="GameState.Settings.HpOvershoot"/>, BIBLE D10; 0 draws
+        /// exactly <paramref name="hp"/>).
+        /// </summary>
+        public static string Hp(int hp, int bonus = 0) => "HP : " + new string('|', Mathf.Max(0, hp + bonus));
+
+        public static string Score(int score) => "Score : " + score.ToString(CultureInfo.InvariantCulture);
+
+        public static string Grappled(float hp) =>
+            "Grappled: " + Mathf.Max(0f, hp).ToString("0.##", CultureInfo.InvariantCulture);
+
+        /// <summary>
+        /// <c>"Res " &amp; resistance &amp; vbNewLine &amp; "Grav " &amp; gravity.Y &amp; vbNewLine &amp; "Spring " &amp; springK</c>: each
+        /// figure as VB writes a Single (its shortest form; 6 significant digits here, so the float round trip through the port's units never shows as 0.09999999).
+        /// </summary>
+        public static string Readout(ChainReadout chain) =>
+            "Res " + Single(chain.Resistance) + "\nGrav " + Single(chain.Gravity) + "\nSpring " + Single(chain.Spring);
+
+        /// <summary><c>FormatNumber(gameSpeed, 2)</c>: two decimals ("1.00").</summary>
+        public static string GameSpeed(float gameSpeed) => gameSpeed.ToString("N2", CultureInfo.InvariantCulture);
+
+        /// <summary>Gui.vb's updateClock: the round's <c>m:ss</c>, seconds padded to two digits (<see cref="RoundClock"/>).</summary>
+        public static string Clock(float roundTime) => RoundClock.Format(roundTime);
+
+        /// <summary><c>iFrameRate.ToString &amp; " fps"</c>.</summary>
+        public static string Fps(int frameRate) => frameRate.ToString(CultureInfo.InvariantCulture) + " fps";
+
+        private static string Single(float value) => value.ToString("G6", CultureInfo.InvariantCulture);
+    }
+}
